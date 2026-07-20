@@ -1,5 +1,4 @@
-import Link from "next/link";
-import Brand from "@/components/ui/Brand";
+import { TeacherShell } from "@/components/ui/Shells";
 import QuizGenerator from "@/components/teacher/quiz/QuizGenerator";
 
 /**
@@ -14,20 +13,8 @@ export default function QuizWeekPage({
   const week = `สัปดาห์ที่ ${params.week}`;
 
   return (
-    <main className="min-h-screen bg-cream-100 p-6">
-      <div className="mx-auto max-w-3xl">
-        <header className="mb-6 flex items-center justify-between">
-          <Brand />
-          <Link
-            href="/quiz"
-            className="rounded-xl px-3 py-1.5 text-sm font-semibold text-slate-500 transition hover:bg-white hover:text-slate-700"
-          >
-            ← เลือกสัปดาห์อื่น
-          </Link>
-        </header>
-
-        <QuizGenerator week={week} />
-      </div>
-    </main>
+    <TeacherShell>
+      <QuizGenerator week={week} />
+    </TeacherShell>
   );
 }

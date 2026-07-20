@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo } from "react";
 import { useCourse } from "@/lib/courseStore";
 import { resolveHex, weekNumber } from "@/lib/weeks";
+import PageHeader from "@/components/ui/PageHeader";
 
 /**
  * หน้ารายการแบบทดสอบสำหรับนักเรียน
@@ -26,58 +27,54 @@ export default function StudentQuizList() {
 
   if (!hydrated) {
     return (
-      <div className="grid place-items-center py-24 text-sm text-slate-400">
+      <div className="grid place-items-center py-24 text-sm text-ink-400">
         กำลังโหลด…
       </div>
     );
   }
 
   return (
-    <div className="space-y-5">
-      {/* หัวเรื่อง */}
-      <div className="rounded-3xl border border-slate-100 bg-white p-6">
-        <p className="text-[11px] font-bold uppercase tracking-wider text-tu-red-500">
-          แบบทดสอบ
-        </p>
-        <h1 className="mt-0.5 text-2xl font-bold text-slate-800">
-          {subject || "แบบทดสอบรายสัปดาห์"}
-        </h1>
-        <p className="mt-1 text-xs text-slate-400">
-          เลือกสัปดาห์ที่ต้องการทำแบบทดสอบ ทำเสร็จจะได้รับผลและคำแนะนำจาก AI
-        </p>
-      </div>
+    <div>
+      <PageHeader
+        eyebrow="แบบทดสอบรายสัปดาห์"
+        title={subject || "แบบทดสอบรายสัปดาห์"}
+        subtitle="เลือกสัปดาห์ที่ต้องการทำแบบทดสอบ เมื่อทำเสร็จจะได้รับคะแนนพร้อมคำแนะนำจาก AI ทันที"
+        tone="gold"
+      />
 
       {/* รายการสัปดาห์ */}
       {rows.length === 0 ? (
-        <div className="rounded-3xl border border-dashed border-slate-200 bg-white p-10 text-center">
-          <p className="text-sm font-semibold text-slate-600">
-            ยังไม่มีแบบทดสอบ
-          </p>
-          <p className="mt-1 text-xs text-slate-400">
+        <div className="card-empty">
+          <h2 className="display text-lg">ยังไม่มีแบบทดสอบ</h2>
+          <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-ink-500">
             อาจารย์ยังไม่ได้สร้างแบบทดสอบ กลับมาใหม่อีกครั้งภายหลัง
           </p>
         </div>
       ) : (
-        <div className="divide-y divide-slate-100 overflow-hidden rounded-3xl border border-slate-100 bg-white">
+        <div className="card divide-y divide-line-soft overflow-hidden">
           {rows.map((row) => (
             <Link
               key={row.week}
               href={`/student/quiz/${weekNumber(row.week)}`}
-              className="flex items-center justify-between gap-4 px-5 py-4 transition hover:bg-slate-50/60"
+              className="group flex items-center gap-4 px-4 py-4 transition hover:bg-paper-100/70 sm:px-5"
             >
-              <div className="flex items-center gap-2">
+              <div className="flex flex-shrink-0 items-center gap-3">
                 <span
-                  className="h-2.5 w-2.5 flex-shrink-0 rounded-full"
+                  className="h-10 w-1 rounded-full"
                   style={{ backgroundColor: resolveHex(row.colorKey) }}
+                  aria-hidden
                 />
-                <span className="text-sm font-bold text-slate-700">
-                  {row.week}
-                </span>
-                <span className="text-[11px] text-slate-400">
-                  {row.count} ข้อ
+                <span className="display w-7 text-2xl leading-none text-ink-300 transition group-hover:text-ink-500">
+                  {weekNumber(row.week)}
                 </span>
               </div>
-              <span className="shrink-0 text-xs font-bold text-tu-red-600">
+
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-bold text-ink-800">{row.week}</p>
+                <p className="mt-0.5 text-xs text-ink-500">{row.count} ข้อ</p>
+              </div>
+
+              <span className="flex-shrink-0 text-xs font-bold text-tu-red-600 transition group-hover:text-tu-red-700">
                 เริ่มทำ →
               </span>
             </Link>

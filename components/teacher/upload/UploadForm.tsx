@@ -55,55 +55,43 @@ export default function UploadForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="grid gap-6 sm:grid-cols-2">
+      <div className="grid gap-5 sm:grid-cols-2">
         <div>
-          <label className="mb-1.5 block text-sm font-semibold text-slate-700">
-            ชื่อวิชา (subject)
-          </label>
+          <label className="label">ชื่อวิชา</label>
           <input
             value={subject}
             onChange={(e) => setSubject(e.target.value)}
-            placeholder="– กรอกข้อมูล –"
-            className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm outline-none transition focus:border-tu-red-500 focus:ring-2 focus:ring-tu-red-100"
+            placeholder="เช่น CN101 การเขียนโปรแกรม"
+            className="field text-sm"
           />
         </div>
 
         <div>
-          <label className="mb-1.5 block text-sm font-semibold text-slate-700">
+          <label className="label">
             Course Syllabus{" "}
-            <span className="font-normal text-slate-400">(PDF · 1 ไฟล์)</span>
+            <span className="font-normal text-ink-400">(PDF · 1 ไฟล์)</span>
           </label>
           <SyllabusUpload file={syllabus} onFileChange={setSyllabus} />
         </div>
       </div>
 
       <div>
-        <label className="mb-1.5 block text-sm font-semibold text-slate-700">
-          ไฟล์เอกสาร (PDF)
-        </label>
+        <label className="label">ไฟล์เอกสารการสอน (PDF)</label>
         <FileDropzone files={files} onFilesChange={setFiles} />
       </div>
 
-      {error && (
-        <p className="rounded-lg bg-tu-red-50 px-3 py-2 text-xs font-medium text-tu-red-700">
-          {error}
-        </p>
-      )}
+      {error && <p className="alert-error">{error}</p>}
 
-      <div className="flex items-center justify-end gap-3 border-t border-slate-100 pt-5">
+      <div className="flex items-center justify-end gap-2 border-t border-line-soft pt-5">
         <button
           type="button"
-          onClick={() => router.push("/login")}
-          className="rounded-xl px-4 py-2 text-sm font-semibold text-slate-500 transition hover:bg-slate-100"
+          onClick={() => router.push("/course")}
+          className="btn-ghost"
         >
           ยกเลิก
         </button>
-        <button
-          type="submit"
-          disabled={loading}
-          className="rounded-xl bg-tu-red-500 px-6 py-2 text-sm font-bold text-white transition hover:bg-tu-red-600 disabled:opacity-60"
-        >
-          {loading ? "กำลังประมวลผล…" : "ยืนยัน"}
+        <button type="submit" disabled={loading} className="btn-primary px-6">
+          {loading ? "กำลังประมวลผล…" : "จับหัวข้อด้วย AI"}
         </button>
       </div>
     </form>

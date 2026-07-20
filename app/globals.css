@@ -5,13 +5,107 @@
 @layer base {
   html {
     -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
   }
   body {
-    @apply bg-slate-50 text-slate-800;
+    @apply bg-paper-100 text-ink-800;
+  }
+  ::selection {
+    @apply bg-tu-gold-200 text-ink-900;
+  }
+  /* โฟกัสด้วยคีย์บอร์ด — เห็นชัดทุกที่ */
+  :focus-visible {
+    @apply outline-none ring-2 ring-tu-red-400 ring-offset-2 ring-offset-paper-100;
   }
 }
 
-/* ซ่อน spinner ของ input number บนหน้า login */
+@layer components {
+  /* ---------- พื้นผิว ---------- */
+
+  /* การ์ดกระดาษมาตรฐาน */
+  .card {
+    @apply rounded-xl border border-line-soft bg-white shadow-card;
+  }
+
+  /* การ์ดว่าง/ชวนให้ลงมือ */
+  .card-empty {
+    @apply rounded-xl border border-dashed border-line-strong bg-paper-50 px-6 py-12 text-center;
+  }
+
+  /* ---------- ตัวอักษร ---------- */
+
+  /* หัวเรื่องหลักแบบ editorial (serif) */
+  .display {
+    @apply font-display font-semibold tracking-tight text-ink-900;
+  }
+
+  /* ป้ายหมวดตัวเล็กเหนือหัวเรื่อง
+     (leading กว้างพอไม่ให้สระ/วรรณยุกต์ไทยด้านบนถูกตัด) */
+  .eyebrow {
+    @apply text-[11px] font-bold leading-5 tracking-wide text-tu-red-600;
+  }
+  .eyebrow-gold {
+    @apply text-[11px] font-bold leading-5 tracking-wide text-tu-gold-700;
+  }
+
+  /* เส้นคั่นทองบาง ๆ ใต้หัวเรื่อง */
+  .rule-gold {
+    @apply h-px w-12 border-0 bg-tu-gold-500;
+  }
+
+  /* ---------- ฟอร์ม ---------- */
+
+  .label {
+    @apply mb-1.5 block text-sm font-semibold text-ink-700;
+  }
+
+  .field {
+    @apply w-full rounded-lg border border-line bg-paper-50 px-3.5 py-2.5 text-ink-800 outline-none transition
+      placeholder:text-ink-400
+      focus:border-tu-red-500 focus:bg-white focus:ring-4 focus:ring-tu-red-500/10;
+  }
+
+  /* ---------- ปุ่ม ---------- */
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-4 py-2.5 text-sm font-semibold transition
+      disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  /* ปุ่มหลัก — แดงธรรมศาสตร์ */
+  .btn-primary {
+    @apply btn bg-tu-red-500 text-white shadow-card hover:bg-tu-red-600 active:bg-tu-red-700;
+  }
+
+  /* ปุ่มรอง — พื้นขาว ขอบบาง */
+  .btn-secondary {
+    @apply btn border border-line bg-white text-ink-700 hover:border-line-strong hover:bg-paper-50;
+  }
+
+  /* ปุ่มจาง — ไม่มีพื้น */
+  .btn-ghost {
+    @apply btn text-ink-600 hover:bg-paper-200 hover:text-ink-800;
+  }
+
+  /* ปุ่มเข้ม — ยืนยันขั้นสุดท้าย */
+  .btn-ink {
+    @apply btn bg-ink-900 text-white hover:bg-ink-800;
+  }
+
+  /* ---------- อื่น ๆ ---------- */
+
+  /* ข้อความแจ้ง error ในฟอร์ม */
+  .alert-error {
+    @apply rounded-lg border border-tu-red-100 bg-tu-red-50 px-3.5 py-2.5 text-sm font-medium text-tu-red-700;
+  }
+
+  /* แถวในรายการแบบ list */
+  .row {
+    @apply flex items-center gap-4 px-5 py-4 transition hover:bg-paper-100/70;
+  }
+}
+
+/* ซ่อน spinner ของ input number */
 input[type="number"]::-webkit-outer-spin-button,
 input[type="number"]::-webkit-inner-spin-button {
   -webkit-appearance: none;
@@ -19,4 +113,22 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 input[type="number"] {
   -moz-appearance: textfield;
+}
+
+/* scrollbar โทนอุ่นให้เข้ากับพื้นกระดาษ */
+* {
+  scrollbar-color: #D6C8B4 transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+  background-color: #D6C8B4;
+  border: 3px solid transparent;
+  background-clip: content-box;
+  border-radius: 9999px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background-color: #C4B9AF;
 }

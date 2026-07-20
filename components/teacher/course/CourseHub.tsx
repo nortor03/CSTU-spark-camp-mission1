@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useRef } from "react";
 import { useCourse } from "@/lib/courseStore";
 import { resolveHex, weekNumber } from "@/lib/weeks";
+import PageHeader from "@/components/ui/PageHeader";
 import type { Topic } from "@/lib/types";
 
 interface WeekRow {
@@ -61,7 +62,7 @@ export default function CourseHub() {
 
   if (!hydrated) {
     return (
-      <div className="grid place-items-center py-24 text-sm text-slate-400">
+      <div className="grid place-items-center py-24 text-sm text-ink-400">
         กำลังโหลด…
       </div>
     );
@@ -69,55 +70,76 @@ export default function CourseHub() {
 
   // เริ่มรายวิชาแล้วหรือยัง (มีชื่อวิชา หรือมีสัปดาห์ที่จัดหัวข้อไว้)
   const started = subject.trim() !== "" || rows.length > 0;
+  const assignedCount = topics.filter((t) => t.weekAssigned).length;
+  const quizCount = rows.filter((r) => r.questionCount !== null).length;
 
   return (
-    <div className="space-y-5">
-      {/* หัวรายวิชา */}
-      <div className="rounded-3xl border border-slate-100 bg-white p-6">
-        <p className="text-[11px] font-bold uppercase tracking-wider text-tu-red-500">
-          ภาพรวมรายวิชา
-        </p>
-        <h1 className="mt-0.5 text-2xl font-bold text-slate-800">
-          {subject || "ยังไม่มีรายวิชา"}
-        </h1>
-        <p className="mt-2 text-xs text-slate-400">
-          {rows.length} สัปดาห์ที่จัดแล้ว ·{" "}
-          {topics.filter((t) => t.weekAssigned).length} หัวข้อ
-        </p>
+    <div>
+      <PageHeader
+        eyebrow="ภาพรวมรายวิชา"
+        title={subject || "ยังไม่มีรายวิชา"}
+        subtitle={
+          started
+            ? "ภาพรวมของหัวข้อที่จัดเข้าสัปดาห์แล้ว และสถานะแบบทดสอบของแต่ละสัปดาห์"
+            : undefined
+        }
+        action={
+          started ? (
+            <>
+              <Link href="/upload" className="btn-secondary">
+                อัปโหลดเอกสาร
+              </Link>
+              <Link href="/topics" className="btn-primary">
+                จัดหัวข้อรายสัปดาห์
+              </Link>
+            </>
+          ) : undefined
+        }
+      />
 
-        {/* ปุ่มในการ์ดนี้แสดงเฉพาะเมื่อเริ่มรายวิชาแล้ว — ถ้ายังไม่มีให้ใช้ปุ่มเดียวที่การ์ด "เริ่มต้นสร้างรายวิชา" ด้านล่าง */}
-        {started && (
-          <div className="mt-4 space-y-3">
-            {/* course syllabus — ดาวน์โหลด/อัปโหลดไฟล์ แยกจากเอกสารการสอน */}
-            <div className="flex flex-wrap items-center gap-2 text-xs">
-              {syllabusData ? (
-                <>
-                  <a
-                    href={syllabusData}
-                    download={syllabusName ?? "course-syllabus.pdf"}
-                    className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-3 py-1.5 font-semibold text-slate-600 transition hover:bg-slate-200"
-                  >
-                    <DownloadIcon />
-                    ดาวน์โหลด course syllabus
-                  </a>
-                  <button
-                    type="button"
-                    onClick={() => syllabusRef.current?.click()}
-                    className="font-semibold text-slate-400 transition hover:text-tu-red-600"
-                  >
-                    เปลี่ยนไฟล์
-                  </button>
-                </>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => syllabusRef.current?.click()}
-                  className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-semibold text-slate-500 ring-1 ring-slate-200 transition hover:bg-slate-50"
+      {started && (
+        <>
+          {/* ---------- ตัวเลขสรุป ---------- */}
+          <div className="mb-4 grid grid-cols-3 gap-3">
+            <Stat value={rows.length} label="สัปดาห์ที่จัดแล้ว" />
+            <Stat value={assignedCount} label="หัวข้อ" />
+            <Stat value={quizCount} label="แบบทดสอบ" />
+          </div>
+
+          {/* ---------- แถบไฟล์ syllabus ---------- */}
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-paper-50 px-4 py-3">
+            <div className="flex min-w-0 items-center gap-2.5">
+              <span className="grid h-8 w-8 flex-shrink-0 place-items-center rounded-md bg-tu-red-50 text-tu-red-600">
+                <DocIcon />
+              </span>
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-400">
+                  Course Syllabus
+                </p>
+                <p className="truncate text-sm font-medium text-ink-700">
+                  {syllabusName ?? "ยังไม่ได้แนบไฟล์"}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-shrink-0 items-center gap-2 text-xs">
+              {syllabusData && (
+                <a
+                  href={syllabusData}
+                  download={syllabusName ?? "course-syllabus.pdf"}
+                  className="btn-secondary px-3 py-1.5 text-xs"
                 >
-                  <UploadIcon />
-                  อัปโหลด course syllabus
-                </button>
+                  <DownloadIcon />
+                  ดาวน์โหลด
+                </a>
               )}
+              <button
+                type="button"
+                onClick={() => syllabusRef.current?.click()}
+                className="btn-ghost px-3 py-1.5 text-xs"
+              >
+                {syllabusData ? "เปลี่ยนไฟล์" : "แนบไฟล์"}
+              </button>
               <input
                 ref={syllabusRef}
                 type="file"
@@ -126,105 +148,124 @@ export default function CourseHub() {
                 onChange={onPickSyllabus}
               />
             </div>
-
-            {/* การกระทำหลัก */}
-            <div className="flex flex-wrap gap-2">
-              <Link
-                href="/topics"
-                className="rounded-xl bg-slate-900 px-4 py-2 text-xs font-semibold text-white transition hover:bg-slate-800"
-              >
-                จัดหัวข้อรายสัปดาห์
-              </Link>
-              <Link
-                href="/upload"
-                className="rounded-xl px-4 py-2 text-xs font-semibold text-slate-500 ring-1 ring-slate-200 transition hover:bg-slate-50"
-              >
-                + อัปโหลดเอกสารใหม่
-              </Link>
-            </div>
           </div>
-        )}
-      </div>
+        </>
+      )}
 
-      {/* รายการสัปดาห์ */}
+      {/* ---------- รายการสัปดาห์ ---------- */}
       {rows.length === 0 ? (
-        <div className="rounded-3xl border border-dashed border-slate-200 bg-white p-10 text-center">
+        <div className="card-empty">
           {started ? (
             <>
-              <p className="text-sm font-semibold text-slate-600">
-                ยังไม่ได้จัดหัวข้อเข้าสัปดาห์
+              <h2 className="display text-lg">ยังไม่ได้จัดหัวข้อเข้าสัปดาห์</h2>
+              <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-ink-500">
+                ไปที่หน้า “จัดหัวข้อ” เพื่อเลือกหัวข้อเข้าสัปดาห์ก่อน
+                แล้วค่อยกลับมาสร้างแบบทดสอบ
               </p>
-              <p className="mt-1 text-xs text-slate-400">
-                ไปที่หน้า “จัดหัวข้อรายสัปดาห์” เพื่อเลือกหัวข้อเข้าสัปดาห์ก่อน
-                แล้วค่อยกลับมาสร้างควิซ
-              </p>
-              <Link
-                href="/topics"
-                className="mt-4 inline-block rounded-xl bg-tu-red-500 px-5 py-2 text-xs font-bold text-white transition hover:bg-tu-red-600"
-              >
+              <Link href="/topics" className="btn-primary mt-5">
                 ไปจัดหัวข้อ
               </Link>
             </>
           ) : (
             <>
-              <p className="text-sm font-semibold text-slate-600">
-                เริ่มต้นสร้างรายวิชา
+              <p className="eyebrow">เริ่มต้นใช้งาน</p>
+              <h2 className="display mt-1.5 text-xl">เริ่มต้นสร้างรายวิชา</h2>
+              <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-ink-500">
+                อัปโหลดเอกสารการสอน (PDF)
+                เพื่อให้ระบบวิเคราะห์และจำแนกหัวข้อโดยอัตโนมัติ
               </p>
-              <p className="mt-1 text-xs text-slate-400">
-                โปรดอัปโหลดเอกสารการสอน (PDF) เพื่อให้ระบบวิเคราะห์และจำแนกหัวข้อโดยอัตโนมัติ
-              </p>
-              <Link
-                href="/upload"
-                className="mt-4 inline-block rounded-xl bg-tu-red-500 px-5 py-2 text-xs font-bold text-white transition hover:bg-tu-red-600"
-              >
+              <Link href="/upload" className="btn-primary mt-5">
                 อัปโหลดเอกสารการสอน
               </Link>
             </>
           )}
         </div>
       ) : (
-        <div className="divide-y divide-slate-100 overflow-hidden rounded-3xl border border-slate-100 bg-white">
+        <div className="card divide-y divide-line-soft overflow-hidden">
           {rows.map((row) => {
             const hasQuiz = row.questionCount !== null;
             return (
-              <div
+              <Link
                 key={row.week}
-                className="flex flex-col gap-1.5 px-5 py-4 transition hover:bg-slate-50/60 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+                href={`/quiz/${weekNumber(row.week)}`}
+                className="group flex items-center gap-4 px-4 py-4 transition hover:bg-paper-100/70 sm:px-5"
               >
+                {/* เลขสัปดาห์ตัวใหญ่ + แถบสีประจำสัปดาห์ */}
+                <div className="flex flex-shrink-0 items-center gap-3">
+                  <span
+                    className="h-10 w-1 rounded-full"
+                    style={{ backgroundColor: resolveHex(row.colorKey) }}
+                    aria-hidden
+                  />
+                  <span className="display w-7 text-2xl leading-none text-ink-300 transition group-hover:text-ink-500">
+                    {weekNumber(row.week)}
+                  </span>
+                </div>
+
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span
-                      className="h-2.5 w-2.5 flex-shrink-0 rounded-full"
-                      style={{ backgroundColor: resolveHex(row.colorKey) }}
-                    />
-                    <span className="text-sm font-bold text-slate-700">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm font-bold text-ink-800">
                       {row.week}
                     </span>
-                    <span className="text-[11px] text-slate-400">
+                    <span className="text-[11px] text-ink-400">
                       {row.topics.length} หัวข้อ
                     </span>
+                    {hasQuiz && (
+                      <span className="rounded-full bg-tu-gold-50 px-2 py-0.5 text-[10px] font-bold text-tu-gold-700 ring-1 ring-tu-gold-200">
+                        ควิซ {row.questionCount} ข้อ
+                      </span>
+                    )}
                   </div>
-                  <p className="mt-1 pl-[18px] text-xs leading-relaxed text-slate-400">
+                  <p className="mt-1 truncate text-xs leading-relaxed text-ink-500">
                     {row.topics.map((t) => t.title).join("  ·  ")}
                   </p>
                 </div>
 
-                <Link
-                  href={`/quiz/${weekNumber(row.week)}`}
-                  className={`shrink-0 self-start pl-[18px] text-xs font-bold transition sm:self-center sm:pl-0 ${
+                <span
+                  className={`flex-shrink-0 text-xs font-bold transition ${
                     hasQuiz
-                      ? "text-slate-500 hover:text-slate-700"
-                      : "text-tu-red-600 hover:text-tu-red-700"
+                      ? "text-ink-400 group-hover:text-ink-700"
+                      : "text-tu-red-600 group-hover:text-tu-red-700"
                   }`}
                 >
-                  {hasQuiz ? "ดู / แก้ควิซ →" : "＋ สร้างควิซ →"}
-                </Link>
-              </div>
+                  {hasQuiz ? "แก้ไข →" : "＋ สร้างควิซ"}
+                </span>
+              </Link>
             );
           })}
         </div>
       )}
     </div>
+  );
+}
+
+/** กล่องตัวเลขสรุป 1 ช่อง */
+function Stat({ value, label }: { value: number; label: string }) {
+  return (
+    <div className="card px-4 py-3">
+      <p className="display text-2xl leading-none">{value}</p>
+      <p className="mt-1.5 text-[11px] font-medium text-ink-500">{label}</p>
+    </div>
+  );
+}
+
+/* ---------- ไอคอน ---------- */
+
+function DocIcon() {
+  return (
+    <svg
+      className="h-4 w-4"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+      strokeWidth={1.8}
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+      />
+    </svg>
   );
 }
 
@@ -241,24 +282,6 @@ function DownloadIcon() {
         strokeLinejoin="round"
         strokeWidth={2}
         d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 4v12m0 0l-4-4m4 4l4-4"
-      />
-    </svg>
-  );
-}
-
-function UploadIcon() {
-  return (
-    <svg
-      className="h-3.5 w-3.5"
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 16V4m0 0L8 8m4-4l4 4"
       />
     </svg>
   );

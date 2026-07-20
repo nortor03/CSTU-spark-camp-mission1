@@ -21,8 +21,8 @@ export default function TopicGrid({
 }) {
   if (topics.length === 0) {
     return (
-      <div className="mb-8 grid min-h-[220px] place-items-center rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 text-center">
-        <p className="text-xs text-slate-400">
+      <div className="grid min-h-[220px] place-items-center rounded-lg border border-dashed border-line-strong bg-paper-50 px-4 text-center">
+        <p className="text-sm text-ink-500">
           {filter === "all"
             ? "หัวข้อทั้งหมดถูกจัดเข้าสัปดาห์เรียบร้อยแล้ว"
             : "ไม่มีหัวข้อในหมวดหมู่นี้"}
@@ -32,7 +32,7 @@ export default function TopicGrid({
   }
 
   return (
-    <div className="mb-8 grid min-h-[220px] content-start grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="grid min-h-[220px] content-start grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {topics.map((topic) => (
         <TopicCard
           key={topic.id}

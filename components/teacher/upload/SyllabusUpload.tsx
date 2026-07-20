@@ -28,7 +28,7 @@ export default function SyllabusUpload({
   return (
     <div>
       {file ? (
-        <div className="flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5">
+        <div className="flex items-center justify-between gap-2 rounded-lg border border-line bg-white px-3.5 py-2.5">
           <span className="flex min-w-0 items-center gap-2">
             <svg
               className="h-4 w-4 flex-shrink-0 text-tu-red-500"
@@ -43,12 +43,12 @@ export default function SyllabusUpload({
                 d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
               />
             </svg>
-            <span className="truncate text-sm text-slate-600">{file.name}</span>
+            <span className="truncate text-sm text-ink-700">{file.name}</span>
           </span>
           <button
             type="button"
             onClick={() => onFileChange(null)}
-            className="rounded-md px-2 py-0.5 text-xs font-medium text-slate-400 transition hover:bg-slate-100 hover:text-tu-red-600"
+            className="rounded-md px-2 py-0.5 text-xs font-semibold text-ink-400 transition hover:bg-tu-red-50 hover:text-tu-red-600"
           >
             ลบ
           </button>
@@ -57,10 +57,10 @@ export default function SyllabusUpload({
         <button
           type="button"
           onClick={() => inputRef.current?.click()}
-          className="flex w-full items-center gap-2 rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-sm text-slate-500 transition hover:border-tu-red-300 hover:bg-tu-red-50/40"
+          className="flex w-full items-center gap-2 rounded-lg border border-dashed border-line-strong bg-paper-50 px-3.5 py-2.5 text-sm text-ink-500 transition hover:border-tu-red-300 hover:bg-tu-red-50/40"
         >
           <svg
-            className="h-5 w-5 flex-shrink-0 text-slate-400"
+            className="h-5 w-5 flex-shrink-0 text-ink-400"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -74,7 +74,9 @@ export default function SyllabusUpload({
           </svg>
           <span>
             แนบไฟล์{" "}
-            <span className="font-medium text-tu-red-600">course syllabus</span>
+            <span className="font-semibold text-tu-red-600">
+              course syllabus
+            </span>
           </span>
         </button>
       )}

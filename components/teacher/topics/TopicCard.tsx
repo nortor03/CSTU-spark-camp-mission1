@@ -19,25 +19,52 @@ export default function TopicCard({
   onEdit: (topic: Topic) => void;
   onUnassign: (id: string) => void;
 }) {
-  const base =
-    "group relative flex select-none flex-col justify-between rounded-2xl border p-4 transition";
   const state = topic.selected
-    ? "border-tu-red-400 bg-tu-red-50/50"
-    : "border-slate-100 bg-white hover:border-slate-200 hover:bg-slate-50/60";
+    ? "border-tu-red-400 bg-tu-red-50 shadow-card"
+    : "border-line bg-white hover:border-line-strong hover:shadow-card";
 
   return (
     <div
-      className={`${base} ${state} cursor-pointer`}
+      role="button"
+      tabIndex={0}
+      aria-pressed={topic.selected}
       onClick={() => onToggleSelect(topic.id)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onToggleSelect(topic.id);
+        }
+      }}
+      className={`group relative flex cursor-pointer select-none flex-col justify-between rounded-lg border p-4 transition ${state}`}
     >
+      {/* เครื่องหมายถูกมุมขวาบนเมื่อถูกเลือก */}
+      {topic.selected && (
+        <span className="absolute -right-1.5 -top-1.5 grid h-5 w-5 place-items-center rounded-full bg-tu-red-500 text-white shadow-card">
+          <svg
+            className="h-3 w-3"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={3}
+              d="M5 13l4 4L19 7"
+            />
+          </svg>
+        </span>
+      )}
+
       <div className="flex flex-col gap-2">
         <div className="flex items-start justify-between gap-2">
           {topic.aiGenerated ? (
-            <span className="text-[10px] font-bold text-tu-gold-600">
-AI แนะนำ
+            <span className="inline-flex items-center gap-1 rounded-full bg-tu-gold-50 px-2 py-0.5 text-[10px] font-bold text-tu-gold-700 ring-1 ring-tu-gold-200">
+              <SparkIcon />
+              AI แนะนำ
             </span>
           ) : (
-            <span className="text-[10px] font-bold text-emerald-600">
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 ring-1 ring-emerald-200">
               ✓ แก้ไขแล้ว
             </span>
           )}
@@ -48,7 +75,7 @@ AI แนะนำ
               e.stopPropagation();
               onEdit(topic);
             }}
-            className="rounded-lg p-1 text-slate-400 opacity-0 transition hover:bg-slate-100 hover:text-tu-red-600 group-hover:opacity-100"
+            className="rounded-md p-1 text-ink-400 opacity-0 transition hover:bg-paper-200 hover:text-tu-red-600 focus-visible:opacity-100 group-hover:opacity-100"
             aria-label="แก้ไขชื่อหัวข้อ"
           >
             <svg
@@ -67,13 +94,11 @@ AI แนะนำ
           </button>
         </div>
 
-        <h4 className="text-sm font-bold leading-snug text-slate-800">
-          {topic.title}
-        </h4>
+        <h4 className="display text-[15px] leading-snug">{topic.title}</h4>
       </div>
 
-      <div className="mt-3 flex items-center justify-between gap-2">
-        <p className="flex min-w-0 items-center gap-1 text-xs text-slate-400">
+      <div className="mt-3 flex items-center justify-between gap-2 border-t border-line-soft pt-2.5">
+        <p className="flex min-w-0 items-center gap-1 text-[11px] text-ink-400">
           <svg
             className="h-3 w-3 flex-shrink-0"
             fill="none"
@@ -87,12 +112,12 @@ AI แนะนำ
               d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
             />
           </svg>
-          <span className="truncate font-mono">{topic.file}</span>
+          <span className="truncate">{topic.file}</span>
         </p>
 
         {showWeekBadge && topic.weekAssigned && (
           <div className="flex flex-shrink-0 items-center gap-1.5">
-            <span className="flex items-center gap-1 text-[10px] font-semibold text-slate-500">
+            <span className="flex items-center gap-1 text-[10px] font-semibold text-ink-600">
               <span
                 className="h-2 w-2 rounded-full"
                 style={{ backgroundColor: resolveHex(weekColorKey) }}
@@ -105,7 +130,7 @@ AI แนะนำ
                 e.stopPropagation();
                 onUnassign(topic.id);
               }}
-              className="rounded-md px-1.5 py-0.5 text-[10px] font-semibold text-slate-400 hover:bg-slate-100 hover:text-tu-red-600"
+              className="rounded px-1.5 py-0.5 text-[10px] font-semibold text-ink-400 transition hover:bg-tu-red-50 hover:text-tu-red-600"
             >
               นำออก
             </button>
@@ -113,5 +138,13 @@ AI แนะนำ
         )}
       </div>
     </div>
+  );
+}
+
+function SparkIcon() {
+  return (
+    <svg className="h-2.5 w-2.5" fill="currentColor" viewBox="0 0 24 24">
+      <path d="M12 2l1.9 5.7L19.6 9l-4.5 3.3 1.7 5.7L12 14.7 7.2 18l1.7-5.7L4.4 9l5.7-1.3L12 2z" />
+    </svg>
   );
 }

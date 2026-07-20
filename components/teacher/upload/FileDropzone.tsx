@@ -40,29 +40,34 @@ export default function FileDropzone({
           addFiles(e.dataTransfer.files);
         }}
         onClick={() => inputRef.current?.click()}
-        className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed px-6 py-10 text-center transition ${
+        className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed px-6 py-12 text-center transition ${
           dragOver
             ? "border-tu-red-500 bg-tu-red-50"
-            : "border-slate-200 bg-slate-50/60 hover:border-tu-red-300 hover:bg-tu-red-50/40"
+            : "border-line-strong bg-paper-50 hover:border-tu-red-300 hover:bg-tu-red-50/40"
         }`}
       >
-        <svg
-          className="h-10 w-10 text-slate-400"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={1.5}
-            d="M7 16a4 4 0 01-.88-7.9A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M12 12v9m0-9l-3 3m3-3l3 3"
-          />
-        </svg>
-        <p className="text-sm font-medium text-slate-600">
-          ลากและวางไฟล์ หรือ <span className="text-tu-red-600">เลือกไฟล์</span>
+        <span className="grid h-11 w-11 place-items-center rounded-full bg-white text-tu-red-500 shadow-card">
+          <svg
+            className="h-5 w-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.8}
+              d="M12 16V4m0 0L8 8m4-4l4 4M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2"
+            />
+          </svg>
+        </span>
+        <p className="mt-1 text-sm font-semibold text-ink-700">
+          ลากและวางไฟล์ หรือ{" "}
+          <span className="text-tu-red-600 underline decoration-tu-red-200 underline-offset-4">
+            เลือกไฟล์
+          </span>
         </p>
-        <p className="text-xs text-slate-400">รองรับเฉพาะไฟล์ PDF เท่านั้น</p>
+        <p className="text-xs text-ink-400">รองรับเฉพาะไฟล์ PDF เท่านั้น</p>
         <input
           ref={inputRef}
           type="file"
@@ -78,7 +83,7 @@ export default function FileDropzone({
           {files.map((file, i) => (
             <li
               key={`${file.name}-${i}`}
-              className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2"
+              className="flex items-center justify-between rounded-lg border border-line bg-white px-3 py-2"
             >
               <span className="flex min-w-0 items-center gap-2">
                 <svg
@@ -94,14 +99,14 @@ export default function FileDropzone({
                     d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
                   />
                 </svg>
-                <span className="truncate text-xs text-slate-600">
+                <span className="truncate text-xs text-ink-700">
                   {file.name}
                 </span>
               </span>
               <button
                 type="button"
                 onClick={() => removeFile(i)}
-                className="rounded-md px-2 py-0.5 text-xs font-medium text-slate-400 hover:bg-slate-100 hover:text-tu-red-600"
+                className="rounded-md px-2 py-0.5 text-xs font-semibold text-ink-400 transition hover:bg-tu-red-50 hover:text-tu-red-600"
               >
                 ลบ
               </button>

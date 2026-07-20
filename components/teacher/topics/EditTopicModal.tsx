@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { Topic } from "@/lib/types";
-import Modal from "@/components/ui/Modal";
+import Modal, { ModalHeader } from "@/components/ui/Modal";
 
 /**
  * แก้ไขชื่อหัวข้อที่ AI เสนอมา
@@ -33,13 +33,13 @@ export default function EditTopicModal({
 
   return (
     <Modal open={!!topic} onClose={onClose}>
-      <h3 className="mb-1 text-sm font-bold text-slate-800">แก้ไขชื่อหัวข้อ</h3>
-      <p className="mb-4 text-xs text-slate-400">
-        ปรับชื่อที่ AI แนะนำให้ตรงกับเนื้อหาที่คุณต้องการ
-      </p>
+      <ModalHeader
+        title="แก้ไขชื่อหัวข้อ"
+        subtitle="ปรับชื่อที่ AI แนะนำให้ตรงกับเนื้อหาที่คุณต้องการ"
+      />
 
       {topic && (
-        <p className="mb-3 flex items-center gap-1.5 text-[11px] text-slate-400">
+        <p className="mb-3 flex items-center gap-1.5 rounded-md bg-paper-100 px-2.5 py-1.5 text-[11px] text-ink-500">
           <svg
             className="h-3 w-3"
             fill="none"
@@ -63,20 +63,17 @@ export default function EditTopicModal({
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={(e) => e.key === "Enter" && handleSave()}
         placeholder="ชื่อหัวข้อ"
-        className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm outline-none transition focus:border-tu-red-500 focus:ring-2 focus:ring-tu-red-100"
+        className="field text-sm"
       />
 
-      <div className="mt-5 flex justify-end gap-2 text-xs font-semibold">
-        <button
-          onClick={onClose}
-          className="rounded-lg px-3 py-1.5 text-slate-500 hover:bg-slate-50"
-        >
+      <div className="mt-6 flex justify-end gap-2 border-t border-line-soft pt-4">
+        <button onClick={onClose} className="btn-ghost">
           ยกเลิก
         </button>
         <button
           onClick={handleSave}
           disabled={!value.trim()}
-          className="rounded-lg bg-tu-red-500 px-4 py-1.5 text-white transition hover:bg-tu-red-600 disabled:opacity-50"
+          className="btn-primary px-5"
         >
           บันทึก
         </button>

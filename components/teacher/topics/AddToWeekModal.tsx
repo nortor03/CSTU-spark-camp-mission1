@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Modal from "@/components/ui/Modal";
+import Modal, { ModalHeader } from "@/components/ui/Modal";
 import { TAG_COLORS, WEEK_OPTIONS, isCustomColor } from "@/lib/weeks";
 
 /**
@@ -22,23 +22,19 @@ export default function AddToWeekModal({
   const [colorKey, setColorKey] = useState(TAG_COLORS[0].key);
 
   return (
-    <Modal open={open} onClose={onClose} maxWidth="max-w-xs">
-      <h3 className="mb-1 text-sm font-bold text-slate-800">
-        จัดกลุ่มหัวข้อที่เลือก
-      </h3>
-      <p className="mb-4 text-xs text-slate-400">
-        เลือก {selectedCount} หัวข้อ เข้าสัปดาห์ที่ต้องการ
-      </p>
+    <Modal open={open} onClose={onClose} maxWidth="max-w-sm">
+      <ModalHeader
+        title="จัดกลุ่มหัวข้อที่เลือก"
+        subtitle={`นำ ${selectedCount} หัวข้อเข้าสัปดาห์ที่ต้องการ`}
+      />
 
-      <div className="mb-5 space-y-4">
+      <div className="mb-6 space-y-4">
         <div>
-          <label className="mb-1 block text-[11px] font-bold text-slate-500">
-            เลือกสัปดาห์เรียน
-          </label>
+          <label className="label">เลือกสัปดาห์เรียน</label>
           <select
             value={week}
             onChange={(e) => setWeek(e.target.value)}
-            className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs outline-none focus:border-tu-red-500"
+            className="field text-sm"
           >
             {WEEK_OPTIONS.map((w) => (
               <option key={w} value={w}>
@@ -49,10 +45,8 @@ export default function AddToWeekModal({
         </div>
 
         <div>
-          <label className="mb-1.5 block text-[11px] font-bold text-slate-500">
-            เลือกสีประจำสัปดาห์
-          </label>
-          <div className="flex items-center gap-2.5">
+          <label className="label">เลือกสีประจำสัปดาห์</label>
+          <div className="flex items-center gap-2.5 rounded-lg border border-line bg-paper-50 px-3 py-2.5">
             {/* สีแนะนำ */}
             {TAG_COLORS.map((c) => (
               <button
@@ -61,8 +55,10 @@ export default function AddToWeekModal({
                 onClick={() => setColorKey(c.key)}
                 title={c.label}
                 style={{ backgroundColor: c.hex }}
-                className={`flex h-6 w-6 items-center justify-center rounded-full transition ${
-                  colorKey === c.key ? "scale-110" : "hover:scale-110"
+                className={`flex h-7 w-7 items-center justify-center rounded-full ring-offset-2 ring-offset-paper-50 transition ${
+                  colorKey === c.key
+                    ? "ring-2 ring-ink-800"
+                    : "hover:scale-110"
                 }`}
               >
                 {colorKey === c.key && <CheckIcon />}
@@ -70,7 +66,7 @@ export default function AddToWeekModal({
             ))}
 
             {/* เส้นคั่นก่อนช่องเลือกสีเอง */}
-            <span className="mx-0.5 h-5 w-px bg-slate-200" />
+            <span className="mx-0.5 h-5 w-px bg-line-strong" />
 
             {/* เลือกสีเอง — คลิกเพื่อเปิด color picker ของเบราว์เซอร์ */}
             <label
@@ -83,8 +79,10 @@ export default function AddToWeekModal({
                         "conic-gradient(from 0deg, #C8102E, #F2A900, #10B981, #0EA5E9, #8B5CF6, #C8102E)",
                     }
               }
-              className={`relative flex h-6 w-6 cursor-pointer items-center justify-center rounded-full transition ${
-                isCustomColor(colorKey) ? "scale-110" : "hover:scale-110"
+              className={`relative flex h-7 w-7 cursor-pointer items-center justify-center rounded-full ring-offset-2 ring-offset-paper-50 transition ${
+                isCustomColor(colorKey)
+                  ? "ring-2 ring-ink-800"
+                  : "hover:scale-110"
               }`}
             >
               <input
@@ -115,16 +113,13 @@ export default function AddToWeekModal({
         </div>
       </div>
 
-      <div className="flex justify-end gap-2 text-xs font-semibold">
-        <button
-          onClick={onClose}
-          className="rounded-lg px-3 py-1.5 text-slate-500 hover:bg-slate-50"
-        >
+      <div className="flex justify-end gap-2 border-t border-line-soft pt-4">
+        <button onClick={onClose} className="btn-ghost">
           ยกเลิก
         </button>
         <button
           onClick={() => onSubmit(week, colorKey)}
-          className="rounded-lg bg-tu-red-500 px-4 py-1.5 text-white transition hover:bg-tu-red-600"
+          className="btn-primary px-5"
         >
           ตกลง
         </button>

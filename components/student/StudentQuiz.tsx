@@ -53,7 +53,7 @@ export default function StudentQuiz({ week }: { week: string }) {
 
   if (phase === "loading") {
     return (
-      <div className="grid place-items-center py-24 text-sm text-slate-400">
+      <div className="grid place-items-center py-24 text-sm text-ink-400">
         กำลังโหลด…
       </div>
     );
@@ -61,14 +61,12 @@ export default function StudentQuiz({ week }: { week: string }) {
 
   if (phase === "empty" || !quiz) {
     return (
-      <div className="rounded-3xl border border-dashed border-slate-200 bg-white p-10 text-center">
-        <p className="text-sm font-semibold text-slate-600">
-          ยังไม่มีแบบทดสอบสำหรับ {week}
+      <div className="card-empty">
+        <h2 className="display text-lg">ยังไม่มีแบบทดสอบสำหรับ {week}</h2>
+        <p className="mt-2 text-sm text-ink-500">
+          อาจารย์ยังไม่ได้สร้างแบบทดสอบของสัปดาห์นี้
         </p>
-        <Link
-          href="/student"
-          className="mt-4 inline-block rounded-xl bg-tu-red-500 px-5 py-2 text-xs font-bold text-white transition hover:bg-tu-red-600"
-        >
+        <Link href="/student" className="btn-primary mt-5">
           กลับไปเลือกสัปดาห์
         </Link>
       </div>
@@ -85,61 +83,92 @@ export default function StudentQuiz({ week }: { week: string }) {
 
   return (
     <div className="space-y-3">
-      {/* หัวแบบทดสอบ */}
-      <div className="rounded-2xl border border-slate-100 bg-white px-6 py-5">
-        <h1 className="text-xl font-bold text-slate-800">{quiz.title}</h1>
-        <p className="mt-1 text-xs text-slate-400">
-          {week} · {quiz.questions.length} ข้อ · ตอบแล้ว {answered}/
-          {quiz.questions.length}
-        </p>
+      {/* หัวแบบทดสอบ + ความคืบหน้า */}
+      <div className="card overflow-hidden">
+        <div className="h-1.5 bg-tu-red-500" />
+        <div className="px-6 py-5">
+          <p className="eyebrow">{week}</p>
+          <h1 className="display mt-1.5 text-2xl">{quiz.title}</h1>
+
+          <div className="mt-4 flex items-center gap-3">
+            <div
+              className="h-1.5 flex-1 overflow-hidden rounded-full bg-paper-200"
+              role="progressbar"
+              aria-valuenow={answered}
+              aria-valuemin={0}
+              aria-valuemax={quiz.questions.length}
+            >
+              <div
+                className="h-full rounded-full bg-tu-gold-500 transition-all duration-300"
+                style={{
+                  width: `${(answered / quiz.questions.length) * 100}%`,
+                }}
+              />
+            </div>
+            <span className="flex-shrink-0 text-xs font-semibold text-ink-500">
+              {answered}/{quiz.questions.length} ข้อ
+            </span>
+          </div>
+        </div>
       </div>
 
       {/* คำถาม */}
       {quiz.questions.map((q, i) => (
-        <div
-          key={q.id}
-          className="rounded-2xl border border-slate-100 bg-white px-6 py-5"
-        >
-          <p className="mb-3 flex gap-2 text-base font-medium text-slate-800">
-            <span className="font-bold text-slate-400">{i + 1}.</span>
+        <div key={q.id} className="card px-6 py-5">
+          <p className="mb-3 flex gap-3 text-base font-medium text-ink-800">
+            <span className="display flex-shrink-0 text-lg leading-tight text-ink-300">
+              {i + 1}
+            </span>
             {q.question}
           </p>
-          <div className="space-y-1">
-            {q.choices.map((c) => (
-              <label
-                key={c.id}
-                className="flex cursor-pointer items-center gap-3 rounded-md px-1 py-1.5 hover:bg-slate-50"
-              >
-                <input
-                  type="radio"
-                  name={q.id}
-                  value={c.id}
-                  checked={answers[q.id] === c.id}
-                  onChange={() => choose(q.id, c.id)}
-                  className="h-4 w-4 accent-tu-red-500"
-                />
-                <span className="text-sm text-slate-700">{c.text}</span>
-              </label>
-            ))}
+          <div className="space-y-1 pl-8">
+            {q.choices.map((c) => {
+              const picked = answers[q.id] === c.id;
+              return (
+                <label
+                  key={c.id}
+                  className={`flex cursor-pointer items-center gap-3 rounded-md border px-3 py-2 transition ${
+                    picked
+                      ? "border-tu-red-300 bg-tu-red-50"
+                      : "border-transparent hover:bg-paper-100"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name={q.id}
+                    value={c.id}
+                    checked={picked}
+                    onChange={() => choose(q.id, c.id)}
+                    className="h-4 w-4 accent-tu-red-500"
+                  />
+                  <span
+                    className={`text-sm ${
+                      picked ? "font-semibold text-ink-900" : "text-ink-700"
+                    }`}
+                  >
+                    {c.text}
+                  </span>
+                </label>
+              );
+            })}
           </div>
         </div>
       ))}
 
       {/* ปุ่มส่ง */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-        <Link
-          href="/student"
-          className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-500 transition hover:bg-white/60"
-        >
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
+        <Link href="/student" className="btn-ghost">
           ← ออก
         </Link>
         <button
           type="button"
           onClick={submit}
           disabled={!allAnswered}
-          className="rounded-lg bg-tu-red-500 px-6 py-2 text-sm font-bold text-white transition hover:bg-tu-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+          className="btn-primary px-6"
         >
-          {allAnswered ? "ส่งคำตอบ" : `ตอบให้ครบก่อน (${answered}/${quiz.questions.length})`}
+          {allAnswered
+            ? "ส่งคำตอบ"
+            : `ตอบให้ครบก่อน (${answered}/${quiz.questions.length})`}
         </button>
       </div>
     </div>
@@ -160,66 +189,63 @@ function ResultView({
   return (
     <div className="space-y-3">
       {/* สรุปคะแนน */}
-      <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white">
-        <div className="h-2.5 bg-tu-gold-500" />
-        <div className="px-6 py-5">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-tu-gold-600">
-            ผลแบบทดสอบ · {week}
-          </p>
-          <p className="mt-1 text-3xl font-bold text-slate-800">
+      <div className="card overflow-hidden">
+        <div className="h-1.5 bg-tu-gold-500" />
+        <div className="px-6 py-6">
+          <p className="eyebrow-gold">ผลแบบทดสอบ · {week}</p>
+          <p className="display mt-2 text-5xl leading-none">
             {result.score}
-            <span className="text-lg font-semibold text-slate-400">
-              {" "}
-              / {result.total} ข้อ
-            </span>
+            <span className="text-xl text-ink-400"> / {result.total}</span>
           </p>
-          <p className="mt-2 text-sm text-slate-600">{result.overall}</p>
+          <hr className="rule-gold my-4" />
+          <p className="text-sm leading-relaxed text-ink-600">
+            {result.overall}
+          </p>
         </div>
       </div>
 
       {/* รายข้อ + feedback */}
       {result.questions.map((r, i) => (
-        <div
-          key={r.question.id}
-          className="rounded-2xl border border-slate-100 bg-white px-6 py-5"
-        >
-          <p className="mb-3 flex items-start justify-between gap-3 text-base font-medium text-slate-800">
-            <span className="flex gap-2">
-              <span className="font-bold text-slate-400">{i + 1}.</span>
+        <div key={r.question.id} className="card px-6 py-5">
+          <p className="mb-3 flex items-start justify-between gap-3 text-base font-medium text-ink-800">
+            <span className="flex gap-3">
+              <span className="display flex-shrink-0 text-lg leading-tight text-ink-300">
+                {i + 1}
+              </span>
               {r.question.question}
             </span>
             <span
-              className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${
+              className={`flex-shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-bold ring-1 ${
                 r.isCorrect
-                  ? "bg-emerald-50 text-emerald-700"
-                  : "bg-tu-red-50 text-tu-red-700"
+                  ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
+                  : "bg-tu-red-50 text-tu-red-700 ring-tu-red-200"
               }`}
             >
               {r.isCorrect ? "ถูก" : "ผิด"}
             </span>
           </p>
 
-          <div className="space-y-1">
+          <div className="space-y-1 pl-8">
             {r.question.choices.map((c) => {
               const isCorrect = c.id === r.correctId;
               const isChosen = c.id === r.chosenId;
               return (
                 <div
                   key={c.id}
-                  className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-sm ${
+                  className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm ${
                     isCorrect
                       ? "bg-emerald-50 font-semibold text-emerald-800"
                       : isChosen
                         ? "bg-tu-red-50 text-tu-red-700"
-                        : "text-slate-600"
+                        : "text-ink-600"
                   }`}
                 >
-                  <span className="w-4 text-center text-xs">
+                  <span className="w-4 flex-shrink-0 text-center text-xs">
                     {isCorrect ? "✓" : isChosen ? "✕" : ""}
                   </span>
                   {c.text}
                   {isChosen && !isCorrect && (
-                    <span className="text-[10px] text-slate-400">
+                    <span className="text-[10px] text-ink-400">
                       (คำตอบของคุณ)
                     </span>
                   )}
@@ -228,26 +254,24 @@ function ResultView({
             })}
           </div>
 
-          <p className="mt-3 border-t border-slate-100 pt-3 text-xs text-slate-500">
-            <span className="font-semibold text-slate-600">คำแนะนำจาก AI: </span>
-            {r.feedback}
-          </p>
+          {/* คำแนะนำจาก AI */}
+          <div className="mt-4 ml-8 rounded-md border-l-2 border-tu-gold-500 bg-paper-50 px-3.5 py-2.5">
+            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-tu-gold-700">
+              คำแนะนำจาก AI
+            </p>
+            <p className="mt-1 text-xs leading-relaxed text-ink-600">
+              {r.feedback}
+            </p>
+          </div>
         </div>
       ))}
 
       {/* ปุ่ม */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-        <Link
-          href="/student"
-          className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-500 transition hover:bg-white/60"
-        >
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
+        <Link href="/student" className="btn-ghost">
           ← เลือกสัปดาห์อื่น
         </Link>
-        <button
-          type="button"
-          onClick={onRetry}
-          className="rounded-lg bg-white px-4 py-2 text-sm font-semibold text-slate-600 ring-1 ring-slate-200 transition hover:bg-slate-50"
-        >
+        <button type="button" onClick={onRetry} className="btn-secondary">
           ทำแบบทดสอบใหม่
         </button>
       </div>

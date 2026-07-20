@@ -49,7 +49,7 @@ export default function QuizPromptForm({
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* CLO */}
       <div>
-        <label className="mb-1.5 block text-sm font-semibold text-slate-700">
+        <label className="label">
           ผลลัพธ์การเรียนรู้ (CLO)
         </label>
         <textarea
@@ -57,25 +57,25 @@ export default function QuizPromptForm({
           onChange={(e) => setPrompt((p) => ({ ...p, clo: e.target.value }))}
           rows={2}
           placeholder="เช่น นักศึกษาสามารถอธิบายหลักการเขียนโปรแกรมเชิงโครงสร้างได้"
-          className="w-full resize-none rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm outline-none transition focus:border-tu-red-500 focus:ring-2 focus:ring-tu-red-100"
+          className="field resize-none text-sm"
         />
       </div>
 
       {/* หัวข้อ + ไฟล์ */}
       <div>
-        <label className="mb-1.5 block text-sm font-semibold text-slate-700">
+        <label className="label">
           หัวข้อที่จะทดสอบ / ไฟล์อ้างอิง
         </label>
-        <div className="grid max-h-56 gap-2 overflow-y-auto rounded-xl border border-slate-200 p-2 sm:grid-cols-2">
+        <div className="grid max-h-56 gap-2 overflow-y-auto rounded-lg border border-line bg-paper-50 p-2 sm:grid-cols-2">
           {sourceTopics.map((t) => {
             const checked = prompt.topics.includes(t.title);
             return (
               <label
                 key={t.file}
-                className={`flex cursor-pointer items-start gap-2 rounded-lg border p-2.5 transition ${
+                className={`flex cursor-pointer items-start gap-2 rounded-md border p-2.5 transition ${
                   checked
-                    ? "border-tu-red-300 bg-tu-red-50/50"
-                    : "border-slate-200 bg-white hover:bg-slate-50"
+                    ? "border-tu-red-300 bg-tu-red-50"
+                    : "border-line bg-white hover:border-line-strong"
                 }`}
               >
                 <input
@@ -85,10 +85,10 @@ export default function QuizPromptForm({
                   className="mt-0.5 h-4 w-4 accent-tu-red-500"
                 />
                 <span className="min-w-0">
-                  <span className="block text-xs font-semibold text-slate-700">
+                  <span className="block text-xs font-semibold text-ink-800">
                     {t.title}
                   </span>
-                  <span className="block truncate font-mono text-[10px] text-slate-400">
+                  <span className="block truncate text-[10px] text-ink-400">
                     {t.file}
                   </span>
                 </span>
@@ -100,7 +100,7 @@ export default function QuizPromptForm({
 
       {/* จำนวนข้อ */}
       <div>
-        <label className="mb-1.5 block text-sm font-semibold text-slate-700">
+        <label className="label">
           จำนวนข้อ
         </label>
         <input
@@ -111,13 +111,13 @@ export default function QuizPromptForm({
           onChange={(e) =>
             setPrompt((p) => ({ ...p, count: Number(e.target.value) }))
           }
-          className="w-28 rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm outline-none transition focus:border-tu-red-500 focus:ring-2 focus:ring-tu-red-100"
+          className="field w-28 text-sm"
         />
       </div>
 
       {/* โน้ตเพิ่มเติม */}
       <div>
-        <label className="mb-1.5 block text-sm font-semibold text-slate-700">
+        <label className="label">
           โน้ตเพิ่มเติม (ไม่บังคับ)
         </label>
         <textarea
@@ -125,22 +125,15 @@ export default function QuizPromptForm({
           onChange={(e) => setPrompt((p) => ({ ...p, note: e.target.value }))}
           rows={2}
           placeholder="เช่น เน้นการประยุกต์ใช้ หลีกเลี่ยงการถามนิยามตรง ๆ"
-          className="w-full resize-none rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm outline-none transition focus:border-tu-red-500 focus:ring-2 focus:ring-tu-red-100"
+          className="field resize-none text-sm"
         />
       </div>
 
-      {error && (
-        <p className="rounded-lg bg-tu-red-50 px-3 py-2 text-xs font-medium text-tu-red-700">
-          {error}
-        </p>
-      )}
+      {error && <p className="alert-error">{error}</p>}
 
-      <div className="flex justify-end border-t border-slate-100 pt-5">
-        <button
-          type="submit"
-          className="rounded-xl bg-tu-red-500 px-6 py-2 text-sm font-bold text-white transition hover:bg-tu-red-600"
-        >
-          สร้างควิซ
+      <div className="flex justify-end border-t border-line-soft pt-5">
+        <button type="submit" className="btn-primary px-6">
+          สร้างแบบทดสอบ
         </button>
       </div>
     </form>

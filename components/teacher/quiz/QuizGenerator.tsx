@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useCourse } from "@/lib/courseStore";
 import type { Quiz, QuizPrompt } from "@/lib/quiz";
 import { emptyPrompt, generateMockQuiz } from "@/lib/quiz";
+import PageHeader from "@/components/ui/PageHeader";
 import QuizPromptForm from "./QuizPromptForm";
 import QuizEditor from "./QuizEditor";
 
@@ -92,54 +93,52 @@ export default function QuizGenerator({ week }: { week: string }) {
   }
 
   return (
-    <div className="rounded-3xl border border-slate-100 bg-white p-8">
-      <div className="mb-6 border-b border-slate-100 pb-4">
-        <p className="text-[11px] font-bold uppercase tracking-wider text-tu-red-500">
-          สร้างควิซ
-        </p>
-        <h1 className="mt-0.5 text-2xl font-bold text-slate-800">{week}</h1>
-        <p className="mt-1 text-xs text-slate-400">
-          กรอกโจทย์ให้ระบบช่วยออกข้อสอบ (CLO, หัวข้อ, ไฟล์อ้างอิง)
-        </p>
-      </div>
+    <div>
+      <PageHeader
+        eyebrow="ขั้นตอนที่ 3"
+        title={`สร้างแบบทดสอบ · ${week}`}
+        subtitle="กรอกโจทย์ให้ระบบช่วยออกข้อสอบ โดยอ้างอิงจาก CLO หัวข้อ และไฟล์เอกสารของสัปดาห์นี้"
+        action={
+          <Link href="/course" className="btn-secondary">
+            ← ภาพรวมรายวิชา
+          </Link>
+        }
+      />
 
-      {(phase === "loading" || phase === "generating") && (
-        <div className="flex flex-col items-center justify-center gap-3 py-20 text-center">
-          <div className="h-10 w-10 animate-spin rounded-full border-[3px] border-slate-200 border-t-tu-red-500" />
-          <p className="text-sm font-semibold text-slate-600">
-            {phase === "generating" ? "กำลังสร้างควิซ…" : "กำลังโหลด…"}
-          </p>
-          {phase === "generating" && (
-            <p className="text-xs text-slate-400">
-              ระบบกำลังออกข้อสอบจากหัวข้อและไฟล์ที่เลือก
+      <div className="card p-6 sm:p-8">
+        {(phase === "loading" || phase === "generating") && (
+          <div className="flex flex-col items-center justify-center gap-3 py-20 text-center">
+            <div className="h-10 w-10 animate-spin rounded-full border-[3px] border-line-strong border-t-tu-red-500" />
+            <p className="display text-base">
+              {phase === "generating" ? "กำลังสร้างแบบทดสอบ…" : "กำลังโหลด…"}
             </p>
-          )}
-        </div>
-      )}
-
-      {phase === "prompt" &&
-        (weekTopics.length === 0 ? (
-          <div className="py-12 text-center">
-            <p className="text-sm font-semibold text-slate-600">
-              สัปดาห์นี้ยังไม่มีหัวข้อ
-            </p>
-            <p className="mt-1 text-xs text-slate-400">
-              กลับไปจัดหัวข้อเข้า “{week}” ก่อน แล้วค่อยกลับมาสร้างควิซ
-            </p>
-            <Link
-              href="/topics"
-              className="mt-4 inline-block rounded-xl bg-tu-red-500 px-5 py-2 text-xs font-bold text-white transition hover:bg-tu-red-600"
-            >
-              ไปจัดหัวข้อ
-            </Link>
+            {phase === "generating" && (
+              <p className="text-xs text-ink-500">
+                ระบบกำลังออกข้อสอบจากหัวข้อและไฟล์ที่เลือก
+              </p>
+            )}
           </div>
-        ) : (
-          <QuizPromptForm
-            initial={prompt}
-            sourceTopics={weekTopics}
-            onGenerate={runGenerate}
-          />
-        ))}
+        )}
+
+        {phase === "prompt" &&
+          (weekTopics.length === 0 ? (
+            <div className="py-12 text-center">
+              <h2 className="display text-lg">สัปดาห์นี้ยังไม่มีหัวข้อ</h2>
+              <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-ink-500">
+                กลับไปจัดหัวข้อเข้า “{week}” ก่อน แล้วค่อยกลับมาสร้างแบบทดสอบ
+              </p>
+              <Link href="/topics" className="btn-primary mt-5">
+                ไปจัดหัวข้อ
+              </Link>
+            </div>
+          ) : (
+            <QuizPromptForm
+              initial={prompt}
+              sourceTopics={weekTopics}
+              onGenerate={runGenerate}
+            />
+          ))}
+      </div>
     </div>
   );
 }

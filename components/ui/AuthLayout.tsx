@@ -15,13 +15,13 @@ export default function AuthLayout({
   switchHref,
   switchLabel,
 }: {
-  eyebrow: string;
+  eyebrow?: string;
   title: string;
-  subtitle: string;
+  subtitle?: string;
   children: ReactNode;
-  /** ลิงก์สลับไปหน้า login ของอีกบทบาท */
-  switchHref: string;
-  switchLabel: string;
+  /** ลิงก์สลับไปหน้า login ของอีกบทบาท (ไม่ใส่ = ไม่แสดง) */
+  switchHref?: string;
+  switchLabel?: string;
 }) {
   return (
     <main className="grid min-h-screen lg:grid-cols-[1.1fr_1fr]">
@@ -41,23 +41,27 @@ export default function AuthLayout({
 
         <div className="flex flex-1 items-center justify-center px-6 py-12 sm:px-12">
           <div className="w-full max-w-sm">
-            <p className="eyebrow">{eyebrow}</p>
+            {eyebrow && <p className="eyebrow">{eyebrow}</p>}
             <h1 className="display mt-1.5 text-3xl">{title}</h1>
             <hr className="rule-gold my-4" />
-            <p className="mb-7 text-sm leading-relaxed text-ink-500">
-              {subtitle}
-            </p>
+            {subtitle && (
+              <p className="mb-7 text-sm leading-relaxed text-ink-500">
+                {subtitle}
+              </p>
+            )}
 
             {children}
 
-            <div className="mt-8 border-t border-line pt-5 text-center">
-              <Link
-                href={switchHref}
-                className="text-xs font-semibold text-ink-500 underline decoration-line-strong underline-offset-4 transition hover:text-tu-red-600"
-              >
-                {switchLabel}
-              </Link>
-            </div>
+            {switchHref && switchLabel && (
+              <div className="mt-8 border-t border-line pt-5 text-center">
+                <Link
+                  href={switchHref}
+                  className="text-xs font-semibold text-ink-500 underline decoration-line-strong underline-offset-4 transition hover:text-tu-red-600"
+                >
+                  {switchLabel}
+                </Link>
+              </div>
+            )}
           </div>
         </div>
       </div>

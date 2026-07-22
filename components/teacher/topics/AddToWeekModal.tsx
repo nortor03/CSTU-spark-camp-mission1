@@ -23,10 +23,7 @@ export default function AddToWeekModal({
 
   return (
     <Modal open={open} onClose={onClose} maxWidth="max-w-sm">
-      <ModalHeader
-        title="จัดกลุ่มหัวข้อที่เลือก"
-        subtitle={`นำ ${selectedCount} หัวข้อเข้าสัปดาห์ที่ต้องการ`}
-      />
+      <ModalHeader title="จัดหัวข้อเข้าสัปดาห์" />
 
       <div className="mb-6 space-y-4">
         <div>

@@ -15,8 +15,11 @@ import SummaryPopup from "./SummaryPopup";
 /** ตัวควบคุมหลักของหน้าสรุปหัวข้อ — รวม state, grid และ modal ทั้งหมด */
 export default function TopicWorkspace() {
   const router = useRouter();
-  const { subject } = useCourse();
+  const { subject, activeCourseId } = useCourse();
   const t = useTopics();
+
+  // กลับไปหน้ารายละเอียดของวิชาที่กำลังทำอยู่ (ถ้าไม่มีให้กลับหน้ารายวิชา)
+  const courseHref = activeCourseId ? `/course/${activeCourseId}` : "/course";
 
   const [addOpen, setAddOpen] = useState(false);
   const [summaryOpen, setSummaryOpen] = useState(false);
@@ -29,41 +32,23 @@ export default function TopicWorkspace() {
 
   function handleConfirm() {
     setSummaryOpen(false);
-    router.push("/course");
+    router.push(courseHref);
   }
 
   return (
     <div>
       <PageHeader
-        eyebrow="ขั้นตอนที่ 2"
+        eyebrow="การจัดหัวข้อ"
         title="จัดหัวข้อรายสัปดาห์"
-        subtitle={
-          subject ? (
-            <>
-              วิชา <span className="font-semibold text-ink-700">{subject}</span>{" "}
-              · คลิกการ์ดเพื่อเลือกหัวข้อ แล้วกด “จัดกลุ่ม” เพื่อจัดเข้าสัปดาห์
-            </>
-          ) : (
-            "คลิกการ์ดเพื่อเลือกหัวข้อ แล้วกด “จัดกลุ่ม” เพื่อจัดเข้าสัปดาห์"
-          )
-        }
       />
 
-      <div className="card overflow-hidden">
-        {/* แถบเครื่องมือ: ตัวกรองสัปดาห์ + ปุ่มจัดกลุ่ม */}
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line-soft bg-paper-50 px-4 py-3 sm:px-5">
-          <WeekBookmarks
-            filter={t.filter}
-            unassignedCount={t.unassignedCount}
-            weekSummaries={t.weekSummaries}
-            onFilter={t.setFilter}
-          />
-
-          {/* ปุ่มถูกปิดไว้จนกว่าจะเลือกหัวข้อ — ไม่ต้องเตือนด้วย alert อีก */}
+      <div className="card overflow-visible z-10 relative">
+        {/* แถบเครื่องมือ: ปุ่มจัดกลุ่ม + ตัวกรองสัปดาห์ (อยู่ขวา) */}
+        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-line-soft bg-paper-50 px-4 py-3 sm:px-5">
           <button
             onClick={() => setAddOpen(true)}
             disabled={t.selectedCount === 0}
-            className="btn-primary px-4 py-2 text-xs"
+            className="btn-primary px-4 py-2 text-xs mt-1"
           >
             จัดกลุ่ม
             {t.selectedCount > 0 && (
@@ -72,6 +57,13 @@ export default function TopicWorkspace() {
               </span>
             )}
           </button>
+
+          <WeekBookmarks
+            filter={t.filter}
+            unassignedCount={t.unassignedCount}
+            weekSummaries={t.weekSummaries}
+            onFilter={t.setFilter}
+          />
         </div>
 
         {/* ตารางหัวข้อ */}

@@ -16,12 +16,17 @@ export interface QuizQuestion {
   /** id ของตัวเลือกที่เป็นคำตอบที่ถูก */
   answer: string;
   points: number;
+  /**
+   * หัวข้อต้นทางของคำถามข้อนี้ — ใช้สรุปจุดแข็ง/จุดอ่อนรายหัวข้อ
+   * optional เพราะควิซที่บันทึกไว้ก่อนหน้านี้ยังไม่มีฟิลด์นี้
+   */
+  topic?: string;
 }
 
 /** โจทย์ที่อาจารย์กรอกเพื่อสั่ง generate */
 export interface QuizPrompt {
   /** ผลลัพธ์การเรียนรู้ (Course Learning Outcome) */
-  clo: string;
+  clo: string[];
   /** หัวข้อที่จะทดสอบ (ชื่อหัวข้อ) */
   topics: string[];
   /** ไฟล์ PDF อ้างอิง */
@@ -41,6 +46,14 @@ export interface Quiz {
   questions: QuizQuestion[];
 }
 
+/** CLO จำลองที่แกะมาจาก Course Syllabus */
+export const MOCK_CLOS = [
+  "CLO 1: สามารถอธิบายหลักการและแนวคิดพื้นฐานของการเขียนโปรแกรมได้",
+  "CLO 2: สามารถวิเคราะห์ปัญหาและออกแบบอัลกอริทึมเบื้องต้นได้",
+  "CLO 3: สามารถประยุกต์ใช้โครงสร้างควบคุม (Control Structures) ในการแก้ปัญหาได้",
+  "CLO 4: สามารถเขียนและแก้ไขข้อผิดพลาด (Debugging) ของโปรแกรมได้",
+];
+
 /** ตัวเลือกหัวข้อ/ไฟล์สำหรับฟอร์มโจทย์ (อ้างจาก mock topics) */
 export const QUIZ_SOURCE_TOPICS = MOCK_AI_TOPICS.map((t) => ({
   title: t.title,
@@ -56,7 +69,7 @@ function uid(prefix: string): string {
 /** ค่าเริ่มต้นของโจทย์ */
 export function emptyPrompt(): QuizPrompt {
   return {
-    clo: "",
+    clo: [],
     topics: [],
     files: [],
     count: 5,
@@ -98,6 +111,7 @@ function mockMcq(topic: string): QuizQuestion {
     choices,
     answer: choices[0].id,
     points: 1,
+    topic,
   };
 }
 

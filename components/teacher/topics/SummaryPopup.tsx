@@ -25,7 +25,6 @@ export default function SummaryPopup({
     <Modal open={open} onClose={onClose} maxWidth="max-w-md">
       <ModalHeader
         title="ตรวจสอบสรุปการจัดหัวข้อ"
-        subtitle="ตรวจความถูกต้องของการจัดหัวข้อก่อนยืนยันบันทึกเข้าระบบ"
       />
 
       <div className="mb-6 max-h-72 space-y-3 overflow-y-auto pr-1">

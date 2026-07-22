@@ -8,7 +8,7 @@
     text-rendering: optimizeLegibility;
   }
   body {
-    @apply bg-paper-100 text-ink-800;
+    @apply bg-paper-50 text-ink-800;
   }
   ::selection {
     @apply bg-tu-gold-200 text-ink-900;
@@ -22,14 +22,14 @@
 @layer components {
   /* ---------- พื้นผิว ---------- */
 
-  /* การ์ดกระดาษมาตรฐาน */
+  /* การ์ดแบบโปร่ง ไร้ขอบ (Cardless Design) */
   .card {
-    @apply rounded-xl border border-line-soft bg-white shadow-card;
+    @apply rounded-xl bg-transparent;
   }
 
   /* การ์ดว่าง/ชวนให้ลงมือ */
   .card-empty {
-    @apply rounded-xl border border-dashed border-line-strong bg-paper-50 px-6 py-12 text-center;
+    @apply rounded-xl border border-dashed border-line-strong bg-transparent px-6 py-12 text-center;
   }
 
   /* ---------- ตัวอักษร ---------- */
@@ -59,10 +59,13 @@
     @apply mb-1.5 block text-sm font-semibold text-ink-700;
   }
 
+  /* ช่องกรอกแบบ "พื้นอ่อน ไม่มีเส้นกรอบ" — ลดความรู้สึกเป็นกล่อง
+     ใช้ paper-200 ให้เห็นได้ทั้งบนการ์ดขาวและบนพื้นครีมของหน้า login
+     โฟกัสแล้วเป็นพื้นขาว + วงแหวนแดง เพื่อบอกช่องที่กำลังพิมพ์ */
   .field {
-    @apply w-full rounded-lg border border-line bg-paper-50 px-3.5 py-2.5 text-ink-800 outline-none transition
+    @apply w-full rounded-lg bg-paper-200 px-3.5 py-2.5 text-ink-800 outline-none transition
       placeholder:text-ink-400
-      focus:border-tu-red-500 focus:bg-white focus:ring-4 focus:ring-tu-red-500/10;
+      focus:bg-white focus:ring-2 focus:ring-tu-red-500/30;
   }
 
   /* ---------- ปุ่ม ---------- */
@@ -101,7 +104,7 @@
 
   /* แถวในรายการแบบ list */
   .row {
-    @apply flex items-center gap-4 px-5 py-4 transition hover:bg-paper-100/70;
+    @apply flex items-center gap-4 px-5 py-5 transition hover:bg-paper-100/70;
   }
 }
 

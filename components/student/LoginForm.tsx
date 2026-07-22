@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useCourse } from "@/lib/courseStore";
 
 /**
  * ฟอร์มเข้าสู่ระบบ (mock)
@@ -15,6 +16,7 @@ export default function LoginForm({
   redirectTo?: string;
 }) {
   const router = useRouter();
+  const { setStudentId: rememberStudentId } = useCourse();
   const [studentId, setStudentId] = useState("");
   const [citizenId, setCitizenId] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -37,6 +39,8 @@ export default function LoginForm({
     }
 
     setLoading(true);
+    // จำรหัสนักศึกษาไว้ใช้ผูกกับผลการทำแบบทดสอบ
+    rememberStudentId(studentId);
     // จำลองการยืนยันตัวตน — ภายหลังแทนที่ด้วยการเรียก TU API
     setTimeout(() => router.push(redirectTo), 600);
   }

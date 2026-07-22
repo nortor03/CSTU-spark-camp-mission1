@@ -1,29 +1,53 @@
 "use client";
 
-import Link from "next/link";
 import { useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { useCourse } from "@/lib/courseStore";
 import { resolveHex, weekNumber } from "@/lib/weeks";
 import PageHeader from "@/components/ui/PageHeader";
 
+interface QuizRow {
+  courseId: string;
+  week: string;
+  count: number;
+  colorKey: string;
+}
+
 /**
  * หน้ารายการแบบทดสอบสำหรับนักเรียน
- * โชว์เฉพาะสัปดาห์ที่อาจารย์สร้างแบบทดสอบไว้แล้ว (จาก store เดียวกัน)
+ * รวมแบบทดสอบจากทุกวิชา จัดกลุ่มตามวิชา
+ * (นักเรียนหนึ่งคนอาจลงเรียนหลายวิชา)
  */
 export default function StudentQuizList() {
-  const { subject, quizzes, weekConfig, hydrated } = useCourse();
+  const { courses, setActiveCourse, hydrated } = useCourse();
+  const router = useRouter();
 
-  const rows = useMemo(
+  const groups = useMemo(
     () =>
-      Object.entries(quizzes)
-        .map(([week, quiz]) => ({
-          week,
-          count: quiz.questions.length,
-          colorKey: weekConfig[week]?.colorKey ?? "red",
+      courses
+        .map((c) => ({
+          courseId: c.id,
+          subject: c.subject,
+          rows: Object.entries(c.quizzes)
+            .map<QuizRow>(([week, quiz]) => ({
+              courseId: c.id,
+              week,
+              count: quiz.questions.length,
+              colorKey: c.weekConfig[week]?.colorKey ?? "red",
+            }))
+            .sort(
+              (a, b) => Number(weekNumber(a.week)) - Number(weekNumber(b.week)),
+            ),
         }))
-        .sort((a, b) => Number(weekNumber(a.week)) - Number(weekNumber(b.week))),
-    [quizzes, weekConfig],
+        .filter((g) => g.rows.length > 0),
+    [courses],
   );
+
+  /** ตั้งวิชาที่เลือกเป็น active ก่อน แล้วจึงไปหน้าทำแบบทดสอบ */
+  function openQuiz(row: QuizRow) {
+    setActiveCourse(row.courseId);
+    router.push(`/student/quiz/${weekNumber(row.week)}`);
+  }
 
   if (!hydrated) {
     return (
@@ -36,14 +60,12 @@ export default function StudentQuizList() {
   return (
     <div>
       <PageHeader
-        eyebrow="แบบทดสอบรายสัปดาห์"
-        title={subject || "แบบทดสอบรายสัปดาห์"}
-        subtitle="เลือกสัปดาห์ที่ต้องการทำแบบทดสอบ เมื่อทำเสร็จจะได้รับคะแนนพร้อมคำแนะนำจาก AI ทันที"
+        eyebrow="ทดสอบความเข้าใจ"
+        title="แบบทดสอบ"
         tone="gold"
       />
 
-      {/* รายการสัปดาห์ */}
-      {rows.length === 0 ? (
+      {groups.length === 0 ? (
         <div className="card-empty">
           <h2 className="display text-lg">ยังไม่มีแบบทดสอบ</h2>
           <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-ink-500">
@@ -51,33 +73,48 @@ export default function StudentQuizList() {
           </p>
         </div>
       ) : (
-        <div className="card divide-y divide-line-soft overflow-hidden">
-          {rows.map((row) => (
-            <Link
-              key={row.week}
-              href={`/student/quiz/${weekNumber(row.week)}`}
-              className="group flex items-center gap-4 px-4 py-4 transition hover:bg-paper-100/70 sm:px-5"
-            >
-              <div className="flex flex-shrink-0 items-center gap-3">
-                <span
-                  className="h-10 w-1 rounded-full"
-                  style={{ backgroundColor: resolveHex(row.colorKey) }}
-                  aria-hidden
-                />
-                <span className="display w-7 text-2xl leading-none text-ink-300 transition group-hover:text-ink-500">
-                  {weekNumber(row.week)}
-                </span>
-              </div>
+        <div className="space-y-6">
+          {groups.map((g) => (
+            <section key={g.courseId}>
+              {/* หัวข้อวิชา — แสดงเสมอเพื่อให้รู้ว่าแบบทดสอบอยู่วิชาไหน */}
+              <h2 className="mb-2 px-1 text-sm font-bold text-ink-700">
+                {g.subject}
+              </h2>
+              <div className="card divide-y divide-line-soft overflow-hidden">
+                {g.rows.map((row) => (
+                  <button
+                    key={`${row.courseId}-${row.week}`}
+                    type="button"
+                    onClick={() => openQuiz(row)}
+                    className="group flex w-full items-center gap-4 px-4 py-4 text-left transition hover:bg-paper-100/70 sm:px-5"
+                  >
+                    <div className="flex flex-shrink-0 items-center gap-3">
+                      <span
+                        className="h-10 w-1 rounded-full"
+                        style={{ backgroundColor: resolveHex(row.colorKey) }}
+                        aria-hidden
+                      />
+                      <span className="w-7 text-2xl font-bold leading-none text-ink-300 transition group-hover:text-ink-500">
+                        {weekNumber(row.week)}
+                      </span>
+                    </div>
 
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-bold text-ink-800">{row.week}</p>
-                <p className="mt-0.5 text-xs text-ink-500">{row.count} ข้อ</p>
-              </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-bold text-ink-800">
+                        {row.week}
+                      </p>
+                      <p className="mt-0.5 text-xs text-ink-500">
+                        {row.count} ข้อ
+                      </p>
+                    </div>
 
-              <span className="flex-shrink-0 text-xs font-bold text-tu-red-600 transition group-hover:text-tu-red-700">
-                เริ่มทำ →
-              </span>
-            </Link>
+                    <span className="flex-shrink-0 text-xs font-bold text-tu-red-600 transition group-hover:text-tu-red-700">
+                      เริ่มทำ →
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </section>
           ))}
         </div>
       )}

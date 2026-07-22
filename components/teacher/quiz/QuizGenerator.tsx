@@ -20,7 +20,10 @@ type Phase = "loading" | "prompt" | "generating" | "edit";
  */
 export default function QuizGenerator({ week }: { week: string }) {
   const router = useRouter();
-  const { topics, getQuiz, saveQuiz, hydrated } = useCourse();
+  const { topics, getQuiz, saveQuiz, hydrated, activeCourseId } = useCourse();
+
+  // กลับไปหน้ารายละเอียดของวิชาที่กำลังทำอยู่
+  const courseHref = activeCourseId ? `/course/${activeCourseId}` : "/course";
 
   const weekTopics = useMemo(
     () =>
@@ -76,7 +79,7 @@ export default function QuizGenerator({ week }: { week: string }) {
 
   function handleSave(saved: Quiz) {
     saveQuiz(week, saved);
-    router.push("/course");
+    router.push(courseHref);
   }
 
   // เฟสแก้ไข: ฟอร์มแบบ Google Form เต็มพื้นที่
@@ -95,12 +98,11 @@ export default function QuizGenerator({ week }: { week: string }) {
   return (
     <div>
       <PageHeader
-        eyebrow="ขั้นตอนที่ 3"
+        eyebrow="การสร้างแบบทดสอบ"
         title={`สร้างแบบทดสอบ · ${week}`}
-        subtitle="กรอกโจทย์ให้ระบบช่วยออกข้อสอบ โดยอ้างอิงจาก CLO หัวข้อ และไฟล์เอกสารของสัปดาห์นี้"
         action={
-          <Link href="/course" className="btn-secondary">
-            ← ภาพรวมรายวิชา
+          <Link href={courseHref} className="btn-secondary">
+            ← กลับไปหน้าวิชา
           </Link>
         }
       />

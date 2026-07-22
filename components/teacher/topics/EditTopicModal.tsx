@@ -33,10 +33,7 @@ export default function EditTopicModal({
 
   return (
     <Modal open={!!topic} onClose={onClose}>
-      <ModalHeader
-        title="แก้ไขชื่อหัวข้อ"
-        subtitle="ปรับชื่อที่ AI แนะนำให้ตรงกับเนื้อหาที่คุณต้องการ"
-      />
+      <ModalHeader title="แก้ไขหัวข้อ" />
 
       {topic && (
         <p className="mb-3 flex items-center gap-1.5 rounded-md bg-paper-100 px-2.5 py-1.5 text-[11px] text-ink-500">

@@ -5,24 +5,35 @@ import type { ReactNode } from "react";
 import AppShell, {
   IconCourse,
   IconQuiz,
-  IconTopics,
-  IconUpload,
+  IconReport,
   type NavItem,
 } from "./AppShell";
 
+// เมนูซ้ายเหลือแค่ 2 หัวข้อหลัก — "จัดหัวข้อ" และ "อัปโหลดเอกสาร"
+// ย้ายไปเข้าถึงจากภายในหน้ารายละเอียดของแต่ละวิชาแทน
 const TEACHER_NAV: NavItem[] = [
   {
     href: "/course",
     label: "ภาพรวมรายวิชา",
-    match: ["/quiz"],
+    match: ["/quiz", "/topics", "/upload"],
     icon: IconCourse,
   },
-  { href: "/topics", label: "จัดหัวข้อ", icon: IconTopics },
-  { href: "/upload", label: "อัปโหลดเอกสาร", icon: IconUpload },
+  { href: "/report", label: "รายงานชั้นเรียน", icon: IconReport },
 ];
 
 const STUDENT_NAV: NavItem[] = [
-  { href: "/student", label: "แบบทดสอบ", match: ["/student/quiz"], icon: IconQuiz },
+  {
+    href: "/student",
+    label: "แบบทดสอบ",
+    match: ["/student/quiz"],
+    icon: IconQuiz,
+  },
+  {
+    href: "/student/summary",
+    label: "สรุปผลของฉัน",
+    match: ["/student/summary"],
+    icon: IconReport,
+  },
 ];
 
 /** ปุ่มออกจากระบบบนแถบแดง */

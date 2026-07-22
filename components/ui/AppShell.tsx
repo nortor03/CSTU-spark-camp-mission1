@@ -38,7 +38,7 @@ export default function AppShell({
     (item.match ?? []).some((p) => pathname.startsWith(p));
 
   return (
-    <div className="min-h-screen bg-paper-100">
+    <div className="min-h-screen bg-transparent">
       {/* ---------- แถบบน ---------- */}
       <header className="sticky top-0 z-40 border-b border-tu-gold-500/60 bg-tu-red-500">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
@@ -75,7 +75,7 @@ export default function AppShell({
       )}
 
       {/* ---------- เนื้อหา ---------- */}
-      <div className="mx-auto flex max-w-6xl gap-10 px-4 py-8 sm:px-6">
+      <div className="mx-auto flex max-w-6xl gap-16 px-4 py-12 sm:px-6">
         {/* เมนูข้าง (จอใหญ่) */}
         {nav.length > 0 && (
           <nav className="hidden w-48 flex-shrink-0 lg:block">
@@ -158,5 +158,12 @@ export const IconQuiz = (
   <svg viewBox="0 0 24 24" {...stroke}>
     <path d="M9 11l2 2 4-4" />
     <rect x="4" y="3.5" width="16" height="17" rx="2.5" />
+  </svg>
+);
+
+export const IconReport = (
+  <svg viewBox="0 0 24 24" {...stroke}>
+    <path d="M4 20h16" />
+    <path d="M7 20v-6M12 20V7M17 20v-9" />
   </svg>
 );

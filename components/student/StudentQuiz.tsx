@@ -13,7 +13,7 @@ type Phase = "loading" | "empty" | "doing" | "result";
  * ไหลเป็น: ทำข้อสอบ (เลือกตอบ) → ส่งคำตอบ → เห็นคะแนน + feedback จาก AI
  */
 export default function StudentQuiz({ week }: { week: string }) {
-  const { getQuiz, hydrated } = useCourse();
+  const { getQuiz, hydrated, studentId, saveSubmission } = useCourse();
 
   const [quiz, setQuiz] = useState<Quiz | null>(null);
   const [phase, setPhase] = useState<Phase>("loading");
@@ -39,7 +39,25 @@ export default function StudentQuiz({ week }: { week: string }) {
 
   function submit() {
     if (!quiz) return;
-    setResult(gradeQuiz(quiz, answers));
+    const graded = gradeQuiz(quiz, answers);
+    setResult(graded);
+
+    // เก็บผลไว้ให้หน้าสรุปของนักเรียน และรายงานภาพรวมของอาจารย์ใช้ต่อ
+    const id = studentId ?? "ไม่ระบุรหัส";
+    saveSubmission({
+      id: `${quiz.revision}-${id}`,
+      studentId: id,
+      studentName: `นักศึกษา ${id}`,
+      week,
+      quizRevision: quiz.revision,
+      answers,
+      score: graded.score,
+      total: graded.total,
+      percent: graded.percent,
+      submittedAt: new Date().toISOString(),
+      isCurrentUser: true,
+    });
+
     setPhase("result");
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -76,6 +94,7 @@ export default function StudentQuiz({ week }: { week: string }) {
   if (phase === "result" && result) {
     return <ResultView week={week} result={result} onRetry={retry} />;
   }
+
 
   // ---------- ทำข้อสอบ ----------
   const answered = quiz.questions.filter((q) => answers[q.id]).length;
@@ -193,14 +212,25 @@ function ResultView({
         <div className="h-1.5 bg-tu-gold-500" />
         <div className="px-6 py-6">
           <p className="eyebrow-gold">ผลแบบทดสอบ · {week}</p>
-          <p className="display mt-2 text-5xl leading-none">
+          <p className="mt-2 text-5xl font-bold leading-none text-ink-900">
             {result.score}
-            <span className="text-xl text-ink-400"> / {result.total}</span>
+            <span className="text-xl font-semibold text-ink-400">
+              {" "}
+              / {result.total}
+            </span>
           </p>
           <hr className="rule-gold my-4" />
           <p className="text-sm leading-relaxed text-ink-600">
             {result.overall}
           </p>
+
+          {/* ทางไปหน้าสรุปจุดแข็ง/จุดอ่อนรายหัวข้อ */}
+          <Link
+            href={`/student/summary/${week.match(/\d+/)?.[0] ?? ""}`}
+            className="btn-primary mt-5"
+          >
+            ดูสรุปจุดแข็ง / จุดอ่อน →
+          </Link>
         </div>
       </div>
 

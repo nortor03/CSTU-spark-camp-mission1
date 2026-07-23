@@ -17,6 +17,7 @@ export default function UnifiedLoginForm() {
   const [passwordError, setPasswordError] = useState("");
   const [shakeIdentifier, setShakeIdentifier] = useState(false);
   const [shakePassword, setShakePassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const toggleVisibility = () => setShowPassword((s) => !s);
@@ -73,7 +74,7 @@ export default function UnifiedLoginForm() {
       <div className="pointer-events-none absolute -top-40 -left-40 h-96 w-96 rounded-full bg-tu-red-500/5 blur-3xl" />
       <div className="pointer-events-none absolute -bottom-40 -right-40 h-96 w-96 rounded-full bg-tu-gold-500/10 blur-3xl" />
 
-      <div className="relative mx-auto w-full max-w-sm space-y-6">
+      <div className="relative mx-auto w-full max-w-sm space-y-6 rounded-2xl border border-line-strong/50 bg-white/40 p-6 sm:p-8 backdrop-blur-[2px]">
         <div className="space-y-3 text-center">
           <Image
             src="/tu-logo.png"
@@ -85,8 +86,11 @@ export default function UnifiedLoginForm() {
           />
           <div>
             <h1 className="text-balance font-semibold text-3xl text-ink-900">
-              เข้าสู่ระบบ
+              เข้าสู่ระบบ Tonlabkit
             </h1>
+            <p className="mt-1.5 text-xs text-ink-500">
+              ยินดีต้อนรับ! กรุณากรอกข้อมูลของคุณเพื่อเข้าสู่ระบบ
+            </p>
           </div>
         </div>
 
@@ -175,6 +179,19 @@ export default function UnifiedLoginForm() {
                   {passwordError}
                 </p>
               )}
+            </div>
+
+            <div className="flex items-center gap-2 pt-0.5">
+              <input
+                id="remember-me"
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="h-4 w-4 rounded border-line/80 text-tu-red-600 focus:ring-tu-red-500/30 accent-tu-red-600 cursor-pointer"
+              />
+              <label htmlFor="remember-me" className="text-xs text-ink-700 font-medium cursor-pointer select-none">
+                จดจำการเข้าสู่ระบบ
+              </label>
             </div>
 
             <button

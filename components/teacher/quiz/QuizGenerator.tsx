@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCourse } from "@/lib/courseStore";
 import type { Quiz, QuizPrompt } from "@/lib/quiz";
 import { emptyPrompt, generateMockQuiz } from "@/lib/quiz";
@@ -20,7 +20,11 @@ type Phase = "loading" | "prompt" | "generating" | "edit";
  */
 export default function QuizGenerator({ week }: { week: string }) {
   const router = useRouter();
-  const { topics, clos, getQuiz, saveQuiz, hydrated, activeCourseId } =
+  const searchParams = useSearchParams();
+  // ?new=1 = สร้างควิซใหม่ (ข้ามควิซที่มีอยู่) / ?quiz=<id> = แก้ควิซชุดนั้นเจาะจง
+  const isNew = searchParams.get("new") === "1";
+  const editQuizId = searchParams.get("quiz");
+  const { topics, clos, quizzes, getQuiz, saveQuiz, hydrated, activeCourseId } =
     useCourse();
 
   // กลับไปหน้ารายละเอียดของวิชาที่กำลังทำอยู่
@@ -60,14 +64,25 @@ export default function QuizGenerator({ week }: { week: string }) {
     };
     setPrompt(basePrompt);
 
-    const existing = getQuiz(week);
+    // สร้างควิซใหม่: ข้ามควิซเดิม เข้าโหมดกรอกโจทย์เลย
+    if (isNew) {
+      setPhase("prompt");
+      return;
+    }
+
+    // แก้ควิซเจาะจงตาม id (จากปุ่ม "แก้ไข" ของควิซชุดนั้น) — ถ้าหาไม่เจอ fallback เป็นตัว active
+    const list = quizzes[week] ?? [];
+    const existing = editQuizId
+      ? list.find((q) => q.id === editQuizId) ?? getQuiz(week)
+      : getQuiz(week);
+
     if (existing) {
       setQuiz(existing);
       setPhase("edit");
     } else {
       setPhase("prompt");
     }
-  }, [hydrated, week, weekTopics, getQuiz]);
+  }, [hydrated, week, weekTopics, quizzes, getQuiz, isNew, editQuizId]);
 
   function runGenerate(p: QuizPrompt) {
     setPrompt(p);

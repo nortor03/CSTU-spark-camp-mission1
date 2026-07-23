@@ -9,6 +9,7 @@ import { emptyPrompt, generateMockQuiz } from "@/lib/quiz";
 import PageHeader from "@/components/ui/PageHeader";
 import QuizPromptForm from "./QuizPromptForm";
 import QuizEditor from "./QuizEditor";
+import QuizChat from "./QuizChat";
 
 type Phase = "loading" | "prompt" | "generating" | "edit";
 
@@ -110,13 +111,16 @@ export default function QuizGenerator({ week }: { week: string }) {
   // เฟสแก้ไข: ฟอร์มแบบ Google Form เต็มพื้นที่
   if (phase === "edit" && quiz) {
     return (
-      <QuizEditor
-        key={quiz.revision}
-        quiz={quiz}
-        onSave={handleSave}
-        onRegenerate={regenerate}
-        onEditPrompt={() => setPhase("prompt")}
-      />
+      <div className="relative min-h-[calc(100vh-80px)]">
+        <QuizEditor
+          key={quiz.revision}
+          quiz={quiz}
+          onSave={handleSave}
+          onRegenerate={regenerate}
+          onEditPrompt={() => setPhase("prompt")}
+        />
+        <QuizChat />
+      </div>
     );
   }
 
@@ -167,6 +171,7 @@ export default function QuizGenerator({ week }: { week: string }) {
             />
           ))}
       </div>
+      <QuizChat />
     </div>
   );
 }

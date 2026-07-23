@@ -20,7 +20,10 @@ export default function ReportWeekList({ courseId }: { courseId: string }) {
   const rows = useMemo(() => {
     if (!course) return [];
     return Object.entries(course.quizzes)
-      .map(([week, quiz]) => {
+      // ใช้ควิซชุดที่ active ของแต่ละสัปดาห์เป็นตัวสรุป (ข้ามสัปดาห์ที่ไม่มีควิซ)
+      .map(([week, list]) => {
+        const quiz = list.find((q) => q.isActive) ?? list[0];
+        if (!quiz) return null;
         const all = [
           ...generateMockSubmissions(quiz),
           ...course.submissions.filter((s) => s.week === week),
@@ -33,6 +36,7 @@ export default function ReportWeekList({ courseId }: { courseId: string }) {
           report,
         };
       })
+      .filter((r): r is NonNullable<typeof r> => r !== null)
       .sort((a, b) => Number(weekNumber(a.week)) - Number(weekNumber(b.week)));
   }, [course]);
 

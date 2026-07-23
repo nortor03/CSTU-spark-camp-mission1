@@ -69,7 +69,10 @@ function CourseCard({ course }: { course: Course }) {
     return {
       weeks: weeks.size,
       topics: course.topics.filter((t) => t.weekAssigned).length,
-      quizzes: Object.keys(course.quizzes).length,
+      // นับเฉพาะสัปดาห์ที่มีควิซที่ใช้งานอยู่อย่างน้อย 1 ชุด
+      quizzes: Object.values(course.quizzes).filter((list) =>
+        list.some((q) => q.isActive),
+      ).length,
     };
   }, [course]);
 

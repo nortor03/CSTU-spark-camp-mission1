@@ -50,7 +50,10 @@ export default function ReportIndex() {
 
 function ReportCourseCard({ course }: { course: Course }) {
   const quizWeeks = useMemo(
-    () => Object.keys(course.quizzes).length,
+    () =>
+      Object.values(course.quizzes).filter((list) =>
+        list.some((q) => q.isActive),
+      ).length,
     [course.quizzes],
   );
 

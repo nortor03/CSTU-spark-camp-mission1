@@ -29,12 +29,18 @@ export default function StudentQuizList() {
           courseId: c.id,
           subject: c.subject,
           rows: Object.entries(c.quizzes)
-            .map<QuizRow>(([week, quiz]) => ({
-              courseId: c.id,
-              week,
-              count: quiz.questions.length,
-              colorKey: c.weekConfig[week]?.colorKey ?? "red",
-            }))
+            // นักเรียนเห็นเฉพาะ "ชุดที่อาจารย์ตั้งเป็น active" ของแต่ละสัปดาห์
+            .map<QuizRow | null>(([week, list]) => {
+              const active = list.find((q) => q.isActive);
+              if (!active) return null;
+              return {
+                courseId: c.id,
+                week,
+                count: active.questions.length,
+                colorKey: c.weekConfig[week]?.colorKey ?? "red",
+              };
+            })
+            .filter((r): r is QuizRow => r !== null)
             .sort(
               (a, b) => Number(weekNumber(a.week)) - Number(weekNumber(b.week)),
             ),

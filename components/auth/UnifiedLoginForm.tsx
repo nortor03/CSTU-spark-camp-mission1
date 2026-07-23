@@ -13,7 +13,10 @@ export default function UnifiedLoginForm() {
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState("");
+  const [identifierError, setIdentifierError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [shakeIdentifier, setShakeIdentifier] = useState(false);
+  const [shakePassword, setShakePassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const toggleVisibility = () => setShowPassword((s) => !s);
@@ -21,14 +24,26 @@ export default function UnifiedLoginForm() {
   const isEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
   const isStudentId = (v: string) => /^\d{10}$/.test(v);
 
+  function triggerShakeIdentifier() {
+    setShakeIdentifier(true);
+    setTimeout(() => setShakeIdentifier(false), 500);
+  }
+
+  function triggerShakePassword() {
+    setShakePassword(true);
+    setTimeout(() => setShakePassword(false), 500);
+  }
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError("");
+    setIdentifierError("");
+    setPasswordError("");
     const id = identifier.trim();
 
     if (isEmail(id)) {
       if (password.length < 6) {
-        setError("รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร");
+        setPasswordError("รหัสไม่ถูกต้อง");
+        triggerShakePassword();
         return;
       }
       setLoading(true);
@@ -38,7 +53,8 @@ export default function UnifiedLoginForm() {
 
     if (isStudentId(id)) {
       if (!/^\d{13}$/.test(password)) {
-        setError("รหัสผ่าน (เลขบัตรประชาชน) ต้องมี 13 หลัก");
+        setPasswordError("รหัสไม่ถูกต้อง");
+        triggerShakePassword();
         return;
       }
       setLoading(true);
@@ -47,7 +63,8 @@ export default function UnifiedLoginForm() {
       return;
     }
 
-    setError("กรอกอีเมล (อาจารย์) หรือรหัสนักศึกษา 10 หลัก (นักเรียน) ให้ถูกต้อง");
+    setIdentifierError("กรอกอีเมลหรือรหัสนักศึกษาให้ถูกต้อง");
+    triggerShakeIdentifier();
   }
 
   return (
@@ -79,18 +96,34 @@ export default function UnifiedLoginForm() {
               <label htmlFor="identifier" className="label text-ink-800">
                 อีเมล หรือ รหัสนักศึกษา
               </label>
-              <div className="relative mt-1.5">
+              <div className={`relative mt-1.5 ${shakeIdentifier ? "animate-shake" : ""}`}>
                 <input
                   id="identifier"
                   value={identifier}
-                  onChange={(e) => setIdentifier(e.target.value)}
-                  className="field pl-9 border border-line/60 focus:border-tu-red-500/50"
+                  onChange={(e) => {
+                    setIdentifier(e.target.value);
+                    if (identifierError) setIdentifierError("");
+                  }}
+                  className={`field pl-9 border transition ${
+                    identifierError
+                      ? "border-tu-red-500 bg-tu-red-50/50 focus:border-tu-red-500"
+                      : "border-line/60 focus:border-tu-red-500/50"
+                  }`}
                   autoComplete="username"
                 />
-                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center justify-center pl-3 text-tu-red-500/70">
+                <div
+                  className={`pointer-events-none absolute inset-y-0 left-0 flex items-center justify-center pl-3 ${
+                    identifierError ? "text-tu-red-500" : "text-tu-red-500/70"
+                  }`}
+                >
                   <Mail aria-hidden="true" size={16} />
                 </div>
               </div>
+              {identifierError && (
+                <p className="mt-1.5 text-xs font-medium text-tu-red-600">
+                  {identifierError}
+                </p>
+              )}
             </div>
 
             <div>
@@ -102,16 +135,27 @@ export default function UnifiedLoginForm() {
                   ลืมรหัสผ่าน?
                 </a>
               </div>
-              <div className="relative mt-1.5">
+              <div className={`relative mt-1.5 ${shakePassword ? "animate-shake" : ""}`}>
                 <input
                   id="password"
                   type={showPassword ? "text" : "password"}
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    if (passwordError) setPasswordError("");
+                  }}
+                  className={`field pl-9 pr-9 border transition ${
+                    passwordError
+                      ? "border-tu-red-500 bg-tu-red-50/50 focus:border-tu-red-500"
+                      : "border-line/60 focus:border-tu-red-500/50"
+                  }`}
                   autoComplete="current-password"
-                  className="field pl-9 pr-9 border border-line/60 focus:border-tu-red-500/50"
                 />
-                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center justify-center pl-3 text-tu-red-500/70">
+                <div
+                  className={`pointer-events-none absolute inset-y-0 left-0 flex items-center justify-center pl-3 ${
+                    passwordError ? "text-tu-red-500" : "text-tu-red-500/70"
+                  }`}
+                >
                   <Lock aria-hidden="true" size={16} />
                 </div>
                 <button
@@ -126,9 +170,12 @@ export default function UnifiedLoginForm() {
                   )}
                 </button>
               </div>
+              {passwordError && (
+                <p className="mt-1.5 text-xs font-medium text-tu-red-600">
+                  {passwordError}
+                </p>
+              )}
             </div>
-
-            {error && <p className="alert-error text-xs py-2">{error}</p>}
 
             <button
               type="submit"

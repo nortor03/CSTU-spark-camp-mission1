@@ -22,7 +22,10 @@ export default function ClassReport({
 }) {
   const { getCourse, setActiveCourse, activeCourseId, hydrated } = useCourse();
   const course = getCourse(courseId);
-  const quiz = course?.quizzes[week];
+  // ใช้ควิซ "ชุดที่ active" ของสัปดาห์นั้นในการสรุปผล (ถ้าไม่มี active ใช้ตัวแรก)
+  const weekQuizzes = course?.quizzes[week];
+  const quiz =
+    weekQuizzes?.find((q) => q.isActive) ?? weekQuizzes?.[0];
 
   // ตั้งวิชานี้เป็น active เพื่อให้ลิงก์ไป /quiz ทำงานกับวิชาที่ถูกต้อง
   useEffect(() => {

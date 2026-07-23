@@ -39,6 +39,8 @@ export interface QuizPrompt {
 
 /** ควิซที่ generate ออกมา (พร้อมให้แก้ไข) */
 export interface Quiz {
+  id: string;
+  isActive: boolean;
   /** รหัสรุ่น — เปลี่ยนทุกครั้งที่ generate ใหม่ เพื่อ reset ฟอร์ม */
   revision: string;
   week: string;
@@ -128,6 +130,8 @@ export function generateMockQuiz(week: string, prompt: QuizPrompt): Quiz {
   );
 
   return {
+    id: uid("quiz"),
+    isActive: false,
     revision: uid("rev"),
     week,
     title: `แบบทดสอบ ${week}`,

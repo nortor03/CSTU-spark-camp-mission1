@@ -11,6 +11,8 @@ export interface Topic {
   weekAssigned: string | null;
   /** true = ชื่อยังเป็นของ AI, false = ผู้ใช้แก้ไขแล้ว */
   aiGenerated: boolean;
+  /** รหัส CLO ที่หัวข้อนี้เกี่ยวข้อง (มีเฉพาะหัวข้อที่แกะมาจาก syllabus จริง) */
+  relatedClos?: string[];
 }
 
 /** การตั้งค่าประจำสัปดาห์ (สีป้ายกำกับ) */

@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef } from "react";
-import { useCourse } from "@/lib/courseStore";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useCourse, topicsFromSyllabusSchedule } from "@/lib/courseStore";
 import { resolveHex, weekNumber } from "@/lib/weeks";
+import { extractSyllabus } from "@/lib/syllabus";
 import PageHeader from "@/components/ui/PageHeader";
 import type { Topic } from "@/lib/types";
 
@@ -25,11 +26,15 @@ export default function CourseDetail({ courseId }: { courseId: string }) {
     setActiveCourse,
     activeCourseId,
     setSyllabus,
+    setSyllabusExtraction,
+    setTopics,
     hydrated,
   } = useCourse();
 
   const course = getCourse(courseId);
   const syllabusRef = useRef<HTMLInputElement>(null);
+  const [extracting, setExtracting] = useState(false);
+  const [extractError, setExtractError] = useState("");
 
   // ตั้งวิชานี้เป็น active เมื่อเข้าหน้า (ให้ /topics, /quiz ทำงานกับวิชานี้)
   useEffect(() => {
@@ -38,11 +43,27 @@ export default function CourseDetail({ courseId }: { courseId: string }) {
 
   function onPickSyllabus(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
+    e.target.value = "";
     if (!file) return;
+
     const reader = new FileReader();
     reader.onload = () => setSyllabus(file.name, reader.result as string);
     reader.readAsDataURL(file);
-    e.target.value = "";
+
+    setExtractError("");
+    setExtracting(true);
+    extractSyllabus(file)
+      .then((extraction) => {
+        setSyllabusExtraction(extraction);
+        // เปลี่ยนไฟล์ syllabus ใหม่ = จัดหัวข้อใหม่ทั้งชุดตามตารางสอนที่แกะได้
+        // (ของเดิมถูกทิ้ง — ถ้าแกะไม่ได้อะไรเลยก็คงหัวข้อเดิมไว้ ไม่ล้างทิ้งเปล่าๆ)
+        const newTopics = topicsFromSyllabusSchedule(extraction, file.name);
+        if (newTopics.length > 0) setTopics(newTopics);
+      })
+      .catch(() =>
+        setExtractError("แยกข้อมูลจาก syllabus ไม่สำเร็จ ลองแนบไฟล์ใหม่อีกครั้ง"),
+      )
+      .finally(() => setExtracting(false));
   }
 
   const rows = useMemo<WeekRow[]>(() => {
@@ -128,10 +149,26 @@ export default function CourseDetail({ courseId }: { courseId: string }) {
           <div className="min-w-0">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-400">
               Course Syllabus
+              {course.courseCode && (
+                <span className="ml-1.5 normal-case text-ink-500">
+                  · {course.courseCode}
+                </span>
+              )}
             </p>
             <p className="truncate text-sm font-medium text-ink-700">
               {course.syllabusName ?? "ยังไม่ได้แนบไฟล์"}
             </p>
+            {extracting && (
+              <p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-ink-400">
+                <span className="h-2.5 w-2.5 animate-spin rounded-full border-2 border-line-strong border-t-tu-red-500" />
+                กำลังแยก CLO และตารางสอน…
+              </p>
+            )}
+            {extractError && (
+              <p className="mt-0.5 text-[11px] text-tu-red-600">
+                {extractError}
+              </p>
+            )}
           </div>
         </div>
 
@@ -161,6 +198,36 @@ export default function CourseDetail({ courseId }: { courseId: string }) {
           />
         </div>
       </div>
+
+      {/* ผลลัพธ์การเรียนรู้ (CLO) ที่แกะได้จาก syllabus */}
+      {course.clos.length > 0 && (
+        <div className="mb-6 card overflow-hidden">
+          <div className="flex items-center justify-between border-b border-line-soft px-4 py-3 sm:px-5">
+            <h2 className="text-sm font-bold text-ink-800">
+              ผลลัพธ์การเรียนรู้ (CLO)
+            </h2>
+            <span className="text-[11px] text-ink-400">
+              {course.clos.length} ข้อ
+            </span>
+          </div>
+          <ul className="divide-y divide-line-soft">
+            {course.clos.map((clo) => (
+              <li key={clo.code} className="flex gap-3 px-4 py-3 sm:px-5">
+                <span className="h-fit flex-shrink-0 rounded-full bg-tu-gold-50 px-2 py-0.5 text-[10px] font-bold text-tu-gold-700 ring-1 ring-tu-gold-200">
+                  {clo.code}
+                </span>
+                <p className="text-xs leading-relaxed text-ink-600">
+                  {clo.description ?? (
+                    <span className="italic text-ink-400">
+                      ไม่มีคำอธิบายในเอกสาร
+                    </span>
+                  )}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* รายการสัปดาห์ */}
       {rows.length === 0 ? (

@@ -12,7 +12,14 @@ import {
 import type { Topic, WeekConfigMap } from "./types";
 import type { Quiz } from "./quiz";
 import type { Submission } from "./analytics";
+import type {
+  SyllabusAssessmentActivity,
+  SyllabusClo,
+  SyllabusExtraction,
+  SyllabusWeekItem,
+} from "./syllabus";
 import { MOCK_AI_TOPICS } from "./mockTopics";
+import { DEFAULT_WEEK_COUNT } from "./weeks";
 
 /**
  * สถานะกลางของแอป — รองรับ "หลายรายวิชา" ต่ออาจารย์หนึ่งคน
@@ -30,6 +37,18 @@ export interface Course {
   syllabusName: string | null;
   /** เนื้อไฟล์ course syllabus เป็น data URL (ใช้ดาวน์โหลด) */
   syllabusData: string | null;
+  /** รหัสวิชา ที่แกะได้จาก syllabus (เช่น "คพ.232") */
+  courseCode: string | null;
+  /** true = syllabus มีตารางสอนรายสัปดาห์ให้แกะ */
+  hasWeeklySchedule: boolean;
+  /** ผลลัพธ์การเรียนรู้ (CLO) ที่แกะได้จาก syllabus */
+  clos: SyllabusClo[];
+  /** เกณฑ์การประเมินผลที่แกะได้จาก syllabus */
+  assessmentActivities: SyllabusAssessmentActivity[];
+  /** ตารางสอนรายสัปดาห์ที่แกะได้จาก syllabus */
+  weeklyScheduleItems: SyllabusWeekItem[];
+  /** จำนวนสัปดาห์ทั้งหมดของวิชา (ตัวเลือก "สัปดาห์ที่ N" ในฟอร์มต่างๆ ขึ้นกับค่านี้) */
+  totalWeeks: number;
   topics: Topic[];
   weekConfig: WeekConfigMap;
   /** ควิซราย "สัปดาห์" (key = ป้ายสัปดาห์ เช่น "สัปดาห์ที่ 3") */
@@ -51,6 +70,7 @@ interface CourseContextValue {
     syllabusName: string | null,
     syllabusData: string | null,
     initialTopics?: Topic[],
+    syllabusExtraction?: SyllabusExtraction | null,
   ) => string;
   getCourse: (id: string) => Course | undefined;
 
@@ -59,6 +79,20 @@ interface CourseContextValue {
   syllabusName: string | null;
   syllabusData: string | null;
   setSyllabus: (name: string | null, data: string | null) => void;
+  courseCode: string | null;
+  hasWeeklySchedule: boolean;
+  clos: SyllabusClo[];
+  assessmentActivities: SyllabusAssessmentActivity[];
+  weeklyScheduleItems: SyllabusWeekItem[];
+  /** บันทึกผลแยก syllabus (CLO/ตารางสอน/เกณฑ์ประเมิน) เข้าวิชาที่ active */
+  setSyllabusExtraction: (extraction: SyllabusExtraction) => void;
+  /** เพิ่ม CLO ใหม่ด้วยมือ (เผื่อ syllabus แกะไม่ครบ หรือวิชาไม่มี syllabus) */
+  addClo: (code: string, description: string | null) => void;
+  totalWeeks: number;
+  /** เพิ่มจำนวนสัปดาห์ทั้งหมดของวิชาอีก 1 สัปดาห์ */
+  addWeek: () => void;
+  /** ลดจำนวนสัปดาห์ทั้งหมดลง 1 สัปดาห์ (ทำไม่ได้ถ้าสัปดาห์สุดท้ายยังมีหัวข้ออยู่ หรือเหลือแค่ 1 สัปดาห์) */
+  removeWeek: () => void;
   topics: Topic[];
   setTopics: Dispatch<SetStateAction<Topic[]>>;
   weekConfig: WeekConfigMap;
@@ -101,17 +135,54 @@ export function freshTopics(): Topic[] {
   }));
 }
 
+/**
+ * สร้างหัวข้อจากตารางสอนรายสัปดาห์ที่แกะได้จาก syllabus จริง
+ * ต่างจาก freshTopics() ตรงที่ "จัดเข้าสัปดาห์ให้อัตโนมัติ" ตาม week_number
+ * ที่ backend ส่งมา ไม่ต้องลากเข้าสัปดาห์เองอีก
+ *
+ * แถวที่ไม่มีชื่อหัวข้อ (topic: null) ถูกข้าม — ไม่มีอะไรให้แสดงเป็นการ์ด
+ * แถวที่มีหัวข้อแต่ไม่ระบุสัปดาห์ (week_number: null) จะสร้างเป็นหัวข้อ
+ * "ยังไม่จัดเข้าสัปดาห์" ให้ครูลากจัดเองภายหลัง แทนที่จะทิ้งไปเฉยๆ
+ */
+export function topicsFromSyllabusSchedule(
+  extraction: SyllabusExtraction,
+  syllabusName: string | null,
+): Topic[] {
+  return extraction.items
+    .filter((item): item is typeof item & { topic: string } => !!item.topic)
+    .map((item) => ({
+      id: makeId("t"),
+      title: item.topic,
+      file: syllabusName ?? "Course Syllabus",
+      selected: false,
+      weekAssigned:
+        item.week_number != null ? `สัปดาห์ที่ ${item.week_number}` : null,
+      aiGenerated: true,
+      relatedClos: item.related_clos,
+    }));
+}
+
 function emptyCourse(
   subject: string,
   syllabusName: string | null,
   syllabusData: string | null,
   initialTopics?: Topic[],
+  syllabusExtraction?: SyllabusExtraction | null,
 ): Course {
   return {
     id: makeId("course"),
     subject,
     syllabusName,
     syllabusData,
+    courseCode: syllabusExtraction?.course_code ?? null,
+    hasWeeklySchedule: syllabusExtraction?.has_weekly_schedule ?? false,
+    clos: syllabusExtraction?.clos ?? [],
+    assessmentActivities: syllabusExtraction?.assessment_activities ?? [],
+    weeklyScheduleItems: syllabusExtraction?.items ?? [],
+    totalWeeks: Math.max(
+      DEFAULT_WEEK_COUNT,
+      ...(syllabusExtraction?.items.map((i) => i.week_number ?? 0) ?? [0]),
+    ),
     topics: initialTopics ?? freshTopics(),
     weekConfig: {},
     quizzes: {},
@@ -120,14 +191,41 @@ function emptyCourse(
   };
 }
 
+/** เติมฟิลด์ผล syllabus extraction ที่ยังไม่มี (ข้อมูลเก่าก่อนมีฟีเจอร์นี้) ให้ครบ */
+function backfillCourse(c: Record<string, unknown>): Course {
+  return {
+    ...c,
+    courseCode: typeof c.courseCode === "string" ? c.courseCode : null,
+    hasWeeklySchedule:
+      typeof c.hasWeeklySchedule === "boolean" ? c.hasWeeklySchedule : false,
+    clos: Array.isArray(c.clos) ? (c.clos as SyllabusClo[]) : [],
+    assessmentActivities: Array.isArray(c.assessmentActivities)
+      ? (c.assessmentActivities as SyllabusAssessmentActivity[])
+      : [],
+    weeklyScheduleItems: Array.isArray(c.weeklyScheduleItems)
+      ? (c.weeklyScheduleItems as SyllabusWeekItem[])
+      : [],
+    totalWeeks:
+      typeof c.totalWeeks === "number" ? c.totalWeeks : DEFAULT_WEEK_COUNT,
+  } as Course;
+}
+
 /** แปลงข้อมูลเก่า (วิชาเดียว) → โครงใหม่ (หลายวิชา) */
-function migrate(data: unknown): { courses: Course[]; studentId: string | null } {
+function migrate(
+  data: unknown,
+): { courses: Course[]; studentId: string | null; activeCourseId: string | null } {
   const d = data as Record<string, unknown>;
   const studentId = typeof d.studentId === "string" ? d.studentId : null;
+  const activeCourseId =
+    typeof d.activeCourseId === "string" ? d.activeCourseId : null;
 
   // โครงใหม่อยู่แล้ว
   if (Array.isArray(d.courses)) {
-    return { courses: d.courses as Course[], studentId };
+    return {
+      courses: (d.courses as Record<string, unknown>[]).map(backfillCourse),
+      studentId,
+      activeCourseId,
+    };
   }
 
   // โครงเก่า: มี subject/topics/… อยู่ระดับบนสุด → ห่อเป็น 1 วิชา
@@ -144,6 +242,18 @@ function migrate(data: unknown): { courses: Course[]; studentId: string | null }
         typeof d.syllabusName === "string" ? d.syllabusName : null,
       syllabusData:
         typeof d.syllabusData === "string" ? d.syllabusData : null,
+      courseCode: typeof d.courseCode === "string" ? d.courseCode : null,
+      hasWeeklySchedule:
+        typeof d.hasWeeklySchedule === "boolean" ? d.hasWeeklySchedule : false,
+      clos: Array.isArray(d.clos) ? (d.clos as SyllabusClo[]) : [],
+      assessmentActivities: Array.isArray(d.assessmentActivities)
+        ? (d.assessmentActivities as SyllabusAssessmentActivity[])
+        : [],
+      weeklyScheduleItems: Array.isArray(d.weeklyScheduleItems)
+        ? (d.weeklyScheduleItems as SyllabusWeekItem[])
+        : [],
+      totalWeeks:
+        typeof d.totalWeeks === "number" ? d.totalWeeks : DEFAULT_WEEK_COUNT,
       topics: Array.isArray(d.topics) ? (d.topics as Topic[]) : freshTopics(),
       weekConfig: (d.weekConfig as WeekConfigMap) ?? {},
       quizzes: (d.quizzes as Record<string, Quiz>) ?? {},
@@ -152,10 +262,10 @@ function migrate(data: unknown): { courses: Course[]; studentId: string | null }
         : [],
       createdAt: new Date().toISOString(),
     };
-    return { courses: [course], studentId };
+    return { courses: [course], studentId, activeCourseId: course.id };
   }
 
-  return { courses: [], studentId };
+  return { courses: [], studentId, activeCourseId: null };
 }
 
 export function CourseProvider({ children }: { children: ReactNode }) {
@@ -169,10 +279,22 @@ export function CourseProvider({ children }: { children: ReactNode }) {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
-        const { courses: loaded, studentId: sid } = migrate(JSON.parse(raw));
+        const {
+          courses: loaded,
+          studentId: sid,
+          activeCourseId: savedActiveId,
+        } = migrate(JSON.parse(raw));
         setCourses(loaded);
         setStudentId(sid);
-        if (loaded.length > 0) setActiveCourseId(loaded[0].id);
+        // คงวิชาที่เคยเปิดทำงานอยู่ไว้หลัง refresh — กลับไปวิชาแรกสุดก็ต่อเมื่อ
+        // ไม่มีค่าที่บันทึกไว้ หรือวิชานั้นถูกลบไปแล้วเท่านั้น
+        const stillExists =
+          savedActiveId && loaded.some((c) => c.id === savedActiveId);
+        if (stillExists) {
+          setActiveCourseId(savedActiveId);
+        } else if (loaded.length > 0) {
+          setActiveCourseId(loaded[0].id);
+        }
       }
     } catch {
       // localStorage เสีย/ปิดอยู่ — เริ่มจากว่าง
@@ -208,12 +330,14 @@ export function CourseProvider({ children }: { children: ReactNode }) {
     syllabusName: string | null,
     syllabusData: string | null,
     initialTopics?: Topic[],
+    syllabusExtraction?: SyllabusExtraction | null,
   ): string {
     const course = emptyCourse(
       subject,
       syllabusName,
       syllabusData,
       initialTopics,
+      syllabusExtraction,
     );
     setCourses((prev) => [...prev, course]);
     setActiveCourseId(course.id);
@@ -248,6 +372,38 @@ export function CourseProvider({ children }: { children: ReactNode }) {
 
   function setSyllabus(name: string | null, data: string | null) {
     updateActive((c) => ({ ...c, syllabusName: name, syllabusData: data }));
+  }
+
+  function setSyllabusExtraction(extraction: SyllabusExtraction) {
+    updateActive((c) => ({
+      ...c,
+      courseCode: extraction.course_code,
+      hasWeeklySchedule: extraction.has_weekly_schedule,
+      clos: extraction.clos,
+      assessmentActivities: extraction.assessment_activities,
+      weeklyScheduleItems: extraction.items,
+    }));
+  }
+
+  function addClo(code: string, description: string | null) {
+    updateActive((c) => ({
+      ...c,
+      clos: [...c.clos, { code, description }],
+    }));
+  }
+
+  function addWeek() {
+    updateActive((c) => ({ ...c, totalWeeks: c.totalWeeks + 1 }));
+  }
+
+  function removeWeek() {
+    updateActive((c) => {
+      if (c.totalWeeks <= 1) return c;
+      const lastWeek = `สัปดาห์ที่ ${c.totalWeeks}`;
+      const inUse = c.topics.some((t) => t.weekAssigned === lastWeek);
+      if (inUse) return c;
+      return { ...c, totalWeeks: c.totalWeeks - 1 };
+    });
   }
 
   function saveQuiz(week: string, quiz: Quiz) {
@@ -300,6 +456,16 @@ export function CourseProvider({ children }: { children: ReactNode }) {
         syllabusName: activeCourse?.syllabusName ?? null,
         syllabusData: activeCourse?.syllabusData ?? null,
         setSyllabus,
+        courseCode: activeCourse?.courseCode ?? null,
+        hasWeeklySchedule: activeCourse?.hasWeeklySchedule ?? false,
+        clos: activeCourse?.clos ?? [],
+        assessmentActivities: activeCourse?.assessmentActivities ?? [],
+        weeklyScheduleItems: activeCourse?.weeklyScheduleItems ?? [],
+        setSyllabusExtraction,
+        addClo,
+        totalWeeks: activeCourse?.totalWeeks ?? DEFAULT_WEEK_COUNT,
+        addWeek,
+        removeWeek,
         topics: activeCourse?.topics ?? [],
         setTopics,
         weekConfig: activeCourse?.weekConfig ?? {},

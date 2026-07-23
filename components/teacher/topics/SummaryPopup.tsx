@@ -53,10 +53,7 @@ export default function SummaryPopup({
                   <ul className="space-y-1 pl-[18px]">
                     {items.map((t) => (
                       <li key={t.id} className="text-xs leading-relaxed text-ink-600">
-                        {t.title}{" "}
-                        <span className="text-[10px] text-ink-400">
-                          ({t.file})
-                        </span>
+                        {t.title}
                       </li>
                     ))}
                   </ul>

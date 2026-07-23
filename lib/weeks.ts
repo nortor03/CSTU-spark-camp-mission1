@@ -82,11 +82,16 @@ function darken(hex: string, amount: number): string {
   return `rgb(${f(r)}, ${f(g)}, ${f(b)})`;
 }
 
-/** ตัวเลือกสัปดาห์มาตรฐาน */
-export const WEEK_OPTIONS: string[] = Array.from(
-  { length: 15 },
-  (_, i) => `สัปดาห์ที่ ${i + 1}`,
-);
+/** จำนวนสัปดาห์เริ่มต้นของวิชาใหม่ */
+export const DEFAULT_WEEK_COUNT = 15;
+
+/** สร้างรายการตัวเลือกสัปดาห์ "สัปดาห์ที่ 1" ... "สัปดาห์ที่ N" ตามจำนวนที่ระบุ */
+export function weekOptions(count: number): string[] {
+  return Array.from({ length: count }, (_, i) => `สัปดาห์ที่ ${i + 1}`);
+}
+
+/** ตัวเลือกสัปดาห์มาตรฐาน (15 สัปดาห์) — ใช้เมื่อไม่มีจำนวนสัปดาห์เฉพาะของวิชา */
+export const WEEK_OPTIONS: string[] = weekOptions(DEFAULT_WEEK_COUNT);
 
 /** ดึงเฉพาะตัวเลขสัปดาห์ออกมาแสดงบนที่คั่น เช่น "สัปดาห์ที่ 3" → "3" */
 export function weekNumber(week: string): string {

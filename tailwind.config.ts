@@ -71,8 +71,8 @@ const config: Config = {
         },
       },
       fontFamily: {
-        sans: ["var(--font-noto-thai)", "sans-serif"],
-        display: ["var(--font-noto-serif-thai)", "Georgia", "serif"],
+        sans: ["var(--font-plex-thai)", "sans-serif"],
+        display: ["var(--font-plex-thai)", "sans-serif"],
       },
       boxShadow: {
         // เงานุ่ม โทนอุ่น — ใช้แทนกรอบหนา

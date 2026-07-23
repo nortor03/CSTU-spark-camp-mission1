@@ -11,11 +11,14 @@ import { QUIZ_SOURCE_TOPICS, emptyPrompt, MOCK_CLOS } from "@/lib/quiz";
 export default function QuizPromptForm({
   initial,
   sourceTopics = QUIZ_SOURCE_TOPICS,
+  cloOptions = MOCK_CLOS,
   onGenerate,
 }: {
   initial: QuizPrompt | null;
   /** รายการหัวข้อ/ไฟล์ให้เลือก (ค่าปริยาย = ทุกหัวข้อ mock) */
   sourceTopics?: { title: string; file: string }[];
+  /** รายการ CLO ให้เลือก (ค่าปริยาย = mock CLO เมื่อวิชายังไม่มีผลแยกจาก syllabus) */
+  cloOptions?: string[];
   onGenerate: (prompt: QuizPrompt) => void;
 }) {
   const [prompt, setPrompt] = useState<QuizPrompt>(initial ?? emptyPrompt());
@@ -53,7 +56,7 @@ export default function QuizPromptForm({
           ผลลัพธ์การเรียนรู้ (CLO) <span className="font-normal text-ink-400">จาก Course Syllabus</span>
         </label>
         <div className="mt-2 flex flex-col gap-2">
-          {MOCK_CLOS.map((clo) => {
+          {cloOptions.map((clo) => {
             const selected = prompt.clo.includes(clo);
             return (
               <label

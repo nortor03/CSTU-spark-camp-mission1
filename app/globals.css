@@ -34,9 +34,9 @@
 
   /* ---------- ตัวอักษร ---------- */
 
-  /* หัวเรื่องหลักแบบ editorial (serif) */
+  /* หัวเรื่องหลัก — ฟอนต์เดียวกับเนื้อความ แต่หนักกว่าเพื่อไล่น้ำหนัก */
   .display {
-    @apply font-display font-semibold tracking-tight text-ink-900;
+    @apply font-display font-bold tracking-tight text-ink-900;
   }
 
   /* ป้ายหมวดตัวเล็กเหนือหัวเรื่อง

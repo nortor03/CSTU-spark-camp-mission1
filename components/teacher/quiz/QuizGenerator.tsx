@@ -20,7 +20,8 @@ type Phase = "loading" | "prompt" | "generating" | "edit";
  */
 export default function QuizGenerator({ week }: { week: string }) {
   const router = useRouter();
-  const { topics, getQuiz, saveQuiz, hydrated, activeCourseId } = useCourse();
+  const { topics, clos, getQuiz, saveQuiz, hydrated, activeCourseId } =
+    useCourse();
 
   // กลับไปหน้ารายละเอียดของวิชาที่กำลังทำอยู่
   const courseHref = activeCourseId ? `/course/${activeCourseId}` : "/course";
@@ -31,6 +32,15 @@ export default function QuizGenerator({ week }: { week: string }) {
         .filter((t) => t.weekAssigned === week)
         .map((t) => ({ title: t.title, file: t.file })),
     [topics, week],
+  );
+
+  // ถ้าวิชานี้มีผลแยก CLO จาก syllabus จริงแล้ว ใช้ชุดนั้นแทน CLO จำลอง
+  const cloOptions = useMemo(
+    () =>
+      clos.length > 0
+        ? clos.map((c) => (c.description ? `${c.code}: ${c.description}` : c.code))
+        : undefined,
+    [clos],
   );
 
   const [phase, setPhase] = useState<Phase>("loading");
@@ -137,6 +147,7 @@ export default function QuizGenerator({ week }: { week: string }) {
             <QuizPromptForm
               initial={prompt}
               sourceTopics={weekTopics}
+              cloOptions={cloOptions}
               onGenerate={runGenerate}
             />
           ))}

@@ -78,39 +78,41 @@ export default function AppShell({
       <div className="mx-auto flex max-w-6xl gap-16 px-4 py-12 sm:px-6">
         {/* เมนูข้าง (จอใหญ่) */}
         {nav.length > 0 && (
-          <nav className="hidden w-48 flex-shrink-0 lg:block">
-            <div className="sticky top-[4.5rem] space-y-0.5">
+          <nav className="hidden w-56 flex-shrink-0 lg:block">
+            <div className="sticky top-[4.5rem] rounded-xl border border-line bg-white p-2 shadow-card">
               {/* leading กว้างพอ ไม่ให้สระ/วรรณยุกต์ไทยด้านบนถูกตัด */}
-              <p className="mb-2 px-3 text-[11px] font-bold leading-6 tracking-wide text-ink-400">
+              <p className="mb-1.5 px-2.5 pt-1 text-[11px] font-bold leading-6 tracking-wide text-ink-400">
                 เมนู
               </p>
-              {nav.map((item) => {
-                const active = isActive(item);
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={`relative flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-semibold transition ${
-                      active
-                        ? "bg-white text-tu-red-700 shadow-card"
-                        : "text-ink-600 hover:bg-paper-200 hover:text-ink-800"
-                    }`}
-                  >
-                    {/* ขีดแดงหน้าเมนูที่เลือก */}
-                    {active && (
-                      <span className="absolute inset-y-2 left-0 w-[3px] rounded-r bg-tu-red-500" />
-                    )}
-                    <span
-                      className={`[&>svg]:h-4 [&>svg]:w-4 ${
-                        active ? "text-tu-red-500" : "text-ink-400"
+              <div className="space-y-0.5">
+                {nav.map((item) => {
+                  const active = isActive(item);
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={`relative flex items-center gap-2.5 rounded-lg px-2.5 py-2.5 text-sm font-semibold transition ${
+                        active
+                          ? "bg-tu-red-50 text-tu-red-700"
+                          : "text-ink-600 hover:bg-paper-100 hover:text-ink-800"
                       }`}
                     >
-                      {item.icon}
-                    </span>
-                    {item.label}
-                  </Link>
-                );
-              })}
+                      {/* ขีดแดงหน้าเมนูที่เลือก */}
+                      {active && (
+                        <span className="absolute inset-y-2 left-0 w-[3px] rounded-r bg-tu-red-500" />
+                      )}
+                      <span
+                        className={`[&>svg]:h-4 [&>svg]:w-4 ${
+                          active ? "text-tu-red-500" : "text-ink-400"
+                        }`}
+                      >
+                        {item.icon}
+                      </span>
+                      {item.label}
+                    </Link>
+                  );
+                })}
+              </div>
             </div>
           </nav>
         )}

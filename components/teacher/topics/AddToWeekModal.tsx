@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Modal, { ModalHeader } from "@/components/ui/Modal";
-import { TAG_COLORS, WEEK_OPTIONS, isCustomColor } from "@/lib/weeks";
+import { TAG_COLORS, isCustomColor } from "@/lib/weeks";
 
 /**
  * จัดหัวข้อที่เลือกไว้เข้าสัปดาห์ + เลือกสีป้ายกำกับ
@@ -10,15 +10,18 @@ import { TAG_COLORS, WEEK_OPTIONS, isCustomColor } from "@/lib/weeks";
 export default function AddToWeekModal({
   open,
   selectedCount,
+  weekOptions,
   onClose,
   onSubmit,
 }: {
   open: boolean;
   selectedCount: number;
+  /** ตัวเลือกสัปดาห์ทั้งหมดของวิชานี้ */
+  weekOptions: string[];
   onClose: () => void;
   onSubmit: (week: string, colorKey: string) => void;
 }) {
-  const [week, setWeek] = useState(WEEK_OPTIONS[0]);
+  const [week, setWeek] = useState(weekOptions[0]);
   const [colorKey, setColorKey] = useState(TAG_COLORS[0].key);
 
   return (
@@ -33,7 +36,7 @@ export default function AddToWeekModal({
             onChange={(e) => setWeek(e.target.value)}
             className="field text-sm"
           >
-            {WEEK_OPTIONS.map((w) => (
+            {weekOptions.map((w) => (
               <option key={w} value={w}>
                 {w}
               </option>

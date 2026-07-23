@@ -1,45 +1,39 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import type { Topic } from "@/lib/types";
+import { useState } from "react";
 import type { SyllabusClo } from "@/lib/syllabus";
 import Modal, { ModalHeader } from "@/components/ui/Modal";
 
-/**
- * แก้ไขชื่อหัวข้อ + สัปดาห์ + CLO ที่เกี่ยวข้อง
- * เปิดเมื่อผู้ใช้กดปุ่มดินสอบนการ์ด
- */
-export default function EditTopicModal({
-  topic,
+/** เพิ่มหัวข้อใหม่ด้วยมือ — ตั้งชื่อ เลือกสัปดาห์ และ CLO ที่เกี่ยวข้องได้ตั้งแต่ตอนสร้าง */
+export default function AddTopicModal({
+  open,
   clos,
   weekOptions,
   onClose,
-  onSave,
+  onAdd,
 }: {
-  topic: Topic | null;
+  open: boolean;
   /** CLO ทั้งหมดของวิชานี้ — ให้เลือกว่าหัวข้อนี้เกี่ยวกับ CLO ไหนบ้าง */
   clos: SyllabusClo[];
   /** ตัวเลือกสัปดาห์ทั้งหมดของวิชานี้ */
   weekOptions: string[];
   onClose: () => void;
-  onSave: (
-    id: string,
-    title: string,
-    relatedClos: string[],
-    weekAssigned: string | null,
-  ) => void;
+  onAdd: (title: string, weekAssigned: string | null, relatedClos: string[]) => void;
 }) {
   const [value, setValue] = useState("");
   const [selectedClos, setSelectedClos] = useState<string[]>([]);
   const [week, setWeek] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (topic) {
-      setValue(topic.title);
-      setSelectedClos(topic.relatedClos ?? []);
-      setWeek(topic.weekAssigned);
-    }
-  }, [topic]);
+  function reset() {
+    setValue("");
+    setSelectedClos([]);
+    setWeek(null);
+  }
+
+  function handleClose() {
+    reset();
+    onClose();
+  }
 
   function toggleClo(code: string) {
     setSelectedClos((prev) =>
@@ -47,23 +41,23 @@ export default function EditTopicModal({
     );
   }
 
-  function handleSave() {
-    if (!topic) return;
+  function handleAdd() {
     const trimmed = value.trim();
     if (!trimmed) return;
-    onSave(topic.id, trimmed, selectedClos, week);
+    onAdd(trimmed, week, selectedClos);
+    reset();
     onClose();
   }
 
   return (
-    <Modal open={!!topic} onClose={onClose}>
-      <ModalHeader title="แก้ไขหัวข้อ" />
+    <Modal open={open} onClose={handleClose}>
+      <ModalHeader title="เพิ่มหัวข้อ" />
 
       <input
         autoFocus
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        onKeyDown={(e) => e.key === "Enter" && handleSave()}
+        onKeyDown={(e) => e.key === "Enter" && handleAdd()}
         placeholder="ชื่อหัวข้อ"
         className="field text-sm"
       />
@@ -112,15 +106,15 @@ export default function EditTopicModal({
       )}
 
       <div className="mt-6 flex justify-end gap-2 border-t border-line-soft pt-4">
-        <button onClick={onClose} className="btn-ghost">
+        <button onClick={handleClose} className="btn-ghost">
           ยกเลิก
         </button>
         <button
-          onClick={handleSave}
+          onClick={handleAdd}
           disabled={!value.trim()}
           className="btn-primary px-5"
         >
-          บันทึก
+          เพิ่ม
         </button>
       </div>
     </Modal>

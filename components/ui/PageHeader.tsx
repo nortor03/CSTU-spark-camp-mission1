@@ -19,7 +19,7 @@ export default function PageHeader({
   tone?: "red" | "gold";
 }) {
   return (
-    <div className="mb-10 flex flex-wrap items-end justify-between gap-4">
+    <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
       <div className="min-w-0">
         <p className={tone === "gold" ? "eyebrow-gold" : "eyebrow"}>{eyebrow}</p>
         <h1 className="display mt-1.5 text-[28px] leading-tight sm:text-3xl">

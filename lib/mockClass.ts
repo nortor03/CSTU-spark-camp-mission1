@@ -10,20 +10,33 @@ import type { Submission } from "./analytics";
    ตัวเลขเดิม ทำให้ demo ต่อหน้ากรรมการได้โดยผลไม่เปลี่ยนกลางคัน
    ========================================================================== */
 
-const MOCK_STUDENTS: { id: string; name: string }[] = [
-  { id: "6510001", name: "กanya ศรีสุข" },
-  { id: "6510002", name: "ณัฐพล วงศ์ทอง" },
-  { id: "6510003", name: "ปิยะดา แก้วมณี" },
-  { id: "6510004", name: "ธนกร ใจดี" },
-  { id: "6510005", name: "ศิริพร บุญมา" },
-  { id: "6510006", name: "อนุชา พงษ์ไพร" },
-  { id: "6510007", name: "เมธาวี จันทร์เพ็ญ" },
-  { id: "6510008", name: "ภูริช สมบูรณ์" },
-  { id: "6510009", name: "ชนากานต์ ทองดี" },
-  { id: "6510010", name: "วรินทร นาคสุข" },
-  { id: "6510011", name: "สุพัตรา อินทร์แก้ว" },
-  { id: "6510012", name: "กิตติพงษ์ ศรีนวล" },
-];
+interface MockStudent {
+  id: string;
+  name: string;
+}
+
+/**
+ * รายชื่อเพื่อนร่วมชั้นจำลอง — ย้ายออกไปเก็บใน .env.local
+ * (ตัวแปร NEXT_PUBLIC_MOCK_STUDENTS เป็น JSON array)
+ * ถ้าไม่ได้ตั้งค่าไว้ = ไม่มีเพื่อนร่วมชั้นจำลอง (รายงานจะเห็นเฉพาะผู้ที่ทำจริง)
+ */
+function loadMockStudents(): MockStudent[] {
+  const raw = process.env.NEXT_PUBLIC_MOCK_STUDENTS;
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      return parsed.filter(
+        (s) => s && typeof s.id === "string" && typeof s.name === "string",
+      );
+    }
+  } catch {
+    // รูปแบบ JSON ผิด — ข้ามไป ใช้ค่าว่าง
+  }
+  return [];
+}
+
+const MOCK_STUDENTS: MockStudent[] = loadMockStudents();
 
 /** PRNG แบบ deterministic (mulberry32) — seed เดียวกันได้ลำดับเดิมเสมอ */
 function makeRng(seed: number): () => number {

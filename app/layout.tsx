@@ -1,16 +1,15 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Sans_Thai } from "next/font/google";
+import { Mitr } from "next/font/google";
 import "./globals.css";
 import { CourseProvider } from "@/lib/courseStore";
 
 /**
- * ฟอนต์เดียวทั้งแอป (เนื้อความ + หัวเรื่อง) — ตัดคอนทราสต์ serif/sans แบบเอกสารวิชาการทิ้ง
- * เปลี่ยนมาไล่น้ำหนักตัวอักษรแทน (bold สำหรับหัวเรื่อง) ให้ดู clean/modern ขึ้น
+ * ฟอนต์เดียวทั้งแอป (เนื้อความ + หัวเรื่อง) — ใช้ฟอนต์ Mitr ที่มีหัวกลมมนและโมเดิร์น
  */
-const plexThai = IBM_Plex_Sans_Thai({
+const mitr = Mitr({
   subsets: ["thai", "latin"],
-  weight: ["300", "400", "500", "600", "700"],
-  variable: "--font-plex-thai",
+  weight: ["300", "400", "500", "600"],
+  variable: "--font-mitr",
   display: "swap",
 });
 
@@ -25,7 +24,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="th" className={plexThai.variable}>
+    <html lang="th" className={mitr.variable}>
       <body className="font-sans antialiased">
         <CourseProvider>{children}</CourseProvider>
       </body>

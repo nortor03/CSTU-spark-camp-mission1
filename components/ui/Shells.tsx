@@ -84,7 +84,7 @@ export function StudentShell({
     <AppShell
       nav={STUDENT_NAV}
       width={width}
-      action={<SignOut href="/student/login" role="นักเรียน" />}
+      action={<SignOut href="/login" role="นักเรียน" />}
     >
       {children}
     </AppShell>

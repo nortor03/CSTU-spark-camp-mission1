@@ -48,7 +48,7 @@ export default function CourseList() {
           </Link>
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="mt-6 flex flex-col divide-y divide-line border-y border-line">
           {courses.map((c) => (
             <CourseCard key={c.id} course={c} />
           ))}
@@ -76,39 +76,30 @@ function CourseCard({ course }: { course: Course }) {
   return (
     <Link
       href={`/course/${course.id}`}
-      className="card group flex flex-col p-5 transition hover:shadow-lift sm:p-6"
+      className="group flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-5 transition-colors hover:bg-paper-50 -mx-4 px-4 sm:-mx-6 sm:px-6"
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="eyebrow">รายวิชา</p>
-          <h2 className="display mt-1 truncate text-xl">{course.subject}</h2>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-3">
+          <h2 className="truncate text-lg font-semibold text-ink-900 group-hover:text-tu-red-600 transition-colors">
+            {course.subject}
+          </h2>
+          <span className="rounded bg-paper-100 px-2 py-0.5 text-[11px] font-medium text-ink-500">
+            รายวิชา
+          </span>
         </div>
-        <span
-          className="mt-1 flex-shrink-0 text-tu-red-300 transition group-hover:text-tu-red-500"
-          aria-hidden
-        >
-          <svg
-            className="h-5 w-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-            strokeWidth={2}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M9 5l7 7-7 7"
-            />
-          </svg>
-        </span>
       </div>
 
-      <hr className="rule-gold my-4" />
-
-      <div className="mt-auto grid grid-cols-3 gap-2 text-center">
-        <Stat value={stats.weeks} label="สัปดาห์" />
-        <Stat value={stats.topics} label="หัวข้อ" />
-        <Stat value={stats.quizzes} label="แบบทดสอบ" />
+      <div className="flex items-center gap-6 sm:gap-10">
+        <div className="flex items-center gap-6">
+          <Stat value={stats.weeks} label="สัปดาห์" />
+          <Stat value={stats.topics} label="หัวข้อ" />
+          <Stat value={stats.quizzes} label="แบบทดสอบ" />
+        </div>
+        <span className="hidden sm:block text-ink-300 transition-colors group-hover:text-tu-red-500">
+          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        </span>
       </div>
     </Link>
   );
@@ -116,9 +107,9 @@ function CourseCard({ course }: { course: Course }) {
 
 function Stat({ value, label }: { value: number; label: string }) {
   return (
-    <div className="rounded-lg bg-paper-50 py-2.5">
-      <p className="text-xl font-bold leading-none text-ink-900">{value}</p>
-      <p className="mt-1 text-[11px] font-medium text-ink-500">{label}</p>
+    <div className="flex flex-col sm:items-center">
+      <span className="text-xl font-semibold text-ink-900">{value}</span>
+      <span className="mt-0.5 text-[13px] text-ink-500">{label}</span>
     </div>
   );
 }

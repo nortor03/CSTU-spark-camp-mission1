@@ -109,7 +109,7 @@ export default function UploadForm({ mode }: { mode: "new" | "slides" }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-4">
       {isNew ? (
         <>
           <div className="grid gap-5 sm:grid-cols-2">
@@ -186,7 +186,7 @@ export default function UploadForm({ mode }: { mode: "new" | "slides" }) {
               ? "กำลังแยก CLO จาก syllabus…"
               : "กำลังประมวลผล…"
             : isNew
-              ? "สร้างรายวิชา + จับหัวข้อด้วย AI"
+              ? "สร้างรายวิชา"
               : "จับหัวข้อจากสไลด์"}
         </button>
       </div>

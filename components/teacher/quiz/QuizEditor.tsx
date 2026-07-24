@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   useForm,
   useFieldArray,
@@ -8,6 +9,7 @@ import {
 } from "react-hook-form";
 import type { Quiz, QuizQuestion } from "@/lib/quiz";
 import { blankChoice, blankQuestion } from "@/lib/quiz";
+import SurveyPreview from "./SurveyPreview";
 
 interface QuizFormValues {
   title: string;
@@ -41,10 +43,15 @@ export default function QuizEditor({
   });
 
   const questions = watch("questions") ?? [];
+  const title = watch("title") ?? quiz.title;
   const totalPoints = questions.reduce(
     (sum, q) => sum + (Number(q?.points) || 0),
     0,
   );
+
+  // สลับดูตัวอย่างแบบ SurveyJS (สิ่งที่นักเรียนจะเห็น) จากค่าที่กำลังแก้
+  const [showPreview, setShowPreview] = useState(false);
+  const previewQuiz: Quiz = { ...quiz, title, questions };
 
   function submit(data: QuizFormValues) {
     onSave({ ...quiz, title: data.title, questions: data.questions });
@@ -62,15 +69,41 @@ export default function QuizEditor({
               {...register("title", { required: true })}
               className="display w-full border-b border-line bg-transparent pb-2 text-2xl outline-none transition focus:border-tu-red-500"
             />
-            <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-500">
+            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-500">
               <span>{quiz.week}</span>
               <span>·</span>
               <span>{fields.length} ข้อ</span>
               <span>·</span>
               <span>{totalPoints} คะแนน</span>
+              <button
+                type="button"
+                onClick={() => setShowPreview((s) => !s)}
+                className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-line px-3 py-1 font-semibold text-ink-600 transition hover:border-tu-red-300 hover:text-tu-red-600"
+                aria-pressed={showPreview}
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-tu-red-500" />
+                {showPreview ? "ซ่อนตัวอย่าง" : "ดูตัวอย่าง (SurveyJS)"}
+              </button>
             </div>
           </div>
         </div>
+
+        {/* ตัวอย่างแบบ SurveyJS — สิ่งที่นักเรียนจะเห็น (อัปเดตตามที่แก้) */}
+        {showPreview && (
+          <div className="card overflow-hidden">
+            <div className="flex items-center gap-2 border-b border-line-soft bg-paper-50 px-5 py-2.5">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-ink-400">
+                ตัวอย่างสำหรับนักเรียน
+              </span>
+              <span className="rounded bg-tu-gold-50 px-1.5 py-0.5 text-[10px] font-bold text-tu-gold-700">
+                SurveyJS
+              </span>
+            </div>
+            <div className="px-2 py-2 sm:px-4">
+              <SurveyPreview quiz={previewQuiz} />
+            </div>
+          </div>
+        )}
 
         {/* การ์ดคำถาม */}
         {fields.map((field, index) => (

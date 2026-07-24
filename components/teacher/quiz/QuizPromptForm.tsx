@@ -146,10 +146,10 @@ export default function QuizPromptForm({
         />
       </div>
 
-      {/* โน้ตเพิ่มเติม */}
+      {/* รายละเอียด */}
       <div>
         <label className="label">
-          โน้ตเพิ่มเติม (ไม่บังคับ)
+          รายละเอียด (ไม่บังคับ)
         </label>
         <textarea
           value={prompt.note}

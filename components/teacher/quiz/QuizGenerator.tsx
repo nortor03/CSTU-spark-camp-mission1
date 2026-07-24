@@ -5,7 +5,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCourse } from "@/lib/courseStore";
 import type { Quiz, QuizPrompt } from "@/lib/quiz";
-import { emptyPrompt, generateMockQuiz } from "@/lib/quiz";
+import { emptyPrompt } from "@/lib/quiz";
+import { generateQuizJSON } from "@/lib/aiQuiz";
 import PageHeader from "@/components/ui/PageHeader";
 import QuizPromptForm from "./QuizPromptForm";
 import QuizEditor from "./QuizEditor";
@@ -85,22 +86,21 @@ export default function QuizGenerator({ week }: { week: string }) {
     }
   }, [hydrated, week, weekTopics, quizzes, getQuiz, isNew, editQuizId]);
 
-  function runGenerate(p: QuizPrompt) {
+  // ส่งโจทย์ให้ AI (ผ่าน seam) แล้วนำควิซที่ได้ไปเปิดหน้าแก้ไข
+  async function runGenerate(p: QuizPrompt) {
     setPrompt(p);
     setPhase("generating");
-    setTimeout(() => {
-      setQuiz(generateMockQuiz(week, p));
-      setPhase("edit");
-    }, 900);
+    const q = await generateQuizJSON(week, p);
+    setQuiz(q);
+    setPhase("edit");
   }
 
-  function regenerate() {
+  async function regenerate() {
     if (!prompt) return;
     setPhase("generating");
-    setTimeout(() => {
-      setQuiz(generateMockQuiz(week, prompt));
-      setPhase("edit");
-    }, 900);
+    const q = await generateQuizJSON(week, prompt);
+    setQuiz(q);
+    setPhase("edit");
   }
 
   function handleSave(saved: Quiz) {

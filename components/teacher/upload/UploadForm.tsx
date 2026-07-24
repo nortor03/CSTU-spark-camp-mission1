@@ -10,6 +10,7 @@ import {
 import { extractSyllabus, type SyllabusExtraction } from "@/lib/syllabus";
 import FileDropzone from "./FileDropzone";
 import SyllabusUpload from "./SyllabusUpload";
+import AiLoading from "@/components/ui/AiLoading";
 
 /** อ่านไฟล์เป็น data URL (base64) เพื่อเก็บ/ดาวน์โหลดภายหลัง */
 function fileToDataUrl(file: File): Promise<string> {
@@ -106,6 +107,16 @@ export default function UploadForm({ mode }: { mode: "new" | "slides" }) {
     }
 
     router.push("/topics");
+  }
+
+  // ระหว่างส่งเอกสารให้ AI วิเคราะห์ — แสดงหน้าโหลด (เอกสารไหลเข้าหาบอท)
+  if (loading) {
+    return (
+      <AiLoading
+        title={extracting ? "กำลังแยก CLO จาก syllabus" : "กำลังวิเคราะห์สไลด์"}
+        subtitle="AI กำลังอ่านเอกสารและจับหัวข้อการสอน"
+      />
+    );
   }
 
   return (

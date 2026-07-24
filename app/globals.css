@@ -396,4 +396,204 @@ input[type="number"] {
   transform: scale(0.985) !important;
 }
 
+/* ---------- AiLoading — เอกสารไหลเข้าหาบอท AI (ระหว่างรอ AI วิเคราะห์) ---------- */
+.ai-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 26px;
+  padding: 48px 24px;
+}
+.ai-loading__stage {
+  position: relative;
+  width: 300px;
+  height: 96px;
+}
+
+/* บอท (คงที่ทางขวา) */
+.ai-loading__bot {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 84px;
+  height: 72px;
+  color: #c8102e;
+  animation: ai-bot-bob 2.4s ease-in-out infinite;
+}
+.ai-loading__bot svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.ai-loading__eye {
+  transform-origin: center;
+  animation: ai-blink 3.2s ease-in-out infinite;
+}
+.ai-loading__bot::after {
+  content: "";
+  position: absolute;
+  inset: -8px -6px;
+  border-radius: 9999px;
+  border: 2px solid #fbdfe2;
+  opacity: 0;
+  animation: ai-ring 2.4s ease-out infinite;
+}
+
+/* เอกสาร (หลายใบ ไหลต่อเนื่อง) */
+.ai-loading__doc {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 46px;
+  height: 56px;
+  color: #c8102e;
+  transform: translateY(-50%);
+  opacity: 0;
+  animation: ai-feed 2.4s cubic-bezier(0.5, 0, 0.7, 1) infinite;
+}
+.ai-loading__doc svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.ai-loading__doc:nth-child(2) {
+  animation-delay: 0.8s;
+}
+.ai-loading__doc:nth-child(3) {
+  animation-delay: 1.6s;
+}
+
+@keyframes ai-feed {
+  0% {
+    left: 0;
+    opacity: 0;
+    transform: translateY(-50%) scale(0.85) rotate(-4deg);
+  }
+  12% {
+    opacity: 1;
+  }
+  60% {
+    left: 150px;
+    opacity: 1;
+    transform: translateY(-50%) scale(1) rotate(0deg);
+  }
+  82% {
+    left: 224px;
+    opacity: 1;
+    transform: translateY(-50%) scale(0.5) rotate(6deg);
+  }
+  92% {
+    left: 236px;
+    opacity: 0;
+    transform: translateY(-50%) scale(0.25) rotate(10deg);
+  }
+  100% {
+    left: 236px;
+    opacity: 0;
+    transform: translateY(-50%) scale(0.2);
+  }
+}
+@keyframes ai-bot-bob {
+  0%,
+  82%,
+  100% {
+    transform: translateY(-50%);
+  }
+  88% {
+    transform: translateY(-58%) scale(1.05);
+  }
+  94% {
+    transform: translateY(-50%);
+  }
+}
+@keyframes ai-blink {
+  0%,
+  45%,
+  55%,
+  100% {
+    transform: scaleY(1);
+  }
+  50% {
+    transform: scaleY(0.1);
+  }
+}
+@keyframes ai-ring {
+  0% {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  85% {
+    opacity: 0;
+  }
+  90% {
+    opacity: 0.9;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.25);
+  }
+}
+
+/* ข้อความ + จุดเด้ง */
+.ai-loading__label {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #c8102e;
+}
+.ai-loading__dot {
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  border-radius: 9999px;
+  background: #c8102e;
+  animation: ai-jump 1.4s ease-in-out infinite;
+}
+.ai-loading__dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.ai-loading__dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+@keyframes ai-jump {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.5;
+  }
+  30% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
+}
+.ai-loading__sub {
+  margin-top: -14px;
+  font-size: 12px;
+  color: #a99c92;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-loading__doc,
+  .ai-loading__bot,
+  .ai-loading__bot::after,
+  .ai-loading__eye,
+  .ai-loading__dot {
+    animation: none !important;
+  }
+  .ai-loading__doc:first-child {
+    opacity: 1;
+    left: 90px;
+  }
+  .ai-loading__doc:nth-child(2),
+  .ai-loading__doc:nth-child(3) {
+    display: none;
+  }
+}
+
 

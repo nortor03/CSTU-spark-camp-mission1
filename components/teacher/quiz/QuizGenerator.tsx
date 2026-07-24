@@ -15,10 +15,37 @@ import QuizChat from "./QuizChat";
 type Phase = "loading" | "prompt" | "generating" | "edit";
 
 /**
- * ตัวควบคุมหลักของหน้าสร้างควิซ 1 สัปดาห์
- * - ดึงหัวข้อของสัปดาห์นั้นจาก store มาเติมในโจทย์ให้อัตโนมัติ
- * - ถ้าเคยบันทึกควิซไว้แล้ว จะเปิดเข้าโหมดแก้ไขทันที
- * - บันทึกแล้วเก็บลง store แล้วกลับหน้าภาพรวม
+ * ตัวควบคุมหลักของหน้าสร้างควิซ 1 สัปดาห์ (state machine 4 เฟส)
+ *   loading → prompt → generating → edit
+ *
+ * ── ท่อข้อมูลฝั่งครู (การ "ส่ง" ระหว่าง component = React props/callback ในหน่วยความจำ
+ *    มีแค่ตอนเรียก AI ที่ JSON วิ่งข้าม network) ──
+ *
+ *   QuizPromptForm  ──onGenerate(prompt)──►  QuizGenerator
+ *     prompt: QuizPrompt {clo,topics,files,count,note}   (object ตรง ๆ ไม่ serialize)
+ *
+ *   QuizGenerator.runGenerate(p):
+ *     generateQuizJSON(week, p)   [lib/aiQuiz.ts = "AI seam"]
+ *       · ตอนนี้: generateMockQuiz (สร้าง Quiz จำลองในเครื่อง)
+ *       · ต่อ AI จริง: fetch("/api/quiz-generate", body: JSON.stringify({week,prompt}))
+ *                      → res.json() → aiJsonToQuiz(aiJson)  ← แปลง JSON ดิบ → type Quiz
+ *                        (validate + gen id ไม่ซ้ำ + หาเฉลย)
+ *     → setQuiz(q) → phase "edit"
+ *
+ *   <QuizEditor quiz={q}/>   [react-hook-form + useFieldArray]
+ *     ครูแก้ title/questions/choices/answer/points → onSave({...quiz, title, questions})
+ *     (คง id/revision/week/isActive เดิม เขียนทับแค่ title+questions)
+ *
+ *   handleSave → saveQuiz(week, quiz)  [courseStore]
+ *     → quizzes[week] = [...]  → persist ลง localStorage
+ *     → นักเรียนดึงชุด isActive ไป render ต่อ (quizToSurveyJSON → SurveyJS)
+ *
+ * ── แชทบอท <QuizChat/> ──
+ *   เป็น mockup ที่ "แยกตัวสมบูรณ์": คำตอบมาจาก PRESET_ANSWERS + setTimeout
+ *   ไม่เรียก AI จริง / ไม่อ่าน-เขียน Quiz หรือ store / ไม่แลก JSON กับใคร
+ *   (ครูอ่านไอเดียแล้วพิมพ์เข้า QuizEditor เอง — คนละท่อกับตัวควิซ)
+ *
+ * แกนกลางของทุกฝั่งคือ type Quiz (lib/quiz.ts) — ครูผลิต, นักเรียนบริโภค
  */
 export default function QuizGenerator({ week }: { week: string }) {
   const router = useRouter();

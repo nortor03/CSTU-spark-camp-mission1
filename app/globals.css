@@ -146,3 +146,254 @@ input[type="number"] {
   animation: shake 0.4s ease-in-out;
 }
 
+/* ---------- SurveyJS — card-based quiz layout ---------- */
+.survey-quiz .sv-root-modern,
+.survey-quiz .sd-root-modern {
+  font-family: var(--font-mitr), sans-serif !important;
+  background-color: transparent !important;
+}
+
+.survey-quiz .sv-container-modern,
+.survey-quiz .sd-container-modern {
+  max-width: 100% !important;
+  padding: 0 !important;
+}
+
+/* SurveyJS ใส่ padding รอบ body (บน 40px) — ตัดออกให้ชิดหัวข้อ */
+.survey-quiz .sd-body,
+.survey-quiz .sd-body.sd-body--responsive,
+.survey-quiz .sd-body.sd-body--static {
+  max-width: 100% !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+/* Hide duplicate survey title — shown in page header instead */
+.survey-quiz .sv-header,
+.survey-quiz .sd-header,
+.survey-quiz .sv-page__title,
+.survey-quiz .sd-page__title {
+  display: none !important;
+}
+
+/* ตัดระยะ margin ระหว่างแถวคำถามที่ SurveyJS ใส่มาเกิน (base-unit * 2) */
+.survey-quiz .sd-row,
+.survey-quiz .sd-row.sd-page__row,
+.survey-quiz .sd-page__row.sd-row--compact {
+  margin-top: 0 !important;
+}
+
+/* ลดช่องว่างระหว่างหัวข้อคำถามกับกลุ่มตัวเลือกที่ SurveyJS ใส่มา */
+.survey-quiz .sd-question__header--location-top {
+  padding-bottom: 0 !important;
+}
+
+/* Questions — cardless, คั่นด้วยเส้นบาง (เข้ากับดีไซน์ cardless ของแอป) */
+.survey-quiz .sv-question,
+.survey-quiz .sd-question {
+  background: transparent !important;
+  border: none !important;
+  border-bottom: 1px solid #F0E8DC !important; /* line-soft */
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  margin-bottom: 0 !important;
+  padding: 1.125rem 0 !important;
+}
+
+.survey-quiz .sv-question:hover,
+.survey-quiz .sd-question:hover {
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+.survey-quiz .sv-question:last-of-type,
+.survey-quiz .sd-question:last-of-type {
+  border-bottom: none !important;
+}
+
+/* คำถามข้อแรก — ไม่ต้องมี padding บนซ้ำกับ progress bar */
+.survey-quiz .sd-row:first-of-type .sv-question,
+.survey-quiz .sd-row:first-of-type .sd-question {
+  padding-top: 0.25rem !important;
+}
+
+/* Question number + title */
+.survey-quiz .sv-question__title,
+.survey-quiz .sd-question__title,
+.survey-quiz .sv-question__title *,
+.survey-quiz .sd-question__title * {
+  font-weight: 600 !important;
+  color: #2A2320 !important; /* ink-800 */
+  font-size: 1.0625rem !important;
+  line-height: 1.55 !important;
+}
+
+/* เลขข้อ — ตัวเลขเปล่า ไม่มีกล่อง */
+.survey-quiz .sv-question__num,
+.survey-quiz .sd-question__num {
+  min-width: 0 !important;
+  margin-right: 0.5rem !important;
+  padding: 0 !important;
+  background: transparent !important;
+  color: #C4B9AF !important; /* ink-300 */
+  font-weight: 700 !important;
+  font-size: 1rem !important;
+}
+
+.survey-quiz .sv-question__required-text,
+.survey-quiz .sd-question__required-text {
+  color: #C8102E !important;
+  margin-left: 0.25rem !important;
+}
+
+/* Choices — cardless rows (ไม่มีกล่อง/กรอบ/เงา) */
+.survey-quiz .sv-selectbase,
+.survey-quiz .sd-selectbase {
+  margin-top: 0.25rem !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.125rem !important;
+}
+
+.survey-quiz .sv-item,
+.survey-quiz .sd-item,
+.survey-quiz .sd-selectbase__item {
+  padding: 0 !important;
+  margin-bottom: 0 !important;
+  border: none !important;
+  border-radius: 8px !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  width: 100% !important;
+}
+
+/* label ห่อทั้ง radio + ข้อความ — จัด layout ที่นี่ ไม่ใช่ที่ control-label */
+.survey-quiz .sv-selectbase__label,
+.survey-quiz .sd-selectbase__label {
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 0.75rem !important;
+  flex: 1 !important;
+  width: 100% !important;
+  padding: 0.4375rem 0.75rem !important;
+  border-radius: 8px !important;
+  cursor: pointer !important;
+  transition: background-color 0.15s ease !important;
+}
+
+.survey-quiz .sv-item:hover .sd-selectbase__label,
+.survey-quiz .sd-item:hover .sd-selectbase__label,
+.survey-quiz .sd-selectbase__item:hover .sd-selectbase__label {
+  background-color: #F7F0E6 !important; /* paper-100 */
+}
+
+/* ใช้ class ที่ SurveyJS toggle จริง (.sd-item--checked) แทน :has(input:checked)
+   ที่บางเบราว์เซอร์เรนเดอร์ไม่นิ่ง → ให้ทุกข้อที่ถูกเลือกหน้าตาเหมือนกัน */
+.survey-quiz .sd-item--checked .sd-selectbase__label {
+  background-color: #FDF2F3 !important; /* tu-red-50 จาง */
+}
+
+.survey-quiz .sv-item__control-label,
+.survey-quiz .sd-item__control-label {
+  flex: 1 !important;
+  width: auto !important;
+  min-width: 0 !important;
+  padding: 0 !important;
+  color: #4A403A !important;
+  font-size: 0.985rem !important;
+  line-height: 1.45 !important;
+}
+
+.survey-quiz .sd-item--checked .sd-item__control-label {
+  color: #851421 !important;
+  font-weight: 600 !important;
+}
+
+/* Radio circle — วงกลมนอก (สถานะยังไม่เลือก) */
+.survey-quiz .sd-item__decorator,
+.survey-quiz .sd-radio__decorator,
+.survey-quiz .sv-radio__decorator {
+  flex-shrink: 0 !important;
+  width: 1.125rem !important;
+  height: 1.125rem !important;
+  margin-top: 0.125rem !important;
+  border: 2px solid #D6C8B4 !important;
+  border-radius: 9999px !important;
+  background: #ffffff !important;
+  box-shadow: none !important;
+  transition: border-color 0.15s ease, background-color 0.15s ease !important;
+}
+
+/* เลือกแล้ว — วงกลมทึบแดง */
+.survey-quiz .sd-item--checked .sd-radio__decorator,
+.survey-quiz .sd-radio--checked .sd-radio__decorator {
+  border-color: #C8102E !important;
+  background-color: #C8102E !important;
+  box-shadow: none !important;
+}
+
+/* จุดสีขาวตรงกลาง (ใช้ pseudo :after ตามที่ SurveyJS วางไว้ — เรนเดอร์นิ่งกว่า) */
+.survey-quiz .sd-item--checked .sd-radio__decorator:after,
+.survey-quiz .sd-radio--checked .sd-radio__decorator:after {
+  background-color: #ffffff !important;
+  width: 0.4375rem !important;
+  height: 0.4375rem !important;
+}
+
+/* กันโฟกัสทำให้จุดกลางเปลี่ยนเป็นสีแดง */
+.survey-quiz .sd-radio--checked .sd-radio__control:focus + .sd-radio__decorator:after {
+  background-color: #ffffff !important;
+}
+
+/* กล่อง error "Response required" — ขยับขึ้นให้ชิดตัวเลือก */
+.survey-quiz .sd-question__erbox,
+.survey-quiz .sd-question__erbox--below-question {
+  margin-top: 0.125rem !important;
+}
+
+.survey-quiz .sd-error {
+  padding: 0.375rem 0.625rem !important;
+}
+
+/* Submit footer — sticky bottom bar */
+.survey-quiz .sv-action-bar,
+.survey-quiz .sd-action-bar,
+.survey-quiz .sd-footer,
+.survey-quiz .sv-footer {
+  position: static !important;
+  padding: 1.25rem 0 0 !important;
+  margin-top: 1.5rem !important;
+  border-top: 1px solid #E8DED0 !important; /* line */
+  background: transparent !important;
+  backdrop-filter: none !important;
+  box-shadow: none !important;
+  display: flex !important;
+  justify-content: flex-end !important;
+}
+
+.survey-quiz .sv-btn,
+.survey-quiz .sd-btn {
+  width: auto !important;
+  background-color: #C8102E !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  font-size: 0.875rem !important;
+  padding: 0.625rem 1.75rem !important;
+  border-radius: 8px !important;
+  border: none !important;
+  box-shadow: 0 1px 2px rgba(42, 35, 32, 0.06) !important;
+  transition: background-color 0.2s, transform 0.1s !important;
+  letter-spacing: 0.01em !important;
+}
+
+.survey-quiz .sv-btn:hover,
+.survey-quiz .sd-btn:hover {
+  background-color: #A80F27 !important;
+}
+
+.survey-quiz .sv-btn:active,
+.survey-quiz .sd-btn:active {
+  transform: scale(0.985) !important;
+}
+
+

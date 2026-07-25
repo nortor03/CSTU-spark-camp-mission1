@@ -45,6 +45,7 @@ export default function QuizPromptForm({
     if (prompt.topics.length === 0)
       return setError("กรุณาเลือกหัวข้อที่จะทดสอบอย่างน้อย 1 หัวข้อ");
     if (prompt.count < 1) return setError("จำนวนข้อต้องมากกว่า 0");
+    if (!prompt.note.trim()) return setError("กรุณากรอกรายละเอียด");
     onGenerate(prompt);
   }
 
@@ -149,7 +150,7 @@ export default function QuizPromptForm({
       {/* รายละเอียด */}
       <div>
         <label className="label">
-          รายละเอียด (ไม่บังคับ)
+          รายละเอียด <span className="text-tu-red-500">*</span>
         </label>
         <textarea
           value={prompt.note}

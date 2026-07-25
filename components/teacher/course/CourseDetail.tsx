@@ -6,6 +6,7 @@ import { useCourse, topicsFromSyllabusSchedule } from "@/lib/courseStore";
 import { weekNumber, resolveHex, tagStyles } from "@/lib/weeks";
 import { extractSyllabus } from "@/lib/syllabus";
 import PageHeader from "@/components/ui/PageHeader";
+import Modal, { ModalHeader } from "@/components/ui/Modal";
 import { ChevronDown, Pencil, Trash2, FileText } from "lucide-react";
 import type { Topic } from "@/lib/types";
 import type { Quiz } from "@/lib/quiz";
@@ -46,6 +47,42 @@ export default function CourseDetail({ courseId }: { courseId: string }) {
       const next = new Set(prev);
       if (next.has(week)) next.delete(week);
       else next.add(week);
+      return next;
+    });
+  }
+
+  // เปลี่ยน "ชุดที่ใช้งาน" ต้องกดยืนยันก่อน — เก็บตัวเลือกที่ค้าง (ยังไม่บันทึก) ต่อสัปดาห์
+  const [pendingActive, setPendingActive] = useState<Record<string, string>>({});
+  // ป็อปอัปลบ/เตือน — เก็บควิซที่กำลังจะลบ
+  const [deleteTarget, setDeleteTarget] = useState<{
+    week: string;
+    quiz: Quiz;
+  } | null>(null);
+
+  /** เลือกชุด (ยังไม่บันทึก) — ถ้าเลือกกลับเป็นชุดเดิมที่ใช้อยู่ ถือว่าไม่มีการเปลี่ยน */
+  function pickActive(week: string, quizId: string, committedId?: string) {
+    setPendingActive((prev) => {
+      const next = { ...prev };
+      if (quizId === committedId) delete next[week];
+      else next[week] = quizId;
+      return next;
+    });
+  }
+  /** บันทึกการเปลี่ยนชุดที่ใช้งานของสัปดาห์นั้น */
+  function saveActive(week: string) {
+    const pid = pendingActive[week];
+    if (pid) toggleQuizActive(week, pid);
+    setPendingActive((prev) => {
+      const next = { ...prev };
+      delete next[week];
+      return next;
+    });
+  }
+  /** ยกเลิกการเปลี่ยน — กลับไปใช้ชุดที่บันทึกไว้ */
+  function cancelActive(week: string) {
+    setPendingActive((prev) => {
+      const next = { ...prev };
+      delete next[week];
       return next;
     });
   }
@@ -124,13 +161,20 @@ export default function CourseDetail({ courseId }: { courseId: string }) {
   const unassigned = course.topics.filter((t) => !t.weekAssigned).length;
 
   function handleDelete(week: string, quiz: Quiz) {
-    if (
-      confirm(
-        `ลบ "${quiz.title}" ออกจาก ${week}?\nการลบนี้ย้อนกลับไม่ได้`,
-      )
-    ) {
-      deleteQuiz(week, quiz.id);
-    }
+    setDeleteTarget({ week, quiz });
+  }
+
+  function confirmDelete() {
+    if (!deleteTarget) return;
+    deleteQuiz(deleteTarget.week, deleteTarget.quiz.id);
+    // ถ้าตัวที่ลบเป็นตัวที่ค้างเลือกไว้ ให้เคลียร์ค่าที่ค้างของสัปดาห์นั้น
+    setPendingActive((prev) => {
+      if (prev[deleteTarget.week] !== deleteTarget.quiz.id) return prev;
+      const next = { ...prev };
+      delete next[deleteTarget.week];
+      return next;
+    });
+    setDeleteTarget(null);
   }
 
   return (
@@ -279,6 +323,12 @@ export default function CourseDetail({ courseId }: { courseId: string }) {
             const colorKey = course.weekConfig?.[row.week]?.colorKey;
             const hex = resolveHex(colorKey);
             const soft = tagStyles(colorKey).soft;
+            // ชุดที่ใช้งานจริง (บันทึกแล้ว) vs ชุดที่เพิ่งเลือก (ยังไม่บันทึก)
+            const committedActiveId = row.quizzes.find((q) => q.isActive)?.id;
+            const selectedId = pendingActive[row.week] ?? committedActiveId;
+            const hasPending =
+              pendingActive[row.week] != null &&
+              pendingActive[row.week] !== committedActiveId;
 
             // เลขสัปดาห์ตัวใหญ่ (สีตามสัปดาห์) + คำว่า WEEK
             const WeekNum = (
@@ -367,17 +417,19 @@ export default function CourseDetail({ courseId }: { courseId: string }) {
                         {/* ปุ่มเลือกชุดที่ใช้งาน (active ได้ทีละชุดต่อสัปดาห์) */}
                         <button
                           type="button"
-                          onClick={() => toggleQuizActive(row.week, q.id)}
-                          title={q.isActive ? "ชุดที่ใช้งานอยู่" : "ตั้งเป็นชุดที่ใช้งาน"}
-                          aria-pressed={q.isActive}
-                          className={`grid h-[19px] w-[19px] flex-shrink-0 place-items-center rounded-full border-2 bg-white transition ${q.isActive ? "" : "border-line-strong"}`}
+                          onClick={() =>
+                            pickActive(row.week, q.id, committedActiveId)
+                          }
+                          title={q.id === selectedId ? "ชุดที่เลือก" : "เลือกชุดนี้"}
+                          aria-pressed={q.id === selectedId}
+                          className={`grid h-[19px] w-[19px] flex-shrink-0 place-items-center rounded-full border-2 bg-white transition ${q.id === selectedId ? "" : "border-line-strong"}`}
                           style={
-                            q.isActive
+                            q.id === selectedId
                               ? { backgroundColor: hex, borderColor: hex }
                               : undefined
                           }
                         >
-                          {q.isActive && (
+                          {q.id === selectedId && (
                             <span className="h-1.5 w-1.5 rounded-full bg-white" />
                           )}
                         </button>
@@ -433,6 +485,31 @@ export default function CourseDetail({ courseId }: { courseId: string }) {
                       </div>
                     ))}
 
+                    {/* แถบยืนยันเมื่อมีการเปลี่ยนชุดที่ใช้งาน (ยังไม่บันทึก) */}
+                    {hasPending && (
+                      <div className="mt-1 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-tu-gold-200 bg-tu-gold-50 px-3.5 py-2.5">
+                        <span className="text-xs font-medium text-tu-gold-800">
+                          มีการเปลี่ยนชุดที่ใช้งาน — ยังไม่บันทึก
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => cancelActive(row.week)}
+                            className="rounded-lg px-3 py-1.5 text-xs font-semibold text-ink-500 transition hover:bg-paper-200"
+                          >
+                            ยกเลิก
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => saveActive(row.week)}
+                            className="rounded-lg bg-tu-red-500 px-3.5 py-1.5 text-xs font-semibold text-white transition hover:bg-tu-red-600"
+                          >
+                            บันทึกการเปลี่ยนแปลง
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
                     {/* สร้างควิซเพิ่ม */}
                     <div className="pt-1.5">{createLink("สร้างควิซเพิ่ม")}</div>
                   </div>
@@ -442,6 +519,57 @@ export default function CourseDetail({ courseId }: { courseId: string }) {
           })}
         </div>
       )}
+
+      {/* ป็อปอัปลบ / เตือนเมื่อพยายามลบชุดที่ใช้งานอยู่ */}
+      <Modal open={deleteTarget !== null} onClose={() => setDeleteTarget(null)}>
+        {deleteTarget &&
+          (deleteTarget.quiz.isActive ? (
+            <>
+              <ModalHeader title="ลบชุดนี้ไม่ได้" />
+              <p className="text-sm leading-relaxed text-ink-600">
+                “{deleteTarget.quiz.title}” เป็น
+                <span className="font-semibold text-ink-800">
+                  ชุดที่ใช้งานอยู่
+                </span>{" "}
+                ของ{deleteTarget.week} — กรุณาเปลี่ยนไปใช้ชุดอื่น
+                (แล้วกดบันทึกการเปลี่ยนแปลง) ก่อน จึงจะลบชุดนี้ได้
+              </p>
+              <div className="mt-6 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setDeleteTarget(null)}
+                  className="btn-primary px-5"
+                >
+                  เข้าใจแล้ว
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <ModalHeader title="ยืนยันการลบ" />
+              <p className="text-sm leading-relaxed text-ink-600">
+                ต้องการลบ “{deleteTarget.quiz.title}” ออกจาก{deleteTarget.week}{" "}
+                ใช่ไหม? การลบนี้ย้อนกลับไม่ได้
+              </p>
+              <div className="mt-6 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setDeleteTarget(null)}
+                  className="btn-ghost"
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmDelete}
+                  className="rounded-lg bg-tu-red-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-tu-red-600"
+                >
+                  ลบ
+                </button>
+              </div>
+            </>
+          ))}
+      </Modal>
     </div>
   );
 }

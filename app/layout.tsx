@@ -8,7 +8,7 @@ import { CourseProvider } from "@/lib/courseStore";
  */
 const mitr = Mitr({
   subsets: ["thai", "latin"],
-  weight: ["300", "400", "500", "600"],
+  weight: ["300", "400", "500", "600", "700"],
   variable: "--font-mitr",
   display: "swap",
 });

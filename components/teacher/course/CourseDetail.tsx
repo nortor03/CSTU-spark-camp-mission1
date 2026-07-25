@@ -6,7 +6,7 @@ import { useCourse, topicsFromSyllabusSchedule } from "@/lib/courseStore";
 import { weekNumber, resolveHex, tagStyles } from "@/lib/weeks";
 import { extractSyllabus } from "@/lib/syllabus";
 import PageHeader from "@/components/ui/PageHeader";
-import { ChevronDown, Pencil, Trash2 } from "lucide-react";
+import { ChevronDown, Pencil, Trash2, FileText } from "lucide-react";
 import type { Topic } from "@/lib/types";
 import type { Quiz } from "@/lib/quiz";
 
@@ -165,7 +165,7 @@ export default function CourseDetail({ courseId }: { courseId: string }) {
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-paper-50 px-4 py-3">
         <div className="flex min-w-0 items-center gap-2.5">
           <span className="grid h-8 w-8 flex-shrink-0 place-items-center rounded-md bg-tu-red-50 text-tu-red-600">
-            <DocIcon />
+            <FileText className="h-4 w-4" strokeWidth={1.8} />
           </span>
           <div className="min-w-0">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-400">
@@ -443,23 +443,5 @@ export default function CourseDetail({ courseId }: { courseId: string }) {
         </div>
       )}
     </div>
-  );
-}
-
-function DocIcon() {
-  return (
-    <svg
-      className="h-4 w-4"
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-      strokeWidth={1.8}
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
-      />
-    </svg>
   );
 }

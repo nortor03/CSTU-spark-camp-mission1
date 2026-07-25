@@ -4,6 +4,15 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { type ReactNode, useState } from "react";
 import Brand from "./Brand";
+import {
+  Menu,
+  X,
+  BookOpen,
+  LayoutGrid,
+  Upload,
+  ClipboardCheck,
+  BarChart3,
+} from "lucide-react";
 
 export interface NavItem {
   href: string;
@@ -50,11 +59,7 @@ export default function AppShell({
                 className="text-white hover:text-white/80 transition-colors p-1 -ml-1 rounded focus:outline-none focus:ring-2 focus:ring-white/50"
                 aria-label="Open menu"
               >
-                <svg viewBox="0 0 24 24" className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="3" y1="12" x2="21" y2="12" />
-                  <line x1="3" y1="6" x2="21" y2="6" />
-                  <line x1="3" y1="18" x2="21" y2="18" />
-                </svg>
+                <Menu className="w-6 h-6" strokeWidth={2} />
               </button>
             )}
             <Link href="/" className="rounded-md">
@@ -90,10 +95,7 @@ export default function AppShell({
                   className="text-white hover:text-white/80 p-1 -ml-1 rounded transition-colors focus:outline-none focus:ring-2 focus:ring-white/50"
                   aria-label="Close menu"
                 >
-                  <svg viewBox="0 0 24 24" className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="18" y1="6" x2="6" y2="18" />
-                    <line x1="6" y1="6" x2="18" y2="18" />
-                  </svg>
+                  <X className="w-6 h-6" strokeWidth={2} />
                 </button>
                 <div className="ml-3 mt-[1px]">
                   <Brand size="sm" variant="light" />
@@ -143,47 +145,10 @@ export default function AppShell({
   );
 }
 
-/* ---------- ไอคอนเมนู ---------- */
+/* ---------- ไอคอนเมนู (lucide) ---------- */
 
-const stroke = {
-  fill: "none",
-  stroke: "currentColor",
-  strokeWidth: 1.8,
-  strokeLinecap: "round" as const,
-  strokeLinejoin: "round" as const,
-};
-
-export const IconCourse = (
-  <svg viewBox="0 0 24 24" {...stroke}>
-    <path d="M4 5.5A1.5 1.5 0 015.5 4H10a2 2 0 012 2v13a2 2 0 00-2-2H5.5A1.5 1.5 0 014 15.5v-10zM20 5.5A1.5 1.5 0 0018.5 4H14a2 2 0 00-2 2v13a2 2 0 012-2h4.5a1.5 1.5 0 001.5-1.5v-10z" />
-  </svg>
-);
-
-export const IconTopics = (
-  <svg viewBox="0 0 24 24" {...stroke}>
-    <rect x="3.5" y="3.5" width="7" height="7" rx="1.5" />
-    <rect x="13.5" y="3.5" width="7" height="7" rx="1.5" />
-    <rect x="3.5" y="13.5" width="7" height="7" rx="1.5" />
-    <rect x="13.5" y="13.5" width="7" height="7" rx="1.5" />
-  </svg>
-);
-
-export const IconUpload = (
-  <svg viewBox="0 0 24 24" {...stroke}>
-    <path d="M12 16V4m0 0L8 8m4-4l4 4M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2" />
-  </svg>
-);
-
-export const IconQuiz = (
-  <svg viewBox="0 0 24 24" {...stroke}>
-    <path d="M9 11l2 2 4-4" />
-    <rect x="4" y="3.5" width="16" height="17" rx="2.5" />
-  </svg>
-);
-
-export const IconReport = (
-  <svg viewBox="0 0 24 24" {...stroke}>
-    <path d="M4 20h16" />
-    <path d="M7 20v-6M12 20V7M17 20v-9" />
-  </svg>
-);
+export const IconCourse = <BookOpen strokeWidth={1.8} />;
+export const IconTopics = <LayoutGrid strokeWidth={1.8} />;
+export const IconUpload = <Upload strokeWidth={1.8} />;
+export const IconQuiz = <ClipboardCheck strokeWidth={1.8} />;
+export const IconReport = <BarChart3 strokeWidth={1.8} />;

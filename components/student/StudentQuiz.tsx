@@ -6,6 +6,7 @@ import { useCourse } from "@/lib/courseStore";
 import type { Quiz } from "@/lib/quiz";
 import { gradeQuiz, type QuizResult, type StudentAnswers } from "@/lib/feedback";
 import SurveyQuizForm from "./SurveyQuizForm";
+import { ChevronLeft } from "lucide-react";
 
 type Phase = "loading" | "empty" | "doing" | "result";
 
@@ -105,21 +106,7 @@ export default function StudentQuiz({ week }: { week: string }) {
             href="/student"
             className="-ml-2.5 inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium text-ink-500 transition hover:bg-paper-200 hover:text-ink-800"
           >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 16 16"
-              fill="none"
-              aria-hidden
-            >
-              <path
-                d="M10 12L6 8l4-4"
-                stroke="currentColor"
-                strokeWidth="1.75"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
+            <ChevronLeft className="h-4 w-4" strokeWidth={1.75} aria-hidden />
             ออก
           </Link>
           <span className="rounded-full bg-tu-red-50 px-3 py-1 text-[11px] font-bold text-tu-red-600 ring-1 ring-tu-red-100">

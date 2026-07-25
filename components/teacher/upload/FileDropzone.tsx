@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { Upload, FileText } from "lucide-react";
 
 /** พื้นที่ลาก-วางหรือเลือกไฟล์ PDF */
 export default function FileDropzone({
@@ -47,19 +48,7 @@ export default function FileDropzone({
         }`}
       >
         <span className="grid h-11 w-11 place-items-center rounded-full bg-white text-tu-red-500 shadow-card">
-          <svg
-            className="h-5 w-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.8}
-              d="M12 16V4m0 0L8 8m4-4l4 4M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2"
-            />
-          </svg>
+          <Upload className="h-5 w-5" strokeWidth={1.8} />
         </span>
         <p className="mt-1 text-sm font-semibold text-ink-700">
           ลากและวางไฟล์ หรือ{" "}
@@ -86,19 +75,10 @@ export default function FileDropzone({
               className="flex items-center justify-between rounded-lg border border-line bg-white px-3 py-2"
             >
               <span className="flex min-w-0 items-center gap-2">
-                <svg
+                <FileText
                   className="h-4 w-4 flex-shrink-0 text-tu-red-500"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
-                  />
-                </svg>
+                  strokeWidth={2}
+                />
                 <span className="truncate text-xs text-ink-700">
                   {file.name}
                 </span>

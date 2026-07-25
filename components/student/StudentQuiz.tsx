@@ -6,6 +6,7 @@ import { useCourse } from "@/lib/courseStore";
 import type { Quiz } from "@/lib/quiz";
 import { gradeQuiz, type QuizResult, type StudentAnswers } from "@/lib/feedback";
 import SurveyQuizForm from "./SurveyQuizForm";
+import { ChevronDown } from "lucide-react";
 
 type Phase = "loading" | "empty" | "doing" | "result";
 
@@ -194,6 +195,20 @@ function ResultView({
 }) {
   const percent = Math.round((result.score / result.total) * 100);
 
+  // สถานะของ "ทบทวนรายข้อ" — ตัวกรอง + accordion (เปิดข้อที่ตอบผิดไว้ให้ก่อน)
+  const wrongIds = result.questions
+    .filter((r) => !r.isCorrect)
+    .map((r) => r.question.id);
+  const [filter, setFilter] = useState<"all" | "wrong">("all");
+  const [openIds, setOpenIds] = useState<Set<string>>(() => new Set(wrongIds));
+  const toggleOpen = (id: string) =>
+    setOpenIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
   return (
     <div className="animate-fade-in">
       {/* Score summary card */}
@@ -221,84 +236,132 @@ function ResultView({
         </div>
       </div>
 
-      {/* Per-question review */}
-      <div className="space-y-4">
-        {result.questions.map((r, i) => (
-          <div
-            key={r.question.id}
-            className={`overflow-hidden rounded-2xl border bg-white shadow-card ${
-              r.isCorrect ? "border-emerald-200" : "border-tu-red-100"
-            }`}
-          >
-            <div
-              className={`flex items-start justify-between gap-3 px-5 py-4 ${
-                r.isCorrect ? "bg-emerald-50/60" : "bg-tu-red-50/40"
+      {/* Per-question review — accordion + ตัวกรอง (ข้อที่ผิดกางไว้ให้) */}
+      <div className="mt-8">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="display text-lg">ทบทวนรายข้อ</h2>
+          <div className="inline-flex gap-1 rounded-xl border border-line bg-paper-200 p-1">
+            <button
+              type="button"
+              onClick={() => setFilter("all")}
+              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                filter === "all"
+                  ? "bg-white text-ink-900 shadow-sm"
+                  : "text-ink-500 hover:text-ink-700"
               }`}
             >
-              <div className="flex gap-3">
-                <span
-                  className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg text-xs font-bold ${
-                    r.isCorrect
-                      ? "bg-emerald-100 text-emerald-700"
-                      : "bg-tu-red-100 text-tu-red-700"
-                  }`}
-                >
-                  {i + 1}
-                </span>
-                <p className="text-sm font-semibold leading-snug text-ink-800">
-                  {r.question.question}
-                </p>
-              </div>
-              <span
-                className={`flex-shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-bold ring-1 ${
-                  r.isCorrect
-                    ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
-                    : "bg-tu-red-50 text-tu-red-700 ring-tu-red-200"
+              ทั้งหมด ({result.questions.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilter("wrong")}
+              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                filter === "wrong"
+                  ? "bg-white text-ink-900 shadow-sm"
+                  : "text-ink-500 hover:text-ink-700"
+              }`}
+            >
+              เฉพาะที่ผิด ({wrongIds.length})
+            </button>
+          </div>
+        </div>
+
+        <div className="space-y-2.5">
+          {result.questions.map((r, i) => {
+            if (filter === "wrong" && r.isCorrect) return null;
+            const open = openIds.has(r.question.id);
+            const ok = r.isCorrect;
+            return (
+              <div
+                key={r.question.id}
+                className={`overflow-hidden rounded-2xl border border-l-4 bg-white ${
+                  ok
+                    ? "border-emerald-100 border-l-emerald-500"
+                    : "border-tu-red-100 border-l-tu-red-500"
                 }`}
               >
-                {r.isCorrect ? "ถูก" : "ผิด"}
-              </span>
-            </div>
-
-            <div className="space-y-1.5 px-5 py-4">
-              {r.question.choices.map((c) => {
-                const isCorrect = c.id === r.correctId;
-                const isChosen = c.id === r.chosenId;
-                return (
-                  <div
-                    key={c.id}
-                    className={`flex items-center gap-2.5 rounded-xl px-3.5 py-2.5 text-sm ${
-                      isCorrect
-                        ? "bg-emerald-50 font-semibold text-emerald-800 ring-1 ring-emerald-200"
-                        : isChosen
-                          ? "bg-tu-red-50 text-tu-red-700 ring-1 ring-tu-red-200"
-                          : "text-ink-600"
+                {/* หัวข้อ — กดกาง/พับ */}
+                <button
+                  type="button"
+                  onClick={() => toggleOpen(r.question.id)}
+                  aria-expanded={open}
+                  className="flex w-full items-center gap-3 px-4 py-3.5 text-left"
+                >
+                  <span
+                    className={`grid h-6 w-6 flex-shrink-0 place-items-center rounded-lg text-xs font-bold ${
+                      ok
+                        ? "bg-emerald-100 text-emerald-700"
+                        : "bg-tu-red-100 text-tu-red-700"
                     }`}
                   >
-                    <span className="w-4 flex-shrink-0 text-center text-xs font-bold">
-                      {isCorrect ? "✓" : isChosen ? "✕" : ""}
-                    </span>
-                    {c.text}
-                    {isChosen && !isCorrect && (
-                      <span className="ml-auto text-[10px] text-ink-400">
-                        คำตอบของคุณ
-                      </span>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+                    {i + 1}
+                  </span>
+                  <span className="min-w-0 flex-1 text-sm font-semibold leading-snug text-ink-800">
+                    {r.question.question}
+                  </span>
+                  <span
+                    className={`flex-shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-bold ring-1 ${
+                      ok
+                        ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
+                        : "bg-tu-red-50 text-tu-red-700 ring-tu-red-200"
+                    }`}
+                  >
+                    {ok ? "ถูก" : "ผิด"}
+                  </span>
+                  <ChevronDown
+                    className={`h-4 w-4 flex-shrink-0 text-ink-400 transition-transform ${
+                      open ? "rotate-180" : ""
+                    }`}
+                    aria-hidden
+                  />
+                </button>
 
-            <div className="border-t border-line-soft bg-paper-50 px-5 py-4">
-              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-tu-gold-700">
-                คำแนะนำจาก AI
-              </p>
-              <p className="mt-1.5 text-xs leading-relaxed text-ink-600">
-                {r.feedback}
-              </p>
-            </div>
-          </div>
-        ))}
+                {/* เนื้อหา — ตัวเลือก + คำแนะนำ AI */}
+                {open && (
+                  <div className="px-4 pb-4">
+                    <div className="space-y-1.5">
+                      {r.question.choices.map((c) => {
+                        const isCorrect = c.id === r.correctId;
+                        const isChosen = c.id === r.chosenId;
+                        return (
+                          <div
+                            key={c.id}
+                            className={`flex items-center gap-2.5 rounded-xl px-3.5 py-2.5 text-sm ${
+                              isCorrect
+                                ? "bg-emerald-50 font-semibold text-emerald-800 ring-1 ring-emerald-200"
+                                : isChosen
+                                  ? "bg-tu-red-50 text-tu-red-700 ring-1 ring-tu-red-200"
+                                  : "text-ink-600"
+                            }`}
+                          >
+                            <span className="w-4 flex-shrink-0 text-center text-xs font-bold">
+                              {isCorrect ? "✓" : isChosen ? "✕" : ""}
+                            </span>
+                            {c.text}
+                            {isChosen && !isCorrect && (
+                              <span className="ml-auto text-[10px] text-ink-400">
+                                คำตอบของคุณ
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <div className="mt-3 rounded-xl border border-tu-gold-200 bg-tu-gold-50 px-4 py-3">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-tu-gold-700">
+                        ✦ คำแนะนำจาก AI
+                      </p>
+                      <p className="mt-1.5 text-xs leading-relaxed text-ink-600">
+                        {r.feedback}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-6">

@@ -217,10 +217,11 @@ input[type="number"] {
   padding-top: 0.25rem !important;
 }
 
-/* Question number + title */
+/* Question title — ขนาด/บรรทัดของคำถาม (SurveyJS v2 ใช้ .sd-element__title) */
 .survey-quiz .sv-question__title,
 .survey-quiz .sd-question__title,
-.survey-quiz .sv-question__title *,
+.survey-quiz .sd-element__title,
+.survey-quiz .sd-element__title span,
 .survey-quiz .sd-question__title * {
   font-weight: 600 !important;
   color: #2A2320 !important; /* ink-800 */
@@ -228,16 +229,18 @@ input[type="number"] {
   line-height: 1.55 !important;
 }
 
-/* เลขข้อ — ตัวเลขเปล่า ไม่มีกล่อง */
-.survey-quiz .sv-question__num,
-.survey-quiz .sd-question__num {
-  min-width: 0 !important;
-  margin-right: 0.5rem !important;
-  padding: 0 !important;
+/* เลขข้อ — ใช้ font-size/line-height เท่าคำถาม เพื่อให้ baseline ตรงกับบรรทัดแรก
+   (float ค้างซ้ายของ SurveyJS = hanging indent คงไว้) */
+.survey-quiz .sd-element__num,
+.survey-quiz .sd-question__num,
+.survey-quiz .sv-question__num {
   background: transparent !important;
   color: #C4B9AF !important; /* ink-300 */
   font-weight: 700 !important;
-  font-size: 1rem !important;
+  font-size: 1.0625rem !important; /* = ขนาดคำถาม */
+  line-height: 1.55 !important; /* = line-height คำถาม → เลขตรงบรรทัดแรก */
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
 }
 
 .survey-quiz .sv-question__required-text,

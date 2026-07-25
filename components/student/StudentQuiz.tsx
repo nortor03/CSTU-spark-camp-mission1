@@ -98,8 +98,8 @@ export default function StudentQuiz({ week }: { week: string }) {
 
   return (
     <div className="animate-fade-in">
-      {/* Sticky quiz header */}
-      <div className="sticky top-0 z-10 -mx-4 mb-6 border-b border-line-soft bg-paper-50/90 px-4 pb-5 pt-1 backdrop-blur-md sm:-mx-6 sm:px-6">
+      {/* Quiz header — เลื่อนตามเนื้อหา (ไม่ sticky) เพื่อไม่ให้ชื่อควิซค้างเวลาเลื่อนลง */}
+      <div className="mb-6 border-b border-line-soft pb-5 pt-1">
         <div className="mb-4 flex items-center justify-between gap-3">
           <Link
             href="/student"

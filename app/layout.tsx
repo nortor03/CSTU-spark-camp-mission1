@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
-import { Mitr } from "next/font/google";
+import { Noto_Sans_Thai } from "next/font/google";
 import "./globals.css";
 import { CourseProvider } from "@/lib/courseStore";
 
 /**
- * ฟอนต์เดียวทั้งแอป (เนื้อความ + หัวเรื่อง) — ใช้ฟอนต์ Mitr ที่มีหัวกลมมนและโมเดิร์น
+ * ฟอนต์เดียวทั้งแอป (เนื้อความ + หัวเรื่อง) — Noto Sans Thai: สะอาด เป็นกลาง โมเดิร์น
+ * หมายเหตุ: คงชื่อตัวแปร CSS เดิม (--font-mitr) ไว้ เพื่อให้จุดอื่นที่อ้างถึง
+ * (tailwind, surveyTheme, globals) เปลี่ยนตามอัตโนมัติโดยไม่มีตกหล่น
  */
-const mitr = Mitr({
+const appFont = Noto_Sans_Thai({
   subsets: ["thai", "latin"],
   weight: ["300", "400", "500", "600", "700"],
   variable: "--font-mitr",
@@ -24,7 +26,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="th" className={mitr.variable}>
+    <html lang="th" className={appFont.variable}>
       <body className="font-sans antialiased">
         <CourseProvider>{children}</CourseProvider>
       </body>

@@ -5,6 +5,7 @@ import { useMemo } from "react";
 import { useCourse, type Course } from "@/lib/courseStore";
 import { weekNumber } from "@/lib/weeks";
 import PageHeader from "@/components/ui/PageHeader";
+import { ChevronRight } from "lucide-react";
 
 /**
  * หน้าภาพรวมรายวิชา — สรุป "ทุกวิชา" ที่อาจารย์คนนี้สอน
@@ -99,9 +100,7 @@ function CourseCard({ course }: { course: Course }) {
           <Stat value={stats.quizzes} label="แบบทดสอบ" />
         </div>
         <span className="hidden sm:block text-ink-300 transition-colors group-hover:text-tu-red-500">
-          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-          </svg>
+          <ChevronRight className="h-5 w-5" strokeWidth={2} />
         </span>
       </div>
     </Link>

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Modal, { ModalHeader } from "@/components/ui/Modal";
 import { TAG_COLORS, isCustomColor } from "@/lib/weeks";
+import { Check, Plus } from "lucide-react";
 
 /**
  * จัดหัวข้อที่เลือกไว้เข้าสัปดาห์ + เลือกสีป้ายกำกับ
@@ -61,7 +62,7 @@ export default function AddToWeekModal({
                     : "hover:scale-110"
                 }`}
               >
-                {colorKey === c.key && <CheckIcon />}
+                {colorKey === c.key && <Check className="h-3.5 w-3.5 text-white drop-shadow" strokeWidth={3} />}
               </button>
             ))}
 
@@ -92,21 +93,9 @@ export default function AddToWeekModal({
                 className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
               />
               {isCustomColor(colorKey) ? (
-                <CheckIcon />
+                <Check className="h-3.5 w-3.5 text-white drop-shadow" strokeWidth={3} />
               ) : (
-                <svg
-                  className="h-3 w-3 text-white drop-shadow"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2.5}
-                    d="M12 5v14M5 12h14"
-                  />
-                </svg>
+                <Plus className="h-3 w-3 text-white drop-shadow" strokeWidth={2.5} />
               )}
             </label>
           </div>
@@ -128,21 +117,3 @@ export default function AddToWeekModal({
   );
 }
 
-/** เครื่องหมายถูกสีขาว แสดงในสวอตช์สีที่กำลังเลือกอยู่ */
-function CheckIcon() {
-  return (
-    <svg
-      className="h-3.5 w-3.5 text-white drop-shadow"
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={3}
-        d="M5 13l4 4L19 7"
-      />
-    </svg>
-  );
-}

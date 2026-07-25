@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo } from "react";
 import { useCourse, type Course } from "@/lib/courseStore";
 import PageHeader from "@/components/ui/PageHeader";
+import { ChevronRight } from "lucide-react";
 
 /**
  * หน้ารายงานชั้นเรียน (ระดับบนสุด) — เลือกวิชาก่อน
@@ -78,9 +79,7 @@ function ReportCourseCard({ course }: { course: Course }) {
         </p>
       </div>
       <span className="hidden sm:block shrink-0 text-ink-300 transition-colors group-hover:text-tu-red-500">
-        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-        </svg>
+        <ChevronRight className="h-5 w-5" strokeWidth={2} />
       </span>
     </Link>
   );

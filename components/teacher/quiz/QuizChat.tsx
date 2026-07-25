@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { MessageCircle, Bot, Minus, Send } from "lucide-react";
 
 interface Message {
   id: string;
@@ -78,19 +79,10 @@ export default function QuizChat() {
           className="group relative flex h-14 w-14 items-center justify-center rounded-full bg-tu-red-500 text-white shadow-lg hover:scale-105 hover:bg-tu-red-600 active:scale-95 transition-all duration-200"
           title="เปิดผู้ช่วยสร้างควิซ"
         >
-          <svg
+          <MessageCircle
             className="h-6 w-6 transition-transform group-hover:rotate-6"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
             strokeWidth={2.2}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-            />
-          </svg>
+          />
           {/* Badge alert */}
           <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-tu-gold-500 text-[10px] font-bold text-white ring-2 ring-white">
             1
@@ -105,9 +97,7 @@ export default function QuizChat() {
           <div className="flex items-center justify-between bg-gradient-to-r from-tu-red-600 to-tu-red-500 px-4 py-3.5 text-white">
             <div className="flex items-center gap-2.5">
               <span className="grid h-8 w-8 place-items-center rounded-full bg-white/10">
-                <svg className="h-5 w-5 text-tu-gold-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                </svg>
+                <Bot className="h-5 w-5 text-tu-gold-300" strokeWidth={2.5} />
               </span>
               <div>
                 <h3 className="text-sm font-bold leading-tight">AI ช่วยสร้างคำถาม</h3>
@@ -119,9 +109,7 @@ export default function QuizChat() {
               className="rounded-lg p-1 text-tu-red-100 hover:bg-white/10 hover:text-white transition"
               title="ย่อหน้ารวม"
             >
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M20 12H4" />
-              </svg>
+              <Minus className="h-5 w-5" strokeWidth={2.5} />
             </button>
           </div>
 
@@ -137,9 +125,7 @@ export default function QuizChat() {
                   {/* Avatar */}
                   {isBot ? (
                     <div className="grid h-7 w-7 flex-shrink-0 place-items-center rounded-full bg-tu-red-50 text-tu-red-600 border border-tu-red-100">
-                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                      </svg>
+                      <Bot className="h-4 w-4" strokeWidth={2} />
                     </div>
                   ) : (
                     <div className="grid h-7 w-7 flex-shrink-0 place-items-center rounded-full bg-tu-gold-500 text-white font-bold text-xs">
@@ -169,9 +155,7 @@ export default function QuizChat() {
             {isTyping && (
               <div className="flex items-start gap-2.5">
                 <div className="grid h-7 w-7 flex-shrink-0 place-items-center rounded-full bg-tu-red-50 text-tu-red-600 border border-tu-red-100">
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                  </svg>
+                  <Bot className="h-4 w-4" strokeWidth={2} />
                 </div>
                 <div className="bg-white border border-line-soft rounded-2xl rounded-tl-none px-3 py-2 shadow-sm">
                   <span className="flex items-center gap-1 text-[11px] font-medium text-ink-400">
@@ -220,10 +204,7 @@ export default function QuizChat() {
                 className="text-tu-red-500 hover:text-tu-red-600 disabled:opacity-30 disabled:hover:text-tu-red-500 transition-colors duration-150 flex-shrink-0"
                 title="ส่งข้อความ"
               >
-                <svg className="h-5 w-5 transform rotate-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="22" y1="2" x2="11" y2="13" />
-                  <polygon points="22 2 15 22 11 13 2 9 22 2" />
-                </svg>
+                <Send className="h-5 w-5" strokeWidth={2.2} />
               </button>
             </div>
           </form>

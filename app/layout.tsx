@@ -1,14 +1,15 @@
 import type { Metadata } from "next";
-import { Noto_Sans_Thai } from "next/font/google";
+import { Maitree } from "next/font/google";
 import "./globals.css";
 import { CourseProvider } from "@/lib/courseStore";
 
 /**
- * ฟอนต์เดียวทั้งแอป (เนื้อความ + หัวเรื่อง) — Noto Sans Thai: สะอาด เป็นกลาง โมเดิร์น
+ * ฟอนต์เดียวทั้งแอป (เนื้อความ + หัวเรื่อง) — Maitree: serif ไทยมีหัว อบอุ่น อ่านสบาย
+ * เข้ากับธีม warm editorial (แดง–ครีม)
  * หมายเหตุ: คงชื่อตัวแปร CSS เดิม (--font-mitr) ไว้ เพื่อให้จุดอื่นที่อ้างถึง
  * (tailwind, surveyTheme, globals) เปลี่ยนตามอัตโนมัติโดยไม่มีตกหล่น
  */
-const appFont = Noto_Sans_Thai({
+const appFont = Maitree({
   subsets: ["thai", "latin"],
   weight: ["300", "400", "500", "600", "700"],
   variable: "--font-mitr",

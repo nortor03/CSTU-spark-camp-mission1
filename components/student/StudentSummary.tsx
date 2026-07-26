@@ -59,11 +59,6 @@ export default function StudentSummary({ week }: { week: string }) {
         title="จุดแข็งและจุดอ่อนของคุณ"
         subtitle={summary.headline}
         tone="gold"
-        action={
-          <Link href={`/student/quiz/${week.match(/\d+/)?.[0] ?? ""}`} className="btn-secondary">
-            ทำแบบทดสอบซ้ำ
-          </Link>
-        }
       />
 
       {/* ---------- คะแนนรวม ---------- */}

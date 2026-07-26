@@ -8,6 +8,7 @@ import AppShell, {
   IconReport,
   type NavItem,
 } from "./AppShell";
+import StudentAssistant from "@/components/student/StudentAssistant";
 
 // เมนูซ้ายเหลือแค่ 2 หัวข้อหลัก — "จัดหัวข้อ" และ "อัปโหลดเอกสาร"
 // ย้ายไปเข้าถึงจากภายในหน้ารายละเอียดของแต่ละวิชาแทน
@@ -81,12 +82,17 @@ export function StudentShell({
   width?: string;
 }) {
   return (
-    <AppShell
-      nav={STUDENT_NAV}
-      width={width}
-      action={<SignOut href="/login" role="นักเรียน" />}
-    >
-      {children}
-    </AppShell>
+    <>
+      <AppShell
+        nav={STUDENT_NAV}
+        width={width}
+        action={<SignOut href="/login" role="นักเรียน" />}
+      >
+        {children}
+      </AppShell>
+      {/* ผู้ช่วยทบทวน (side panel) — วางนอก <main> ที่มี animate-slide-up
+          กัน panel (position:fixed) เด้ง/กระพริบตอนสลับหน้า */}
+      <StudentAssistant />
+    </>
   );
 }

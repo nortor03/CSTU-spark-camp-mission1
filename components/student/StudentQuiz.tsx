@@ -195,30 +195,88 @@ function ResultView({
       return next;
     });
 
+  // ระดับผลตามคะแนน — คุมสีของแผงคะแนน + ป้ายระดับ
+  const band =
+    percent >= 80
+      ? {
+          label: "เยี่ยมมาก",
+          panel: "border-emerald-200 bg-emerald-50",
+          pill: "bg-emerald-100 text-emerald-700",
+        }
+      : percent >= 50
+        ? {
+            label: "พอใช้",
+            panel: "border-tu-gold-200 bg-tu-gold-50",
+            pill: "bg-tu-gold-100 text-tu-gold-700",
+          }
+        : {
+            label: "ควรทบทวน",
+            panel: "border-tu-red-100 bg-tu-red-50",
+            pill: "bg-tu-red-100 text-tu-red-700",
+          };
+
   return (
     <div className="animate-fade-in">
-      {/* Score summary card */}
-      <div className="mb-8 overflow-hidden rounded-2xl border border-line bg-white shadow-card">
-        <div className="border-b border-line-soft bg-paper-100/60 px-6 py-4">
-          <p className="eyebrow-gold">ผลแบบทดสอบ</p>
-          <p className="mt-0.5 text-sm font-medium text-ink-600">{week}</p>
-        </div>
+      {/* Score summary — hero: วงคะแนน + ระดับผล + แถบสัดส่วนถูก/ผิด */}
+      <div className={`mb-8 rounded-2xl border p-6 sm:p-7 ${band.panel}`}>
+        <div className="flex flex-col items-center gap-6 sm:flex-row sm:gap-8">
+          <div className="flex-shrink-0">
+            <ScoreRing percent={percent} />
+          </div>
 
-        <div className="px-6 py-8 text-center">
-          <ScoreRing percent={percent} />
-          <p className="mt-4 text-lg font-semibold text-ink-800">
-            {result.score}{" "}
-            <span className="font-normal text-ink-400">/ {result.total} ข้อ</span>
-          </p>
-          <p className="mx-auto mt-3 max-w-sm text-sm leading-relaxed text-ink-600">
-            {result.overall}
-          </p>
-          <Link
-            href={`/student/summary/${week.match(/\d+/)?.[0] ?? ""}`}
-            className="btn-primary mt-6"
-          >
-            ดูสรุปจุดแข็ง / จุดอ่อน →
-          </Link>
+          <div className="min-w-0 flex-1 text-center sm:text-left">
+            <p className="eyebrow-gold">ผลแบบทดสอบ · {week}</p>
+            <span
+              className={`mt-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wide ${band.pill}`}
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-current" />
+              {band.label}
+            </span>
+
+            <p className="mt-2 text-2xl font-bold text-ink-900">
+              ทำได้ {result.score}{" "}
+              <span className="text-lg font-normal text-ink-400">
+                / {result.total} ข้อ
+              </span>
+            </p>
+            <p className="mx-auto mt-1.5 max-w-md text-sm leading-relaxed text-ink-600 sm:mx-0">
+              {result.overall}
+            </p>
+
+            {/* แถบสัดส่วนถูก/ผิด */}
+            <div className="mt-4 flex h-2 overflow-hidden rounded-full bg-paper-300">
+              <div
+                className="bg-emerald-500"
+                style={{ width: `${percent}%` }}
+              />
+              <div
+                className="bg-tu-red-500"
+                style={{ width: `${100 - percent}%` }}
+              />
+            </div>
+            <div className="mt-2 flex items-center justify-center gap-4 text-xs text-ink-500 sm:justify-start">
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-sm bg-emerald-500" />
+                ถูก <b className="font-bold text-ink-800">{result.score}</b>
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-sm bg-tu-red-500" />
+                ผิด{" "}
+                <b className="font-bold text-ink-800">
+                  {result.total - result.score}
+                </b>
+              </span>
+            </div>
+
+            <div className="mt-5 flex justify-center sm:justify-start">
+              <Link
+                href={`/student/summary/${week.match(/\d+/)?.[0] ?? ""}`}
+                className="btn-primary"
+              >
+                ดูสรุปจุดแข็ง / จุดอ่อน →
+              </Link>
+            </div>
+          </div>
         </div>
       </div>
 

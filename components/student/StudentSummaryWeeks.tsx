@@ -179,46 +179,6 @@ export default function StudentSummaryWeeks({ courseId }: { courseId: string }) 
                   <div className="ml-0 pb-6 sm:ml-[76px]">
                     {s ? (
                       <div className="flex flex-col gap-5">
-                        {/* KPI */}
-                        <div className="grid grid-cols-3 gap-3">
-                          <div className="rounded-xl border border-line bg-paper-50 px-4 py-3">
-                            <p className="text-[11px] font-semibold text-ink-500">
-                              คะแนนรวม
-                            </p>
-                            <p className="mt-1 text-2xl font-bold leading-none text-ink-900">
-                              {s.percent}
-                              <span className="text-sm font-semibold text-ink-400">
-                                %
-                              </span>
-                            </p>
-                            <p className="mt-1 text-[11px] text-ink-500">
-                              ถูก {s.score}/{s.total} ข้อ
-                            </p>
-                          </div>
-                          <div className="rounded-xl border border-line bg-paper-50 px-4 py-3">
-                            <p className="text-[11px] font-semibold text-ink-500">
-                              เข้าใจดี
-                            </p>
-                            <p className="mt-1 text-2xl font-bold leading-none text-[#047857]">
-                              {s.strong.length}
-                            </p>
-                            <p className="mt-1 text-[11px] text-ink-500">
-                              จาก {s.topics.length} หัวข้อ
-                            </p>
-                          </div>
-                          <div className="rounded-xl border border-line bg-paper-50 px-4 py-3">
-                            <p className="text-[11px] font-semibold text-ink-500">
-                              ควรทบทวน
-                            </p>
-                            <p className="mt-1 text-2xl font-bold leading-none text-tu-red-500">
-                              {s.weak.length}
-                            </p>
-                            <p className="mt-1 text-[11px] text-ink-500">
-                              จาก {s.topics.length} หัวข้อ
-                            </p>
-                          </div>
-                        </div>
-
                         {/* ความเข้าใจรายหัวข้อ */}
                         <section>
                           <h4

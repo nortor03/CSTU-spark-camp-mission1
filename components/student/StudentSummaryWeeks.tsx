@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useCourse } from "@/lib/courseStore";
 import { weekNumber, resolveHex } from "@/lib/weeks";
 import { buildStudentSummary, type StudentSummary } from "@/lib/analytics";
+import { gradeQuiz } from "@/lib/feedback";
 import {
   getPracticeHistory,
   type PracticeAttempt,
@@ -182,6 +183,12 @@ export default function StudentSummaryWeeks({ courseId }: { courseId: string }) 
 
                 {open && (
                   <div className="ml-0 flex flex-col gap-5 pb-6 sm:ml-[76px]">
+                    <PracticeHistory
+                      studentId={studentId}
+                      courseId={courseId}
+                      week={row.week}
+                      hex={hex}
+                    />
                     {s ? (
                       <div className="flex flex-col gap-5">
                         {/* ความเข้าใจรายหัวข้อ */}
@@ -279,13 +286,6 @@ export default function StudentSummaryWeeks({ courseId }: { courseId: string }) 
                         </Link>
                       </div>
                     )}
-
-                    <PracticeHistory
-                      studentId={studentId}
-                      courseId={courseId}
-                      week={row.week}
-                      hex={hex}
-                    />
                   </div>
                 )}
               </div>
@@ -327,9 +327,7 @@ function PracticeHistory({
     history.findIndex((a) => a.id === selId),
   );
   const sel = history[selIndex] ?? history[history.length - 1];
-  const wrong = sel
-    ? buildStudentSummary(sel.quiz, sel.answers).misconceptions
-    : [];
+  const result = gradeQuiz(sel.quiz, sel.answers);
   const d = new Date(sel.at);
   const when = `${d.getDate()}/${d.getMonth() + 1} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 
@@ -390,32 +388,65 @@ function PracticeHistory({
 
           <hr className="my-3 border-line-soft" />
 
-          {wrong.length === 0 ? (
-            <p className="text-sm text-emerald-700">ตอบถูกทุกข้อ 🎉</p>
-          ) : (
-            <>
-              <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-ink-400">
-                ข้อที่ตอบผิด ({wrong.length})
-              </p>
-              <ul className="flex flex-col gap-3">
-                {wrong.map((m, j) => (
-                  <li key={j} className="text-xs">
-                    <p className="font-medium text-ink-800">{m.question}</p>
-                    <p className="mt-1 flex gap-2 text-tu-red-700">
-                      <span className="flex-shrink-0 font-bold">คุณตอบ</span>
-                      <span>{m.chosenText}</span>
-                    </p>
-                    <p className="flex gap-2 text-[#047857]">
-                      <span className="flex-shrink-0 font-bold">
-                        คำตอบที่ถูก
-                      </span>
-                      <span>{m.correctText}</span>
-                    </p>
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
+          {/* รีวิวรายข้อครบทุกข้อ (เหมือนหน้าผลควิซจริง) */}
+          <div className="max-h-[55vh] space-y-2.5 overflow-y-auto">
+            {result.questions.map((r, i) => (
+              <div
+                key={r.question.id}
+                className={`rounded-lg border bg-white p-3 ${
+                  r.isCorrect ? "border-emerald-200" : "border-tu-red-200"
+                }`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-xs font-semibold leading-snug text-ink-800">
+                    <span className="text-ink-400">{i + 1}. </span>
+                    {r.question.question}
+                  </p>
+                  <span
+                    className={`flex-shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                      r.isCorrect
+                        ? "bg-emerald-50 text-emerald-700"
+                        : "bg-tu-red-50 text-tu-red-700"
+                    }`}
+                  >
+                    {r.isCorrect ? "ถูก" : "ผิด"}
+                  </span>
+                </div>
+                <div className="mt-2 space-y-1">
+                  {r.question.choices.map((c) => {
+                    const isCorrect = c.id === r.correctId;
+                    const isChosen = c.id === r.chosenId;
+                    return (
+                      <div
+                        key={c.id}
+                        className={`flex items-center gap-2 rounded-md px-2.5 py-1.5 text-xs ${
+                          isCorrect
+                            ? "bg-emerald-50 font-semibold text-emerald-800"
+                            : isChosen
+                              ? "bg-tu-red-50 text-tu-red-700"
+                              : "text-ink-600"
+                        }`}
+                      >
+                        <span className="w-3 flex-shrink-0 text-center font-bold">
+                          {isCorrect ? "✓" : isChosen ? "✕" : ""}
+                        </span>
+                        {c.text}
+                        {isChosen && !isCorrect && (
+                          <span className="ml-auto text-[10px] text-ink-400">
+                            คำตอบของคุณ
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                <p className="mt-2 text-[11px] leading-relaxed text-ink-500">
+                  <span className="font-bold text-tu-gold-700">AI: </span>
+                  {r.feedback}
+                </p>
+              </div>
+            ))}
+          </div>
         </div>
       </Modal>
     </section>

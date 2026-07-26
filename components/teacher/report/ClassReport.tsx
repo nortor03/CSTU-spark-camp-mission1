@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { useCourse } from "@/lib/courseStore";
 import { buildClassReport, LEVEL_META, type Submission } from "@/lib/analytics";
 import { generateMockSubmissions } from "@/lib/mockClass";
@@ -21,8 +22,12 @@ export default function ClassReport({
   week: string;
 }) {
   const { getCourse, setActiveCourse, activeCourseId, hydrated } = useCourse();
+  const router = useRouter();
   const course = getCourse(courseId);
-  const quiz = course?.quizzes[week];
+  // ใช้ควิซ "ชุดที่ active" ของสัปดาห์นั้นในการสรุปผล (ถ้าไม่มี active ใช้ตัวแรก)
+  const weekQuizzes = course?.quizzes[week];
+  const quiz =
+    weekQuizzes?.find((q) => q.isActive) ?? weekQuizzes?.[0];
 
   // ตั้งวิชานี้เป็น active เพื่อให้ลิงก์ไป /quiz ทำงานกับวิชาที่ถูกต้อง
   useEffect(() => {
@@ -224,6 +229,9 @@ export default function ClassReport({
       {/* ---------- ตารางรายคน ---------- */}
       <section className="card p-5 sm:p-6">
         <h2 className="display text-lg">ผลรายบุคคล</h2>
+        <p className="mt-1 text-xs text-ink-400">
+          กดที่แถวเพื่อดูข้อที่ตอบผิดและจุดอ่อนรายคน
+        </p>
         <hr className="rule-gold my-4" />
 
         <div className="overflow-x-auto">
@@ -240,7 +248,15 @@ export default function ClassReport({
               {[...allSubmissions]
                 .sort((a, b) => a.percent - b.percent)
                 .map((s) => (
-                  <tr key={s.id} className={s.isCurrentUser ? "bg-tu-gold-50" : ""}>
+                  <tr
+                    key={s.id}
+                    onClick={() =>
+                      router.push(
+                        `/report/${courseId}/${weekNumber(week)}/${encodeURIComponent(s.studentId)}`,
+                      )
+                    }
+                    className={`cursor-pointer transition-colors hover:bg-paper-100 ${s.isCurrentUser ? "bg-tu-gold-50" : ""}`}
+                  >
                     <td className="py-2 tabular-nums text-ink-600">
                       {s.studentId}
                     </td>

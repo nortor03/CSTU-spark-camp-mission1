@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCourse } from "@/lib/courseStore";
 import type { Quiz, QuizPrompt } from "@/lib/quiz";
-import { emptyPrompt, generateMockQuiz } from "@/lib/quiz";
+import { emptyPrompt } from "@/lib/quiz";
+import { generateQuizJSON } from "@/lib/aiQuiz";
 import PageHeader from "@/components/ui/PageHeader";
 import QuizPromptForm from "./QuizPromptForm";
 import QuizEditor from "./QuizEditor";
@@ -20,7 +21,11 @@ type Phase = "loading" | "prompt" | "generating" | "edit";
  */
 export default function QuizGenerator({ week }: { week: string }) {
   const router = useRouter();
-  const { topics, clos, getQuiz, saveQuiz, hydrated, activeCourseId } =
+  const searchParams = useSearchParams();
+  // ?new=1 = สร้างควิซใหม่ (ข้ามควิซที่มีอยู่) / ?quiz=<id> = แก้ควิซชุดนั้นเจาะจง
+  const isNew = searchParams.get("new") === "1";
+  const editQuizId = searchParams.get("quiz");
+  const { topics, clos, quizzes, getQuiz, saveQuiz, hydrated, activeCourseId } =
     useCourse();
 
   // กลับไปหน้ารายละเอียดของวิชาที่กำลังทำอยู่
@@ -60,31 +65,41 @@ export default function QuizGenerator({ week }: { week: string }) {
     };
     setPrompt(basePrompt);
 
-    const existing = getQuiz(week);
+    // สร้างควิซใหม่: ข้ามควิซเดิม เข้าโหมดกรอกโจทย์เลย
+    if (isNew) {
+      setPhase("prompt");
+      return;
+    }
+
+    // แก้ควิซเจาะจงตาม id (จากปุ่ม "แก้ไข" ของควิซชุดนั้น) — ถ้าหาไม่เจอ fallback เป็นตัว active
+    const list = quizzes[week] ?? [];
+    const existing = editQuizId
+      ? list.find((q) => q.id === editQuizId) ?? getQuiz(week)
+      : getQuiz(week);
+
     if (existing) {
       setQuiz(existing);
       setPhase("edit");
     } else {
       setPhase("prompt");
     }
-  }, [hydrated, week, weekTopics, getQuiz]);
+  }, [hydrated, week, weekTopics, quizzes, getQuiz, isNew, editQuizId]);
 
-  function runGenerate(p: QuizPrompt) {
+  // ส่งโจทย์ให้ AI (ผ่าน seam) แล้วนำควิซที่ได้ไปเปิดหน้าแก้ไข
+  async function runGenerate(p: QuizPrompt) {
     setPrompt(p);
     setPhase("generating");
-    setTimeout(() => {
-      setQuiz(generateMockQuiz(week, p));
-      setPhase("edit");
-    }, 900);
+    const q = await generateQuizJSON(week, p);
+    setQuiz(q);
+    setPhase("edit");
   }
 
-  function regenerate() {
+  async function regenerate() {
     if (!prompt) return;
     setPhase("generating");
-    setTimeout(() => {
-      setQuiz(generateMockQuiz(week, prompt));
-      setPhase("edit");
-    }, 900);
+    const q = await generateQuizJSON(week, prompt);
+    setQuiz(q);
+    setPhase("edit");
   }
 
   function handleSave(saved: Quiz) {
@@ -95,13 +110,15 @@ export default function QuizGenerator({ week }: { week: string }) {
   // เฟสแก้ไข: ฟอร์มแบบ Google Form เต็มพื้นที่
   if (phase === "edit" && quiz) {
     return (
-      <QuizEditor
-        key={quiz.revision}
-        quiz={quiz}
-        onSave={handleSave}
-        onRegenerate={regenerate}
-        onEditPrompt={() => setPhase("prompt")}
-      />
+      <div className="relative min-h-[calc(100vh-80px)]">
+        <QuizEditor
+          key={quiz.revision}
+          quiz={quiz}
+          onSave={handleSave}
+          onRegenerate={regenerate}
+          onEditPrompt={() => setPhase("prompt")}
+        />
+      </div>
     );
   }
 

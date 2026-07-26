@@ -3,6 +3,7 @@
 import type { Topic } from "@/lib/types";
 import type { SyllabusClo } from "@/lib/syllabus";
 import { resolveHex, tagStyles, weekNumber } from "@/lib/weeks";
+import { Check, GripVertical, Sparkles, SquarePen } from "lucide-react";
 
 /**
  * แถวหัวข้อ 1 รายการ — เลือกได้ / แก้ชื่อได้
@@ -90,7 +91,7 @@ export default function TopicCard({
           aria-hidden
           title="ลากเพื่อสลับสัปดาห์"
         >
-          <GripIcon />
+          <GripVertical className="h-4 w-4" />
         </span>
       )}
 
@@ -103,19 +104,7 @@ export default function TopicCard({
         }`}
         aria-hidden
       >
-        <svg
-          className="h-3 w-3"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={3}
-            d="M5 13l4 4L19 7"
-          />
-        </svg>
+        <Check className="h-3 w-3" strokeWidth={3} />
       </span>
 
       {/* แถบสี + เลขสัปดาห์ */}
@@ -135,7 +124,7 @@ export default function TopicCard({
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
           {topic.aiGenerated ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-tu-gold-50 px-2 py-0.5 text-[10px] font-bold leading-4 text-tu-gold-700 ring-1 ring-tu-gold-200">
-              <SparkIcon />
+              <Sparkles className="h-2.5 w-2.5" />
               AI แนะนำ
             </span>
           ) : (
@@ -178,7 +167,7 @@ export default function TopicCard({
           className="rounded-md p-2 text-ink-300 transition hover:bg-paper-200 hover:text-tu-red-600"
           aria-label="แก้ไขชื่อหัวข้อ"
         >
-          <EditIcon />
+          <SquarePen className="h-3.5 w-3.5" strokeWidth={2} />
         </button>
         {hasWeek && (
           <button
@@ -197,41 +186,3 @@ export default function TopicCard({
   );
 }
 
-function GripIcon() {
-  return (
-    <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
-      <circle cx="9" cy="6" r="1.5" />
-      <circle cx="15" cy="6" r="1.5" />
-      <circle cx="9" cy="12" r="1.5" />
-      <circle cx="15" cy="12" r="1.5" />
-      <circle cx="9" cy="18" r="1.5" />
-      <circle cx="15" cy="18" r="1.5" />
-    </svg>
-  );
-}
-
-function SparkIcon() {
-  return (
-    <svg className="h-2.5 w-2.5" fill="currentColor" viewBox="0 0 24 24">
-      <path d="M12 2l1.9 5.7L19.6 9l-4.5 3.3 1.7 5.7L12 14.7 7.2 18l1.7-5.7L4.4 9l5.7-1.3L12 2z" />
-    </svg>
-  );
-}
-
-function EditIcon() {
-  return (
-    <svg
-      className="h-3.5 w-3.5"
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-      />
-    </svg>
-  );
-}

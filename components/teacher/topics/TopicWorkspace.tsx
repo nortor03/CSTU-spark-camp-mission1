@@ -10,6 +10,7 @@ import PageHeader from "@/components/ui/PageHeader";
 import TopicGrid from "./TopicGrid";
 import AddToWeekModal from "./AddToWeekModal";
 import EditTopicModal from "./EditTopicModal";
+import { ChevronDown } from "lucide-react";
 import AddTopicModal from "./AddTopicModal";
 import AddCloModal from "./AddCloModal";
 import SummaryPopup from "./SummaryPopup";
@@ -67,7 +68,7 @@ export default function TopicWorkspace() {
               </span>
               <span className="flex items-center gap-1.5 text-xs text-ink-400">
                 {clos.length} ข้อ
-                <ChevronIcon className="transition group-open:rotate-180" />
+                <ChevronDown className="h-3.5 w-3.5 transition group-open:rotate-180" />
               </span>
             </summary>
             <ul className="space-y-2.5 border-t border-line-soft pb-3 pt-3">
@@ -266,23 +267,6 @@ export default function TopicWorkspace() {
   );
 }
 
-function ChevronIcon({ className = "" }: { className?: string }) {
-  return (
-    <svg
-      className={`h-3.5 w-3.5 ${className}`}
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M19 9l-7 7-7-7"
-      />
-    </svg>
-  );
-}
 
 /**
  * ปุ่มในกลุ่ม segmented control ("ทั้งหมด" / "ยังไม่จัด")

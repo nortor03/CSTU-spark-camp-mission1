@@ -1,16 +1,18 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Sans_Thai } from "next/font/google";
+import { Maitree } from "next/font/google";
 import "./globals.css";
 import { CourseProvider } from "@/lib/courseStore";
 
 /**
- * ฟอนต์เดียวทั้งแอป (เนื้อความ + หัวเรื่อง) — ตัดคอนทราสต์ serif/sans แบบเอกสารวิชาการทิ้ง
- * เปลี่ยนมาไล่น้ำหนักตัวอักษรแทน (bold สำหรับหัวเรื่อง) ให้ดู clean/modern ขึ้น
+ * ฟอนต์เดียวทั้งแอป (เนื้อความ + หัวเรื่อง) — Maitree: serif ไทยมีหัว อบอุ่น อ่านสบาย
+ * เข้ากับธีม warm editorial (แดง–ครีม)
+ * หมายเหตุ: คงชื่อตัวแปร CSS เดิม (--font-mitr) ไว้ เพื่อให้จุดอื่นที่อ้างถึง
+ * (tailwind, surveyTheme, globals) เปลี่ยนตามอัตโนมัติโดยไม่มีตกหล่น
  */
-const plexThai = IBM_Plex_Sans_Thai({
+const appFont = Maitree({
   subsets: ["thai", "latin"],
   weight: ["300", "400", "500", "600", "700"],
-  variable: "--font-plex-thai",
+  variable: "--font-mitr",
   display: "swap",
 });
 
@@ -25,7 +27,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="th" className={plexThai.variable}>
+    <html lang="th" className={appFont.variable}>
       <body className="font-sans antialiased">
         <CourseProvider>{children}</CourseProvider>
       </body>

@@ -41,23 +41,43 @@ export default function UnifiedLoginForm() {
     setPasswordError("");
     const id = identifier.trim();
 
-    if (isEmail(id)) {
-      if (password.length < 6) {
+    // ดึงค่าบัญชีและรหัสผ่านเข้าสู่ระบบจาก environment variables
+    const envTeacherEmail = process.env.NEXT_PUBLIC_TEACHER_EMAIL;
+    const envTeacherPassword = process.env.NEXT_PUBLIC_TEACHER_PASSWORD;
+    const envStudentId = process.env.NEXT_PUBLIC_STUDENT_ID;
+    const envStudentPassword = process.env.NEXT_PUBLIC_STUDENT_PASSWORD;
+
+    // --- ตรวจสอบฝั่งอาจารย์ (อีเมล) ---
+    const isTeacherRole = (envTeacherEmail && id === envTeacherEmail) || isEmail(id);
+    if (isTeacherRole) {
+      const isValidPassword = envTeacherPassword
+        ? password === envTeacherPassword
+        : password.length >= 6;
+
+      if (!isValidPassword) {
         setPasswordError("รหัสไม่ถูกต้อง");
         triggerShakePassword();
         return;
       }
+
       setLoading(true);
       setTimeout(() => router.push("/course"), 600);
       return;
     }
 
-    if (isStudentId(id)) {
-      if (!/^\d{13}$/.test(password)) {
+    // --- ตรวจสอบฝั่งนักเรียน (รหัสนักศึกษา) ---
+    const isStudentRole = (envStudentId && id === envStudentId) || isStudentId(id);
+    if (isStudentRole) {
+      const isValidPassword = envStudentPassword
+        ? password === envStudentPassword
+        : /^\d{13}$/.test(password);
+
+      if (!isValidPassword) {
         setPasswordError("รหัสไม่ถูกต้อง");
         triggerShakePassword();
         return;
       }
+
       setLoading(true);
       setStudentId(id);
       setTimeout(() => router.push("/student"), 600);

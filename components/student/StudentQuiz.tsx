@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useCourse } from "@/lib/courseStore";
 import type { Quiz } from "@/lib/quiz";
 import { gradeQuiz, type QuizResult, type StudentAnswers } from "@/lib/feedback";
+import SurveyQuizForm from "./SurveyQuizForm";
+import { ChevronDown, ChevronLeft, Smile, Meh, Frown } from "lucide-react";
 
 type Phase = "loading" | "empty" | "doing" | "result";
 
@@ -17,7 +19,6 @@ export default function StudentQuiz({ week }: { week: string }) {
 
   const [quiz, setQuiz] = useState<Quiz | null>(null);
   const [phase, setPhase] = useState<Phase>("loading");
-  const [answers, setAnswers] = useState<StudentAnswers>({});
   const [result, setResult] = useState<QuizResult | null>(null);
   const inited = useRef(false);
 
@@ -33,37 +34,34 @@ export default function StudentQuiz({ week }: { week: string }) {
     }
   }, [hydrated, week, getQuiz]);
 
-  function choose(questionId: string, choiceId: string) {
-    setAnswers((a) => ({ ...a, [questionId]: choiceId }));
-  }
+  const finish = useCallback(
+    (answers: StudentAnswers) => {
+      if (!quiz) return;
+      const graded = gradeQuiz(quiz, answers);
+      setResult(graded);
 
-  function submit() {
-    if (!quiz) return;
-    const graded = gradeQuiz(quiz, answers);
-    setResult(graded);
+      const id = studentId ?? "ไม่ระบุรหัส";
+      saveSubmission({
+        id: `${quiz.revision}-${id}`,
+        studentId: id,
+        studentName: `นักศึกษา ${id}`,
+        week,
+        quizRevision: quiz.revision,
+        answers,
+        score: graded.score,
+        total: graded.total,
+        percent: graded.percent,
+        submittedAt: new Date().toISOString(),
+        isCurrentUser: true,
+      });
 
-    // เก็บผลไว้ให้หน้าสรุปของนักเรียน และรายงานภาพรวมของอาจารย์ใช้ต่อ
-    const id = studentId ?? "ไม่ระบุรหัส";
-    saveSubmission({
-      id: `${quiz.revision}-${id}`,
-      studentId: id,
-      studentName: `นักศึกษา ${id}`,
-      week,
-      quizRevision: quiz.revision,
-      answers,
-      score: graded.score,
-      total: graded.total,
-      percent: graded.percent,
-      submittedAt: new Date().toISOString(),
-      isCurrentUser: true,
-    });
-
-    setPhase("result");
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }
+      setPhase("result");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    },
+    [quiz, week, studentId, saveSubmission],
+  );
 
   function retry() {
-    setAnswers({});
     setResult(null);
     setPhase("doing");
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -71,8 +69,9 @@ export default function StudentQuiz({ week }: { week: string }) {
 
   if (phase === "loading") {
     return (
-      <div className="grid place-items-center py-24 text-sm text-ink-400">
-        กำลังโหลด…
+      <div className="flex flex-col items-center justify-center gap-3 py-24">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-line border-t-tu-red-500" />
+        <p className="text-sm text-ink-400">กำลังโหลด…</p>
       </div>
     );
   }
@@ -80,11 +79,14 @@ export default function StudentQuiz({ week }: { week: string }) {
   if (phase === "empty" || !quiz) {
     return (
       <div className="card-empty">
+        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-paper-200 text-2xl">
+          📝
+        </div>
         <h2 className="display text-lg">ยังไม่มีแบบทดสอบสำหรับ {week}</h2>
         <p className="mt-2 text-sm text-ink-500">
           อาจารย์ยังไม่ได้สร้างแบบทดสอบของสัปดาห์นี้
         </p>
-        <Link href="/student" className="btn-primary mt-5">
+        <Link href="/student" className="btn-primary mt-6">
           กลับไปเลือกสัปดาห์
         </Link>
       </div>
@@ -95,106 +97,78 @@ export default function StudentQuiz({ week }: { week: string }) {
     return <ResultView week={week} result={result} onRetry={retry} />;
   }
 
-
-  // ---------- ทำข้อสอบ ----------
-  const answered = quiz.questions.filter((q) => answers[q.id]).length;
-  const allAnswered = answered === quiz.questions.length;
-
   return (
-    <div className="space-y-3">
-      {/* หัวแบบทดสอบ + ความคืบหน้า */}
-      <div className="card overflow-hidden">
-        <div className="h-1.5 bg-tu-red-500" />
-        <div className="px-6 py-5">
-          <p className="eyebrow">{week}</p>
-          <h1 className="display mt-1.5 text-2xl">{quiz.title}</h1>
-
-          <div className="mt-4 flex items-center gap-3">
-            <div
-              className="h-1.5 flex-1 overflow-hidden rounded-full bg-paper-200"
-              role="progressbar"
-              aria-valuenow={answered}
-              aria-valuemin={0}
-              aria-valuemax={quiz.questions.length}
-            >
-              <div
-                className="h-full rounded-full bg-tu-gold-500 transition-all duration-300"
-                style={{
-                  width: `${(answered / quiz.questions.length) * 100}%`,
-                }}
-              />
-            </div>
-            <span className="flex-shrink-0 text-xs font-semibold text-ink-500">
-              {answered}/{quiz.questions.length} ข้อ
-            </span>
-          </div>
+    <div className="animate-fade-in">
+      {/* Quiz header — เลื่อนตามเนื้อหา (ไม่ sticky) เพื่อไม่ให้ชื่อควิซค้างเวลาเลื่อนลง */}
+      <div className="mb-6 border-b border-line-soft pb-5 pt-1">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <Link
+            href="/student"
+            className="-ml-2.5 inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium text-ink-500 transition hover:bg-paper-200 hover:text-ink-800"
+          >
+            <ChevronLeft className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+            ออก
+          </Link>
+          <span className="rounded-full bg-tu-red-50 px-3 py-1 text-[11px] font-bold text-tu-red-600 ring-1 ring-tu-red-100">
+            {week}
+          </span>
         </div>
+
+        <h1 className="display text-xl leading-snug sm:text-2xl">{quiz.title}</h1>
+        <p className="mt-1.5 text-sm text-ink-500">
+          {quiz.questions.length} ข้อ · ตอบให้ครบทุกข้อก่อนส่ง
+        </p>
       </div>
 
-      {/* คำถาม */}
-      {quiz.questions.map((q, i) => (
-        <div key={q.id} className="card px-6 py-5">
-          <p className="mb-3 flex gap-3 text-base font-medium text-ink-800">
-            <span className="display flex-shrink-0 text-lg leading-tight text-ink-300">
-              {i + 1}
-            </span>
-            {q.question}
-          </p>
-          <div className="space-y-1 pl-8">
-            {q.choices.map((c) => {
-              const picked = answers[q.id] === c.id;
-              return (
-                <label
-                  key={c.id}
-                  className={`flex cursor-pointer items-center gap-3 rounded-md border px-3 py-2 transition ${
-                    picked
-                      ? "border-tu-red-300 bg-tu-red-50"
-                      : "border-transparent hover:bg-paper-100"
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name={q.id}
-                    value={c.id}
-                    checked={picked}
-                    onChange={() => choose(q.id, c.id)}
-                    className="h-4 w-4 accent-tu-red-500"
-                  />
-                  <span
-                    className={`text-sm ${
-                      picked ? "font-semibold text-ink-900" : "text-ink-700"
-                    }`}
-                  >
-                    {c.text}
-                  </span>
-                </label>
-              );
-            })}
-          </div>
-        </div>
-      ))}
-
-      {/* ปุ่มส่ง */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
-        <Link href="/student" className="btn-ghost">
-          ← ออก
-        </Link>
-        <button
-          type="button"
-          onClick={submit}
-          disabled={!allAnswered}
-          className="btn-primary px-6"
-        >
-          {allAnswered
-            ? "ส่งคำตอบ"
-            : `ตอบให้ครบก่อน (${answered}/${quiz.questions.length})`}
-        </button>
-      </div>
+      <SurveyQuizForm quiz={quiz} onComplete={finish} />
     </div>
   );
 }
 
 /* ---------- หน้าแสดงผล + feedback ---------- */
+
+function ScoreRing({ percent }: { percent: number }) {
+  const r = 52;
+  const circ = 2 * Math.PI * r;
+  const offset = circ - (percent / 100) * circ;
+  const color =
+    percent >= 80 ? "#059669" : percent >= 50 ? "#F2A900" : "#C8102E";
+
+  return (
+    <div className="relative mx-auto h-36 w-36">
+      <svg className="-rotate-90" viewBox="0 0 120 120" aria-hidden>
+        <circle
+          cx="60"
+          cy="60"
+          r={r}
+          fill="none"
+          stroke="#F5EDE1"
+          strokeWidth="10"
+        />
+        <circle
+          cx="60"
+          cy="60"
+          r={r}
+          fill="none"
+          stroke={color}
+          strokeWidth="10"
+          strokeLinecap="round"
+          strokeDasharray={circ}
+          strokeDashoffset={offset}
+          className="transition-all duration-700 ease-out"
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="display text-3xl leading-none text-ink-900">
+          {percent}%
+        </span>
+        <span className="mt-1 text-[11px] font-medium text-ink-400">
+          คะแนนรวม
+        </span>
+      </div>
+    </div>
+  );
+}
 
 function ResultView({
   week,
@@ -205,99 +179,243 @@ function ResultView({
   result: QuizResult;
   onRetry: () => void;
 }) {
-  return (
-    <div className="space-y-3">
-      {/* สรุปคะแนน */}
-      <div className="card overflow-hidden">
-        <div className="h-1.5 bg-tu-gold-500" />
-        <div className="px-6 py-6">
-          <p className="eyebrow-gold">ผลแบบทดสอบ · {week}</p>
-          <p className="mt-2 text-5xl font-bold leading-none text-ink-900">
-            {result.score}
-            <span className="text-xl font-semibold text-ink-400">
-              {" "}
-              / {result.total}
-            </span>
-          </p>
-          <hr className="rule-gold my-4" />
-          <p className="text-sm leading-relaxed text-ink-600">
-            {result.overall}
-          </p>
+  const percent = Math.round((result.score / result.total) * 100);
 
-          {/* ทางไปหน้าสรุปจุดแข็ง/จุดอ่อนรายหัวข้อ */}
-          <Link
-            href={`/student/summary/${week.match(/\d+/)?.[0] ?? ""}`}
-            className="btn-primary mt-5"
-          >
-            ดูสรุปจุดแข็ง / จุดอ่อน →
-          </Link>
+  // สถานะของ "ทบทวนรายข้อ" — ตัวกรอง + accordion (เปิดข้อที่ตอบผิดไว้ให้ก่อน)
+  const wrongIds = result.questions
+    .filter((r) => !r.isCorrect)
+    .map((r) => r.question.id);
+  const [filter, setFilter] = useState<"all" | "wrong">("all");
+  const [openIds, setOpenIds] = useState<Set<string>>(() => new Set(wrongIds));
+  const toggleOpen = (id: string) =>
+    setOpenIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  // ระดับผลตามคะแนน — คุมสีของแผงคะแนน + ป้ายระดับ
+  const band =
+    percent >= 80
+      ? {
+          label: "เยี่ยมมาก",
+          panel: "border-emerald-200 bg-emerald-50",
+          pill: "bg-emerald-100 text-emerald-700",
+          Icon: Smile,
+          note: "แต่แนะนำให้กลับมาทบทวนบ่อย ๆ เพื่อความแม่นยำและความเข้าใจของเนื้อหา",
+        }
+      : percent >= 50
+        ? {
+            label: "พอใช้",
+            panel: "border-tu-gold-200 bg-tu-gold-50",
+            pill: "bg-tu-gold-100 text-tu-gold-700",
+            Icon: Meh,
+            note: "",
+          }
+        : {
+            label: "ควรทบทวน",
+            panel: "border-tu-red-100 bg-tu-red-50",
+            pill: "bg-tu-red-100 text-tu-red-700",
+            Icon: Frown,
+            note: "",
+          };
+
+  return (
+    <div className="animate-fade-in">
+      {/* Score summary — hero: วงคะแนน + ระดับผล + แถบสัดส่วนถูก/ผิด */}
+      <div className={`mb-8 rounded-2xl border p-6 sm:p-7 ${band.panel}`}>
+        <div className="flex flex-col items-center gap-6 sm:flex-row sm:gap-8">
+          <div className="flex-shrink-0">
+            <ScoreRing percent={percent} />
+          </div>
+
+          <div className="min-w-0 flex-1 text-center sm:text-left">
+            <p className="eyebrow-gold">ผลแบบทดสอบ · {week}</p>
+            <span
+              className={`mt-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wide ${band.pill}`}
+            >
+              <band.Icon className="h-3.5 w-3.5" strokeWidth={2.5} />
+              {band.label}
+            </span>
+
+            <p className="mt-2 text-2xl font-bold text-ink-900">
+              ทำได้ {result.score}{" "}
+              <span className="text-lg font-normal text-ink-400">
+                / {result.total} ข้อ
+              </span>
+            </p>
+            <p className="mx-auto mt-1.5 max-w-md text-sm leading-relaxed text-ink-600 sm:mx-0">
+              {result.overall}
+              {band.note ? ` ${band.note}` : ""}
+            </p>
+
+            {/* แถบสัดส่วนถูก/ผิด */}
+            <div className="mt-4 flex h-2 overflow-hidden rounded-full bg-paper-300">
+              <div
+                className="bg-emerald-500"
+                style={{ width: `${percent}%` }}
+              />
+              <div
+                className="bg-tu-red-500"
+                style={{ width: `${100 - percent}%` }}
+              />
+            </div>
+            <div className="mt-2 flex items-center justify-center gap-4 text-xs text-ink-500 sm:justify-start">
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-sm bg-emerald-500" />
+                ถูก <b className="font-bold text-ink-800">{result.score}</b>
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-sm bg-tu-red-500" />
+                ผิด{" "}
+                <b className="font-bold text-ink-800">
+                  {result.total - result.score}
+                </b>
+              </span>
+            </div>
+
+            <div className="mt-5 flex justify-center sm:justify-start">
+              <Link
+                href={`/student/summary/${week.match(/\d+/)?.[0] ?? ""}`}
+                className="btn-primary"
+              >
+                ดูสรุปจุดแข็ง / จุดอ่อน →
+              </Link>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* รายข้อ + feedback */}
-      {result.questions.map((r, i) => (
-        <div key={r.question.id} className="card px-6 py-5">
-          <p className="mb-3 flex items-start justify-between gap-3 text-base font-medium text-ink-800">
-            <span className="flex gap-3">
-              <span className="display flex-shrink-0 text-lg leading-tight text-ink-300">
-                {i + 1}
-              </span>
-              {r.question.question}
-            </span>
-            <span
-              className={`flex-shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-bold ring-1 ${
-                r.isCorrect
-                  ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
-                  : "bg-tu-red-50 text-tu-red-700 ring-tu-red-200"
+      {/* Per-question review — accordion + ตัวกรอง (ข้อที่ผิดกางไว้ให้) */}
+      <div className="mt-8">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="display text-lg">ทบทวนรายข้อ</h2>
+          <div className="inline-flex gap-1 rounded-xl border border-line bg-paper-200 p-1">
+            <button
+              type="button"
+              onClick={() => setFilter("all")}
+              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                filter === "all"
+                  ? "bg-white text-ink-900 shadow-sm"
+                  : "text-ink-500 hover:text-ink-700"
               }`}
             >
-              {r.isCorrect ? "ถูก" : "ผิด"}
-            </span>
-          </p>
-
-          <div className="space-y-1 pl-8">
-            {r.question.choices.map((c) => {
-              const isCorrect = c.id === r.correctId;
-              const isChosen = c.id === r.chosenId;
-              return (
-                <div
-                  key={c.id}
-                  className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm ${
-                    isCorrect
-                      ? "bg-emerald-50 font-semibold text-emerald-800"
-                      : isChosen
-                        ? "bg-tu-red-50 text-tu-red-700"
-                        : "text-ink-600"
-                  }`}
-                >
-                  <span className="w-4 flex-shrink-0 text-center text-xs">
-                    {isCorrect ? "✓" : isChosen ? "✕" : ""}
-                  </span>
-                  {c.text}
-                  {isChosen && !isCorrect && (
-                    <span className="text-[10px] text-ink-400">
-                      (คำตอบของคุณ)
-                    </span>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-
-          {/* คำแนะนำจาก AI */}
-          <div className="mt-4 ml-8 rounded-md border-l-2 border-tu-gold-500 bg-paper-50 px-3.5 py-2.5">
-            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-tu-gold-700">
-              คำแนะนำจาก AI
-            </p>
-            <p className="mt-1 text-xs leading-relaxed text-ink-600">
-              {r.feedback}
-            </p>
+              ทั้งหมด ({result.questions.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilter("wrong")}
+              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                filter === "wrong"
+                  ? "bg-white text-ink-900 shadow-sm"
+                  : "text-ink-500 hover:text-ink-700"
+              }`}
+            >
+              เฉพาะที่ผิด ({wrongIds.length})
+            </button>
           </div>
         </div>
-      ))}
 
-      {/* ปุ่ม */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
+        <div className="space-y-2.5">
+          {result.questions.map((r, i) => {
+            if (filter === "wrong" && r.isCorrect) return null;
+            const open = openIds.has(r.question.id);
+            const ok = r.isCorrect;
+            return (
+              <div
+                key={r.question.id}
+                className={`overflow-hidden rounded-2xl border border-l-4 bg-white ${
+                  ok
+                    ? "border-emerald-100 border-l-emerald-500"
+                    : "border-tu-red-100 border-l-tu-red-500"
+                }`}
+              >
+                {/* หัวข้อ — กดกาง/พับ */}
+                <button
+                  type="button"
+                  onClick={() => toggleOpen(r.question.id)}
+                  aria-expanded={open}
+                  className="flex w-full items-center gap-3 px-4 py-3.5 text-left"
+                >
+                  <span
+                    className={`grid h-6 w-6 flex-shrink-0 place-items-center rounded-lg text-xs font-bold ${
+                      ok
+                        ? "bg-emerald-100 text-emerald-700"
+                        : "bg-tu-red-100 text-tu-red-700"
+                    }`}
+                  >
+                    {i + 1}
+                  </span>
+                  <span className="min-w-0 flex-1 text-sm font-semibold leading-snug text-ink-800">
+                    {r.question.question}
+                  </span>
+                  <span
+                    className={`flex-shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-bold ring-1 ${
+                      ok
+                        ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
+                        : "bg-tu-red-50 text-tu-red-700 ring-tu-red-200"
+                    }`}
+                  >
+                    {ok ? "ถูก" : "ผิด"}
+                  </span>
+                  <ChevronDown
+                    className={`h-4 w-4 flex-shrink-0 text-ink-400 transition-transform ${
+                      open ? "rotate-180" : ""
+                    }`}
+                    aria-hidden
+                  />
+                </button>
+
+                {/* เนื้อหา — ตัวเลือก + คำแนะนำ AI */}
+                {open && (
+                  <div className="px-4 pb-4">
+                    <div className="space-y-1.5">
+                      {r.question.choices.map((c) => {
+                        const isCorrect = c.id === r.correctId;
+                        const isChosen = c.id === r.chosenId;
+                        return (
+                          <div
+                            key={c.id}
+                            className={`flex items-center gap-2.5 rounded-xl px-3.5 py-2.5 text-sm ${
+                              isCorrect
+                                ? "bg-emerald-50 font-semibold text-emerald-800 ring-1 ring-emerald-200"
+                                : isChosen
+                                  ? "bg-tu-red-50 text-tu-red-700 ring-1 ring-tu-red-200"
+                                  : "text-ink-600"
+                            }`}
+                          >
+                            <span className="w-4 flex-shrink-0 text-center text-xs font-bold">
+                              {isCorrect ? "✓" : isChosen ? "✕" : ""}
+                            </span>
+                            {c.text}
+                            {isChosen && !isCorrect && (
+                              <span className="ml-auto text-[10px] text-ink-400">
+                                คำตอบของคุณ
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <div className="mt-3 rounded-xl border border-tu-gold-200 bg-tu-gold-50 px-4 py-3">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-tu-gold-700">
+                        ✦ คำแนะนำจาก AI
+                      </p>
+                      <p className="mt-1.5 text-xs leading-relaxed text-ink-600">
+                        {r.feedback}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-6">
         <Link href="/student" className="btn-ghost">
           ← เลือกสัปดาห์อื่น
         </Link>

@@ -52,7 +52,7 @@ export interface Course {
   topics: Topic[];
   weekConfig: WeekConfigMap;
   /** ควิซราย "สัปดาห์" (key = ป้ายสัปดาห์ เช่น "สัปดาห์ที่ 3") */
-  quizzes: Record<string, Quiz>;
+  quizzes: Record<string, Quiz[]>;
   /** คำตอบที่นักเรียนส่งแล้ว (สำหรับรายงานภาพรวม) */
   submissions: Submission[];
   createdAt: string;
@@ -97,9 +97,12 @@ interface CourseContextValue {
   setTopics: Dispatch<SetStateAction<Topic[]>>;
   weekConfig: WeekConfigMap;
   setWeekConfig: Dispatch<SetStateAction<WeekConfigMap>>;
-  quizzes: Record<string, Quiz>;
+  quizzes: Record<string, Quiz[]>;
   saveQuiz: (week: string, quiz: Quiz) => void;
   getQuiz: (week: string) => Quiz | undefined;
+  toggleQuizActive: (week: string, quizId: string) => void;
+  /** ลบควิซ 1 ชุดออกจากสัปดาห์ — ถ้าลบตัวที่ active และยังมีตัวอื่นเหลือ จะเลื่อนตัวแรกขึ้นเป็น active */
+  deleteQuiz: (week: string, quizId: string) => void;
   /** เพิ่มหัวข้อชุดใหม่ (จากการอัปโหลดสไลด์เพิ่ม) เข้าวิชาที่ active */
   addTopics: (topics: Topic[]) => void;
 
@@ -207,6 +210,19 @@ function backfillCourse(c: Record<string, unknown>): Course {
       : [],
     totalWeeks:
       typeof c.totalWeeks === "number" ? c.totalWeeks : DEFAULT_WEEK_COUNT,
+    quizzes: (function migrateQuizzes() {
+      const q = (c.quizzes || {}) as Record<string, any>;
+      const newQ: Record<string, Quiz[]> = {};
+      for (const [w, val] of Object.entries(q)) {
+        if (Array.isArray(val)) {
+          newQ[w] = val;
+        } else if (val) {
+          // It was a single quiz, convert to array
+          newQ[w] = [{ ...val, id: val.id || "migrated", isActive: true }];
+        }
+      }
+      return newQ;
+    })(),
   } as Course;
 }
 
@@ -256,7 +272,18 @@ function migrate(
         typeof d.totalWeeks === "number" ? d.totalWeeks : DEFAULT_WEEK_COUNT,
       topics: Array.isArray(d.topics) ? (d.topics as Topic[]) : freshTopics(),
       weekConfig: (d.weekConfig as WeekConfigMap) ?? {},
-      quizzes: (d.quizzes as Record<string, Quiz>) ?? {},
+      quizzes: (function migrateOldQuizzes() {
+        const q = (d.quizzes || {}) as Record<string, any>;
+        const newQ: Record<string, Quiz[]> = {};
+        for (const [w, val] of Object.entries(q)) {
+          if (Array.isArray(val)) {
+            newQ[w] = val;
+          } else if (val) {
+            newQ[w] = [{ ...val, id: val.id || "migrated", isActive: true }];
+          }
+        }
+        return newQ;
+      })(),
       submissions: Array.isArray(d.submissions)
         ? (d.submissions as Submission[])
         : [],
@@ -407,14 +434,62 @@ export function CourseProvider({ children }: { children: ReactNode }) {
   }
 
   function saveQuiz(week: string, quiz: Quiz) {
-    updateActive((c) => ({
-      ...c,
-      quizzes: { ...c.quizzes, [week]: quiz },
-    }));
+    updateActive((c) => {
+      const existing = c.quizzes[week] || [];
+      const index = existing.findIndex((q) => q.id === quiz.id);
+      
+      let nextList = [...existing];
+      if (index >= 0) {
+        nextList[index] = quiz;
+      } else {
+        // If it's a new quiz and it's the first one, make it active
+        const newQuiz = { ...quiz, isActive: existing.length === 0 ? true : quiz.isActive };
+        nextList.push(newQuiz);
+      }
+
+      return {
+        ...c,
+        quizzes: { ...c.quizzes, [week]: nextList },
+      };
+    });
   }
 
   function getQuiz(week: string) {
-    return activeCourse?.quizzes[week];
+    const list = activeCourse?.quizzes[week];
+    if (!list || list.length === 0) return undefined;
+    return list.find((q) => q.isActive) || list[0];
+  }
+
+  function toggleQuizActive(week: string, quizId: string) {
+    updateActive((c) => {
+      const existing = c.quizzes[week] || [];
+      const updated = existing.map((q) => ({
+        ...q,
+        isActive: q.id === quizId,
+      }));
+      return {
+        ...c,
+        quizzes: { ...c.quizzes, [week]: updated },
+      };
+    });
+  }
+
+  function deleteQuiz(week: string, quizId: string) {
+    updateActive((c) => {
+      const existing = c.quizzes[week] || [];
+      let remaining = existing.filter((q) => q.id !== quizId);
+      // ถ้าลบตัวที่ active ไปแล้วยังเหลือควิซอื่น → ตั้งตัวแรกเป็น active แทน
+      if (remaining.length > 0 && !remaining.some((q) => q.isActive)) {
+        remaining = remaining.map((q, i) => ({ ...q, isActive: i === 0 }));
+      }
+      const nextQuizzes = { ...c.quizzes };
+      if (remaining.length === 0) {
+        delete nextQuizzes[week];
+      } else {
+        nextQuizzes[week] = remaining;
+      }
+      return { ...c, quizzes: nextQuizzes };
+    });
   }
 
   function addTopics(newTopics: Topic[]) {
@@ -473,6 +548,8 @@ export function CourseProvider({ children }: { children: ReactNode }) {
         quizzes: activeCourse?.quizzes ?? {},
         saveQuiz,
         getQuiz,
+        toggleQuizActive,
+        deleteQuiz,
         addTopics,
 
         studentId,

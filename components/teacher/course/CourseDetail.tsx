@@ -3,16 +3,18 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useCourse, topicsFromSyllabusSchedule } from "@/lib/courseStore";
-import { resolveHex, weekNumber } from "@/lib/weeks";
+import { weekNumber, resolveHex, tagStyles } from "@/lib/weeks";
 import { extractSyllabus } from "@/lib/syllabus";
 import PageHeader from "@/components/ui/PageHeader";
+import Modal, { ModalHeader } from "@/components/ui/Modal";
+import { ChevronDown, Pencil, Trash2, FileText } from "lucide-react";
 import type { Topic } from "@/lib/types";
+import type { Quiz } from "@/lib/quiz";
 
 interface WeekRow {
   week: string;
   topics: Topic[];
-  colorKey: string;
-  questionCount: number | null;
+  quizzes: Quiz[];
 }
 
 /**
@@ -28,6 +30,8 @@ export default function CourseDetail({ courseId }: { courseId: string }) {
     setSyllabus,
     setSyllabusExtraction,
     setTopics,
+    toggleQuizActive,
+    deleteQuiz,
     hydrated,
   } = useCourse();
 
@@ -35,6 +39,53 @@ export default function CourseDetail({ courseId }: { courseId: string }) {
   const syllabusRef = useRef<HTMLInputElement>(null);
   const [extracting, setExtracting] = useState(false);
   const [extractError, setExtractError] = useState("");
+  // สัปดาห์ที่กางรายการควิซอยู่ (accordion) — กางได้หลายสัปดาห์พร้อมกัน
+  const [expandedWeeks, setExpandedWeeks] = useState<Set<string>>(new Set());
+
+  function toggleWeek(week: string) {
+    setExpandedWeeks((prev) => {
+      const next = new Set(prev);
+      if (next.has(week)) next.delete(week);
+      else next.add(week);
+      return next;
+    });
+  }
+
+  // เปลี่ยน "ชุดที่ใช้งาน" ต้องกดยืนยันก่อน — เก็บตัวเลือกที่ค้าง (ยังไม่บันทึก) ต่อสัปดาห์
+  const [pendingActive, setPendingActive] = useState<Record<string, string>>({});
+  // ป็อปอัปลบ/เตือน — เก็บควิซที่กำลังจะลบ
+  const [deleteTarget, setDeleteTarget] = useState<{
+    week: string;
+    quiz: Quiz;
+  } | null>(null);
+
+  /** เลือกชุด (ยังไม่บันทึก) — ถ้าเลือกกลับเป็นชุดเดิมที่ใช้อยู่ ถือว่าไม่มีการเปลี่ยน */
+  function pickActive(week: string, quizId: string, committedId?: string) {
+    setPendingActive((prev) => {
+      const next = { ...prev };
+      if (quizId === committedId) delete next[week];
+      else next[week] = quizId;
+      return next;
+    });
+  }
+  /** บันทึกการเปลี่ยนชุดที่ใช้งานของสัปดาห์นั้น */
+  function saveActive(week: string) {
+    const pid = pendingActive[week];
+    if (pid) toggleQuizActive(week, pid);
+    setPendingActive((prev) => {
+      const next = { ...prev };
+      delete next[week];
+      return next;
+    });
+  }
+  /** ยกเลิกการเปลี่ยน — กลับไปใช้ชุดที่บันทึกไว้ */
+  function cancelActive(week: string) {
+    setPendingActive((prev) => {
+      const next = { ...prev };
+      delete next[week];
+      return next;
+    });
+  }
 
   // ตั้งวิชานี้เป็น active เมื่อเข้าหน้า (ให้ /topics, /quiz ทำงานกับวิชานี้)
   useEffect(() => {
@@ -79,8 +130,7 @@ export default function CourseDetail({ courseId }: { courseId: string }) {
       .map(([week, list]) => ({
         week,
         topics: list,
-        colorKey: course.weekConfig[week]?.colorKey ?? "red",
-        questionCount: course.quizzes[week]?.questions.length ?? null,
+        quizzes: course.quizzes[week] ?? [],
       }))
       .sort((a, b) => Number(weekNumber(a.week)) - Number(weekNumber(b.week)));
   }, [course]);
@@ -108,9 +158,24 @@ export default function CourseDetail({ courseId }: { courseId: string }) {
     );
   }
 
-  const assignedCount = course.topics.filter((t) => t.weekAssigned).length;
-  const quizCount = rows.filter((r) => r.questionCount !== null).length;
   const unassigned = course.topics.filter((t) => !t.weekAssigned).length;
+
+  function handleDelete(week: string, quiz: Quiz) {
+    setDeleteTarget({ week, quiz });
+  }
+
+  function confirmDelete() {
+    if (!deleteTarget) return;
+    deleteQuiz(deleteTarget.week, deleteTarget.quiz.id);
+    // ถ้าตัวที่ลบเป็นตัวที่ค้างเลือกไว้ ให้เคลียร์ค่าที่ค้างของสัปดาห์นั้น
+    setPendingActive((prev) => {
+      if (prev[deleteTarget.week] !== deleteTarget.quiz.id) return prev;
+      const next = { ...prev };
+      delete next[deleteTarget.week];
+      return next;
+    });
+    setDeleteTarget(null);
+  }
 
   return (
     <div>
@@ -144,7 +209,7 @@ export default function CourseDetail({ courseId }: { courseId: string }) {
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-paper-50 px-4 py-3">
         <div className="flex min-w-0 items-center gap-2.5">
           <span className="grid h-8 w-8 flex-shrink-0 place-items-center rounded-md bg-tu-red-50 text-tu-red-600">
-            <DocIcon />
+            <FileText className="h-4 w-4" strokeWidth={1.8} />
           </span>
           <div className="min-w-0">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-400">
@@ -248,86 +313,263 @@ export default function CourseDetail({ courseId }: { courseId: string }) {
           </div>
         </div>
       ) : (
-        <div className="card divide-y divide-line-soft overflow-hidden">
+        <div className="border-t border-line-soft">
           {rows.map((row) => {
-            const hasQuiz = row.questionCount !== null;
-            return (
-              <Link
-                key={row.week}
-                href={`/quiz/${weekNumber(row.week)}`}
-                className="group flex items-center gap-4 px-4 py-4 transition hover:bg-paper-100/70 sm:px-5"
-              >
-                <div className="flex flex-shrink-0 items-center gap-3">
-                  <span
-                    className="h-10 w-1 rounded-full"
-                    style={{ backgroundColor: resolveHex(row.colorKey) }}
-                    aria-hidden
-                  />
-                  <span className="w-7 text-2xl font-bold leading-none text-ink-300 transition group-hover:text-ink-500">
-                    {weekNumber(row.week)}
-                  </span>
-                </div>
+            const wk = weekNumber(row.week);
+            const open = expandedWeeks.has(row.week);
+            const hasQuizzes = row.quizzes.length > 0;
 
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-sm font-bold text-ink-800">
-                      {row.week}
-                    </span>
-                    <span className="text-[11px] text-ink-400">
-                      {row.topics.length} หัวข้อ
-                    </span>
-                    {hasQuiz && (
-                      <span className="rounded-full bg-tu-gold-50 px-2 py-0.5 text-[10px] font-bold text-tu-gold-700 ring-1 ring-tu-gold-200">
-                        ควิซ {row.questionCount} ข้อ
-                      </span>
-                    )}
-                  </div>
-                  <p className="mt-1 truncate text-xs leading-relaxed text-ink-500">
-                    {row.topics.map((t) => t.title).join("  ·  ")}
-                  </p>
-                </div>
+            // สีประจำสัปดาห์ที่อาจารย์เลือกไว้ (จาก weekConfig) — ไล่ไปทั้งเลข/ปุ่ม/ป้าย
+            const colorKey = course.weekConfig?.[row.week]?.colorKey;
+            const hex = resolveHex(colorKey);
+            const soft = tagStyles(colorKey).soft;
+            // ชุดที่ใช้งานจริง (บันทึกแล้ว) vs ชุดที่เพิ่งเลือก (ยังไม่บันทึก)
+            const committedActiveId = row.quizzes.find((q) => q.isActive)?.id;
+            const selectedId = pendingActive[row.week] ?? committedActiveId;
+            const hasPending =
+              pendingActive[row.week] != null &&
+              pendingActive[row.week] !== committedActiveId;
 
+            // เลขสัปดาห์ตัวใหญ่ (สีตามสัปดาห์) + คำว่า WEEK
+            const WeekNum = (
+              <div className="flex-shrink-0">
+                <span className="block text-[10px] font-bold uppercase tracking-[0.16em] text-ink-300">
+                  Week
+                </span>
                 <span
-                  className={`flex-shrink-0 text-xs font-bold transition ${
-                    hasQuiz
-                      ? "text-ink-400 group-hover:text-ink-700"
-                      : "text-tu-red-600 group-hover:text-tu-red-700"
-                  }`}
+                  className="block text-[42px] font-bold leading-[0.8] tabular-nums"
+                  style={{ color: hex, opacity: hasQuizzes ? 1 : 0.5 }}
                 >
-                  {hasQuiz ? "แก้ไข →" : "＋ สร้างควิซ"}
+                  {wk.padStart(2, "0")}
+                </span>
+              </div>
+            );
+
+            // หัวข้อของสัปดาห์ + จำนวนแบบทดสอบ
+            const WeekInfo = (
+              <div className="min-w-0 flex-1">
+                <p className="max-w-[54ch] text-[15px] font-semibold leading-snug text-ink-900">
+                  {row.topics.map((t) => t.title).join("  ·  ")}
+                </p>
+                <p className="mt-1 text-xs text-ink-400">
+                  {hasQuizzes
+                    ? `${row.quizzes.length} แบบทดสอบ`
+                    : "ยังไม่มีแบบทดสอบ"}
+                </p>
+              </div>
+            );
+
+            // ลิงก์สร้างควิซ — ขีดเส้นใต้ขยายตอน hover + เครื่องหมาย + หมุนเล็กน้อย
+            const createLink = (label: string) => (
+              <Link
+                href={`/quiz/${wk}?new=1`}
+                className="group/create inline-flex flex-shrink-0 items-center gap-1 text-[13px] font-semibold text-tu-red-600 transition-colors hover:text-tu-red-700"
+              >
+                <span className="inline-block transition-transform duration-200 group-hover/create:rotate-90 group-hover/create:scale-110">
+                  +
+                </span>
+                <span className="underline decoration-1 underline-offset-4 transition-all duration-200 group-hover/create:underline-offset-[6px]">
+                  {label}
                 </span>
               </Link>
+            );
+
+            return (
+              <div key={row.week} className="border-b border-line-soft">
+                {hasQuizzes ? (
+                  /* สัปดาห์ที่มีควิซ — กดหัวเพื่อกาง/พับรายการควิซ */
+                  <button
+                    type="button"
+                    onClick={() => toggleWeek(row.week)}
+                    aria-expanded={open}
+                    className="flex w-full items-center gap-5 py-5 text-left"
+                  >
+                    {WeekNum}
+                    {WeekInfo}
+                    <ChevronDown
+                      className={`h-5 w-5 flex-shrink-0 text-ink-400 transition-transform ${open ? "rotate-180" : ""}`}
+                      aria-hidden
+                    />
+                  </button>
+                ) : (
+                  /* สัปดาห์ที่ยังไม่มีควิซ — ปุ่มสร้างควิซแทน */
+                  <div className="flex w-full items-center gap-5 py-5">
+                    {WeekNum}
+                    {WeekInfo}
+                    {createLink("สร้างควิซ")}
+                  </div>
+                )}
+
+                {/* รายการควิซที่กางออกมา — เยื้องให้ตรงกับหัวข้อ */}
+                {open && hasQuizzes && (
+                  <div className="ml-0 flex flex-col gap-2 pb-6 sm:ml-[76px]">
+                    {row.quizzes.map((q) => (
+                      <div
+                        key={q.id}
+                        className="flex items-center gap-3 rounded-xl border border-line bg-paper-50 px-3.5 py-3"
+                        style={{
+                          borderLeft: `3px solid ${hex}`,
+                          ...(q.isActive
+                            ? { backgroundColor: soft.backgroundColor }
+                            : {}),
+                        }}
+                      >
+                        {/* ปุ่มเลือกชุดที่ใช้งาน (active ได้ทีละชุดต่อสัปดาห์) */}
+                        <button
+                          type="button"
+                          onClick={() =>
+                            pickActive(row.week, q.id, committedActiveId)
+                          }
+                          title={q.id === selectedId ? "ชุดที่เลือก" : "เลือกชุดนี้"}
+                          aria-pressed={q.id === selectedId}
+                          className={`grid h-[19px] w-[19px] flex-shrink-0 place-items-center rounded-full border-2 bg-white transition ${q.id === selectedId ? "" : "border-line-strong"}`}
+                          style={
+                            q.id === selectedId
+                              ? { backgroundColor: hex, borderColor: hex }
+                              : undefined
+                          }
+                        >
+                          {q.id === selectedId && (
+                            <span className="h-1.5 w-1.5 rounded-full bg-white" />
+                          )}
+                        </button>
+
+                        {/* ชื่อชุด + จำนวนข้อ */}
+                        <div className="min-w-0 flex-1">
+                          <span
+                            className={`block truncate text-[13.5px] font-semibold ${q.isActive ? "" : "text-ink-800"}`}
+                            style={q.isActive ? { color: soft.color } : undefined}
+                          >
+                            {q.title}
+                          </span>
+                          <span className="text-[11px] text-ink-400">
+                            {q.questions.length} ข้อ
+                          </span>
+                        </div>
+
+                        {/* ป้ายชุดที่เลือกอยู่ */}
+                        {q.isActive && (
+                          <span
+                            className="inline-flex flex-shrink-0 items-center gap-1 rounded-md px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide"
+                            style={{
+                              backgroundColor: soft.backgroundColor,
+                              color: soft.color,
+                            }}
+                          >
+                            <span
+                              className="h-1 w-1 rounded-full"
+                              style={{ backgroundColor: hex }}
+                            />
+                            เลือกอยู่
+                          </span>
+                        )}
+
+                        {/* จัดการ — แก้ไข / ลบ */}
+                        <div className="flex flex-shrink-0 gap-1.5">
+                          <Link
+                            href={`/quiz/${wk}?quiz=${q.id}`}
+                            title="แก้ไข"
+                            className="grid h-8 w-8 place-items-center rounded-lg border border-line bg-white text-ink-500 transition hover:border-line-strong hover:text-tu-red-600"
+                          >
+                            <Pencil className="h-[15px] w-[15px]" />
+                          </Link>
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(row.week, q)}
+                            title="ลบ"
+                            className="grid h-8 w-8 place-items-center rounded-lg border border-line bg-white text-ink-400 transition hover:border-tu-red-200 hover:bg-tu-red-50/50 hover:text-tu-red-600"
+                          >
+                            <Trash2 className="h-[15px] w-[15px]" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+
+                    {/* แถบยืนยันเมื่อมีการเปลี่ยนชุดที่ใช้งาน (ยังไม่บันทึก) */}
+                    {hasPending && (
+                      <div className="mt-1 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-tu-gold-200 bg-tu-gold-50 px-3.5 py-2.5">
+                        <span className="text-xs font-medium text-tu-gold-800">
+                          มีการเปลี่ยนชุดที่ใช้งาน — ยังไม่บันทึก
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => cancelActive(row.week)}
+                            className="rounded-lg px-3 py-1.5 text-xs font-semibold text-ink-500 transition hover:bg-paper-200"
+                          >
+                            ยกเลิก
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => saveActive(row.week)}
+                            className="rounded-lg bg-tu-red-500 px-3.5 py-1.5 text-xs font-semibold text-white transition hover:bg-tu-red-600"
+                          >
+                            บันทึกการเปลี่ยนแปลง
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* สร้างควิซเพิ่ม */}
+                    <div className="pt-1.5">{createLink("สร้างควิซเพิ่ม")}</div>
+                  </div>
+                )}
+              </div>
             );
           })}
         </div>
       )}
-    </div>
-  );
-}
 
-function Stat({ value, label }: { value: number; label: string }) {
-  return (
-    <div className="card px-4 py-3">
-      <p className="text-2xl font-bold leading-none text-ink-900">{value}</p>
-      <p className="mt-1.5 text-[11px] font-medium text-ink-500">{label}</p>
+      {/* ป็อปอัปลบ / เตือนเมื่อพยายามลบชุดที่ใช้งานอยู่ */}
+      <Modal open={deleteTarget !== null} onClose={() => setDeleteTarget(null)}>
+        {deleteTarget &&
+          (deleteTarget.quiz.isActive ? (
+            <>
+              <ModalHeader title="ลบชุดนี้ไม่ได้" />
+              <p className="text-sm leading-relaxed text-ink-600">
+                “{deleteTarget.quiz.title}” เป็น
+                <span className="font-semibold text-ink-800">
+                  ชุดที่ใช้งานอยู่
+                </span>{" "}
+                ของ{deleteTarget.week} — กรุณาเปลี่ยนไปใช้ชุดอื่น
+                (แล้วกดบันทึกการเปลี่ยนแปลง) ก่อน จึงจะลบชุดนี้ได้
+              </p>
+              <div className="mt-6 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setDeleteTarget(null)}
+                  className="btn-primary px-5"
+                >
+                  เข้าใจแล้ว
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <ModalHeader title="ยืนยันการลบ" />
+              <p className="text-sm leading-relaxed text-ink-600">
+                ต้องการลบ “{deleteTarget.quiz.title}” ออกจาก{deleteTarget.week}{" "}
+                ใช่ไหม? การลบนี้ย้อนกลับไม่ได้
+              </p>
+              <div className="mt-6 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setDeleteTarget(null)}
+                  className="btn-ghost"
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmDelete}
+                  className="rounded-lg bg-tu-red-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-tu-red-600"
+                >
+                  ลบ
+                </button>
+              </div>
+            </>
+          ))}
+      </Modal>
     </div>
-  );
-}
-
-function DocIcon() {
-  return (
-    <svg
-      className="h-4 w-4"
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-      strokeWidth={1.8}
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
-      />
-    </svg>
   );
 }

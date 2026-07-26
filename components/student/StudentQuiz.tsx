@@ -6,7 +6,7 @@ import { useCourse } from "@/lib/courseStore";
 import type { Quiz } from "@/lib/quiz";
 import { gradeQuiz, type QuizResult, type StudentAnswers } from "@/lib/feedback";
 import SurveyQuizForm from "./SurveyQuizForm";
-import { ChevronDown, ChevronLeft } from "lucide-react";
+import { ChevronDown, ChevronLeft, Smile, Meh, Frown } from "lucide-react";
 
 type Phase = "loading" | "empty" | "doing" | "result";
 
@@ -202,17 +202,23 @@ function ResultView({
           label: "เยี่ยมมาก",
           panel: "border-emerald-200 bg-emerald-50",
           pill: "bg-emerald-100 text-emerald-700",
+          Icon: Smile,
+          note: "แต่แนะนำให้กลับมาทบทวนบ่อย ๆ เพื่อความแม่นยำและความเข้าใจของเนื้อหา",
         }
       : percent >= 50
         ? {
             label: "พอใช้",
             panel: "border-tu-gold-200 bg-tu-gold-50",
             pill: "bg-tu-gold-100 text-tu-gold-700",
+            Icon: Meh,
+            note: "",
           }
         : {
             label: "ควรทบทวน",
             panel: "border-tu-red-100 bg-tu-red-50",
             pill: "bg-tu-red-100 text-tu-red-700",
+            Icon: Frown,
+            note: "",
           };
 
   return (
@@ -229,7 +235,7 @@ function ResultView({
             <span
               className={`mt-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wide ${band.pill}`}
             >
-              <span className="h-1.5 w-1.5 rounded-full bg-current" />
+              <band.Icon className="h-3.5 w-3.5" strokeWidth={2.5} />
               {band.label}
             </span>
 
@@ -241,6 +247,7 @@ function ResultView({
             </p>
             <p className="mx-auto mt-1.5 max-w-md text-sm leading-relaxed text-ink-600 sm:mx-0">
               {result.overall}
+              {band.note ? ` ${band.note}` : ""}
             </p>
 
             {/* แถบสัดส่วนถูก/ผิด */}

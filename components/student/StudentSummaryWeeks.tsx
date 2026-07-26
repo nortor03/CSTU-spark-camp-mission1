@@ -11,7 +11,8 @@ import {
 } from "@/lib/practiceHistory";
 import PageHeader from "@/components/ui/PageHeader";
 import MasteryBar, { MasteryLegend } from "@/components/ui/MasteryBar";
-import { ChevronDown, ChevronLeft } from "lucide-react";
+import Modal, { ModalHeader } from "@/components/ui/Modal";
+import { ChevronDown, ChevronLeft, History } from "lucide-react";
 
 interface WeekRow {
   week: string;
@@ -296,7 +297,8 @@ export default function StudentSummaryWeeks({ courseId }: { courseId: string }) 
   );
 }
 
-/** ประวัติการฝึกซ้อมของสัปดาห์หนึ่ง — ดูย้อนได้ทุกรอบ (จาก localStorage) */
+/** ประวัติการฝึกซ้อม — ปุ่มกะทัดรัด กดแล้วเปิด Modal เลือกดูรายรอบ
+ *  (กันไม่ให้หน้าสัปดาห์ยาว/รก จากการโชว์ทุกรอบพร้อมกัน) */
 function PracticeHistory({
   studentId,
   courseId,
@@ -309,83 +311,113 @@ function PracticeHistory({
   hex: string;
 }) {
   const [history, setHistory] = useState<PracticeAttempt[] | null>(null);
-  const [openId, setOpenId] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
+  const [selId, setSelId] = useState<string | null>(null);
 
   useEffect(() => {
-    setHistory(getPracticeHistory(studentId, courseId, week));
+    const h = getPracticeHistory(studentId, courseId, week);
+    setHistory(h);
+    if (h.length > 0) setSelId(h[h.length - 1].id); // ค่าเริ่มต้น = รอบล่าสุด
   }, [studentId, courseId, week]);
 
   if (!history || history.length === 0) return null;
 
+  const selIndex = Math.max(
+    0,
+    history.findIndex((a) => a.id === selId),
+  );
+  const sel = history[selIndex] ?? history[history.length - 1];
+  const wrong = sel
+    ? buildStudentSummary(sel.quiz, sel.answers).misconceptions
+    : [];
+  const d = new Date(sel.at);
+  const when = `${d.getDate()}/${d.getMonth() + 1} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+
   return (
     <section>
-      <h4
-        className="mb-2 text-[11px] font-bold uppercase tracking-wide"
-        style={{ color: hex }}
+      {/* ปุ่มกะทัดรัด — เปิด Modal */}
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="flex w-full items-center gap-3 rounded-xl border border-line bg-paper-50 px-4 py-3 text-left transition hover:border-line-strong hover:bg-paper-100"
       >
-        ประวัติฝึกซ้อม ({history.length} รอบ)
-      </h4>
-      <div className="flex flex-col gap-2">
-        {history.map((a, i) => {
-          const open = openId === a.id;
-          const wrong = buildStudentSummary(a.quiz, a.answers).misconceptions;
-          const d = new Date(a.at);
-          const when = `${d.getDate()}/${d.getMonth() + 1} ${String(
-            d.getHours(),
-          ).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-          return (
-            <div
-              key={a.id}
-              className="overflow-hidden rounded-lg border border-line bg-paper-50"
-            >
+        <History className="h-4 w-4 flex-shrink-0" style={{ color: hex }} />
+        <span className="text-[13px] font-semibold text-ink-800">
+          ประวัติฝึกซ้อม
+        </span>
+        <span className="text-xs text-ink-400">{history.length} รอบ</span>
+        <span className="ml-auto text-xs font-semibold text-tu-red-600">
+          ดูประวัติ →
+        </span>
+      </button>
+
+      <Modal open={open} onClose={() => setOpen(false)} maxWidth="max-w-lg">
+        <ModalHeader title={`ประวัติฝึกซ้อม · ${week}`} />
+
+        {/* เลือกรอบ */}
+        <div className="mb-4 flex flex-wrap gap-1.5">
+          {history.map((a, i) => {
+            const on = a.id === sel.id;
+            return (
               <button
+                key={a.id}
                 type="button"
-                onClick={() => setOpenId(open ? null : a.id)}
-                className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left"
+                onClick={() => setSelId(a.id)}
+                className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
+                  on
+                    ? "border-transparent bg-tu-red-500 text-white"
+                    : "border-line bg-white text-ink-600 hover:border-line-strong"
+                }`}
               >
-                <span className="text-[13px] font-semibold text-ink-800">
-                  รอบที่ {i + 1}
-                </span>
-                <span className="text-[11px] text-ink-400">{when}</span>
-                <span className="ml-auto text-[13px] font-bold tabular-nums text-ink-900">
-                  {a.score}/{a.total}{" "}
-                  <span className="font-normal text-ink-400">({a.percent}%)</span>
-                </span>
-                <ChevronDown
-                  className={`h-4 w-4 flex-shrink-0 text-ink-400 transition-transform ${open ? "rotate-180" : ""}`}
-                />
+                รอบ {i + 1} · {a.percent}%
               </button>
-              {open && (
-                <div className="border-t border-line-soft px-3.5 py-3">
-                  {wrong.length === 0 ? (
-                    <p className="text-xs text-emerald-700">ตอบถูกทุกข้อ 🎉</p>
-                  ) : (
-                    <ul className="flex flex-col gap-2.5">
-                      {wrong.map((m, j) => (
-                        <li key={j} className="text-xs">
-                          <p className="font-medium text-ink-800">{m.question}</p>
-                          <p className="mt-1 flex gap-2 text-tu-red-700">
-                            <span className="flex-shrink-0 font-bold">
-                              คุณตอบ
-                            </span>
-                            <span>{m.chosenText}</span>
-                          </p>
-                          <p className="flex gap-2 text-[#047857]">
-                            <span className="flex-shrink-0 font-bold">
-                              คำตอบที่ถูก
-                            </span>
-                            <span>{m.correctText}</span>
-                          </p>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+
+        {/* รายละเอียดรอบที่เลือก */}
+        <div className="rounded-xl border border-line bg-paper-50 p-4">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm font-semibold text-ink-800">
+              รอบที่ {selIndex + 1}
+            </p>
+            <p className="text-xs text-ink-400">{when}</p>
+            <p className="text-sm font-bold tabular-nums text-ink-900">
+              {sel.score}/{sel.total}{" "}
+              <span className="font-normal text-ink-400">({sel.percent}%)</span>
+            </p>
+          </div>
+
+          <hr className="my-3 border-line-soft" />
+
+          {wrong.length === 0 ? (
+            <p className="text-sm text-emerald-700">ตอบถูกทุกข้อ 🎉</p>
+          ) : (
+            <>
+              <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-ink-400">
+                ข้อที่ตอบผิด ({wrong.length})
+              </p>
+              <ul className="flex flex-col gap-3">
+                {wrong.map((m, j) => (
+                  <li key={j} className="text-xs">
+                    <p className="font-medium text-ink-800">{m.question}</p>
+                    <p className="mt-1 flex gap-2 text-tu-red-700">
+                      <span className="flex-shrink-0 font-bold">คุณตอบ</span>
+                      <span>{m.chosenText}</span>
+                    </p>
+                    <p className="flex gap-2 text-[#047857]">
+                      <span className="flex-shrink-0 font-bold">
+                        คำตอบที่ถูก
+                      </span>
+                      <span>{m.correctText}</span>
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </div>
+      </Modal>
     </section>
   );
 }

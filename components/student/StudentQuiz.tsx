@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCourse } from "@/lib/courseStore";
 import { generateMockQuiz, emptyPrompt, type Quiz } from "@/lib/quiz";
 import { gradeQuiz, type QuizResult, type StudentAnswers } from "@/lib/feedback";
@@ -20,6 +20,7 @@ export default function StudentQuiz({ week }: { week: string }) {
   const { getQuiz, hydrated, studentId, activeCourseId, saveSubmission } =
     useCourse();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const practice = searchParams.get("practice") === "1";
 
   const [quiz, setQuiz] = useState<Quiz | null>(null);
@@ -148,13 +149,14 @@ export default function StudentQuiz({ week }: { week: string }) {
       {/* Quiz header — เลื่อนตามเนื้อหา (ไม่ sticky) เพื่อไม่ให้ชื่อควิซค้างเวลาเลื่อนลง */}
       <div className="mb-6 border-b border-line-soft pb-5 pt-1">
         <div className="mb-4 flex items-center justify-between gap-3">
-          <Link
-            href="/student"
+          <button
+            type="button"
+            onClick={() => router.back()}
             className="-ml-2.5 inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium text-ink-500 transition hover:bg-paper-200 hover:text-ink-800"
           >
             <ChevronLeft className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-            ออก
-          </Link>
+            ย้อนกลับ
+          </button>
           <div className="flex items-center gap-2">
             {practice && (
               <span className="rounded-full bg-tu-gold-100 px-3 py-1 text-[11px] font-bold text-tu-gold-700">

@@ -4,7 +4,6 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import AppShell, {
   IconCourse,
-  IconQuiz,
   IconReport,
   type NavItem,
 } from "./AppShell";
@@ -23,18 +22,15 @@ const TEACHER_NAV: NavItem[] = [
   { href: "/report", label: "รายงานชั้นเรียน", icon: IconReport },
 ];
 
+// เมนูฝั่งนักเรียนเหลือรายการเดียว — "รายวิชา" (เลือกวิชาก่อนทำแบบทดสอบ)
+// หมายเหตุ: หน้าควิซ (/student/quiz) และสรุปผล (/student/summary) ยังอยู่ครบ
+// เข้าถึงผ่านการเลือกวิชา → สัปดาห์ (ยังไม่ลบ route ทิ้ง)
 const STUDENT_NAV: NavItem[] = [
   {
     href: "/student",
-    label: "แบบทดสอบ",
-    match: ["/student/quiz"],
-    icon: IconQuiz,
-  },
-  {
-    href: "/student/summary",
-    label: "สรุปผลของฉัน",
-    match: ["/student/summary"],
-    icon: IconReport,
+    label: "รายวิชา",
+    match: ["/student/course", "/student/quiz"],
+    icon: IconCourse,
   },
 ];
 

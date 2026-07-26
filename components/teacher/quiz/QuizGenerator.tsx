@@ -10,7 +10,6 @@ import { generateQuizJSON } from "@/lib/aiQuiz";
 import PageHeader from "@/components/ui/PageHeader";
 import QuizPromptForm from "./QuizPromptForm";
 import QuizEditor from "./QuizEditor";
-import QuizChat from "./QuizChat";
 
 type Phase = "loading" | "prompt" | "generating" | "edit";
 
@@ -119,7 +118,6 @@ export default function QuizGenerator({ week }: { week: string }) {
           onRegenerate={regenerate}
           onEditPrompt={() => setPhase("prompt")}
         />
-        <QuizChat />
       </div>
     );
   }
@@ -171,7 +169,6 @@ export default function QuizGenerator({ week }: { week: string }) {
             />
           ))}
       </div>
-      <QuizChat />
     </div>
   );
 }

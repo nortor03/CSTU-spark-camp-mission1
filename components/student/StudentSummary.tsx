@@ -72,7 +72,7 @@ export default function StudentSummary({ week }: { week: string }) {
         tone="gold"
         action={
           <Link
-            href={`/student/quiz/${week.match(/\d+/)?.[0] ?? ""}`}
+            href={`/student/quiz/${week.match(/\d+/)?.[0] ?? ""}?practice=1`}
             className="btn-secondary"
           >
             ทำแบบทดสอบซ้ำ

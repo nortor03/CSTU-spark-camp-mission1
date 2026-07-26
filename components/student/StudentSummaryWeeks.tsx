@@ -5,6 +5,10 @@ import { useEffect, useMemo, useState } from "react";
 import { useCourse } from "@/lib/courseStore";
 import { weekNumber, resolveHex } from "@/lib/weeks";
 import { buildStudentSummary, type StudentSummary } from "@/lib/analytics";
+import {
+  getPracticeHistory,
+  type PracticeAttempt,
+} from "@/lib/practiceHistory";
 import PageHeader from "@/components/ui/PageHeader";
 import MasteryBar, { MasteryLegend } from "@/components/ui/MasteryBar";
 import { ChevronDown, ChevronLeft } from "lucide-react";
@@ -156,7 +160,7 @@ export default function StudentSummaryWeeks({ courseId }: { courseId: string }) 
 
                   {done && (
                     <Link
-                      href={`/student/quiz/${wk}`}
+                      href={`/student/quiz/${wk}?practice=1`}
                       className="btn-secondary flex-shrink-0 px-3 py-1.5 text-xs"
                     >
                       ทำแบบทดสอบซ้ำ
@@ -176,7 +180,7 @@ export default function StudentSummaryWeeks({ courseId }: { courseId: string }) 
                 </div>
 
                 {open && (
-                  <div className="ml-0 pb-6 sm:ml-[76px]">
+                  <div className="ml-0 flex flex-col gap-5 pb-6 sm:ml-[76px]">
                     {s ? (
                       <div className="flex flex-col gap-5">
                         {/* ความเข้าใจรายหัวข้อ */}
@@ -274,6 +278,13 @@ export default function StudentSummaryWeeks({ courseId }: { courseId: string }) 
                         </Link>
                       </div>
                     )}
+
+                    <PracticeHistory
+                      studentId={studentId}
+                      courseId={courseId}
+                      week={row.week}
+                      hex={hex}
+                    />
                   </div>
                 )}
               </div>
@@ -282,5 +293,99 @@ export default function StudentSummaryWeeks({ courseId }: { courseId: string }) 
         </div>
       )}
     </div>
+  );
+}
+
+/** ประวัติการฝึกซ้อมของสัปดาห์หนึ่ง — ดูย้อนได้ทุกรอบ (จาก localStorage) */
+function PracticeHistory({
+  studentId,
+  courseId,
+  week,
+  hex,
+}: {
+  studentId: string | null;
+  courseId: string;
+  week: string;
+  hex: string;
+}) {
+  const [history, setHistory] = useState<PracticeAttempt[] | null>(null);
+  const [openId, setOpenId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setHistory(getPracticeHistory(studentId, courseId, week));
+  }, [studentId, courseId, week]);
+
+  if (!history || history.length === 0) return null;
+
+  return (
+    <section>
+      <h4
+        className="mb-2 text-[11px] font-bold uppercase tracking-wide"
+        style={{ color: hex }}
+      >
+        ประวัติฝึกซ้อม ({history.length} รอบ)
+      </h4>
+      <div className="flex flex-col gap-2">
+        {history.map((a, i) => {
+          const open = openId === a.id;
+          const wrong = buildStudentSummary(a.quiz, a.answers).misconceptions;
+          const d = new Date(a.at);
+          const when = `${d.getDate()}/${d.getMonth() + 1} ${String(
+            d.getHours(),
+          ).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+          return (
+            <div
+              key={a.id}
+              className="overflow-hidden rounded-lg border border-line bg-paper-50"
+            >
+              <button
+                type="button"
+                onClick={() => setOpenId(open ? null : a.id)}
+                className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left"
+              >
+                <span className="text-[13px] font-semibold text-ink-800">
+                  รอบที่ {i + 1}
+                </span>
+                <span className="text-[11px] text-ink-400">{when}</span>
+                <span className="ml-auto text-[13px] font-bold tabular-nums text-ink-900">
+                  {a.score}/{a.total}{" "}
+                  <span className="font-normal text-ink-400">({a.percent}%)</span>
+                </span>
+                <ChevronDown
+                  className={`h-4 w-4 flex-shrink-0 text-ink-400 transition-transform ${open ? "rotate-180" : ""}`}
+                />
+              </button>
+              {open && (
+                <div className="border-t border-line-soft px-3.5 py-3">
+                  {wrong.length === 0 ? (
+                    <p className="text-xs text-emerald-700">ตอบถูกทุกข้อ 🎉</p>
+                  ) : (
+                    <ul className="flex flex-col gap-2.5">
+                      {wrong.map((m, j) => (
+                        <li key={j} className="text-xs">
+                          <p className="font-medium text-ink-800">{m.question}</p>
+                          <p className="mt-1 flex gap-2 text-tu-red-700">
+                            <span className="flex-shrink-0 font-bold">
+                              คุณตอบ
+                            </span>
+                            <span>{m.chosenText}</span>
+                          </p>
+                          <p className="flex gap-2 text-[#047857]">
+                            <span className="flex-shrink-0 font-bold">
+                              คำตอบที่ถูก
+                            </span>
+                            <span>{m.correctText}</span>
+                          </p>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </section>
   );
 }

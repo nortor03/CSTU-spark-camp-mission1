@@ -18,6 +18,7 @@ import type {
   SyllabusExtraction,
   SyllabusWeekItem,
 } from "./syllabus";
+import type { CourseOut } from "./coursesApi";
 import { MOCK_AI_TOPICS } from "./mockTopics";
 import { DEFAULT_WEEK_COUNT } from "./weeks";
 
@@ -64,15 +65,21 @@ interface CourseContextValue {
   activeCourseId: string | null;
   activeCourse: Course | null;
   setActiveCourse: (id: string | null) => void;
-  /** สร้างวิชาใหม่ (คืนค่า id แล้วตั้งเป็น active) */
+  /** สร้างวิชาใหม่ (คืนค่า id แล้วตั้งเป็น active) — ระบุ id เองได้ (เช่น id ที่ backend gen ให้จาก POST /api/v1/courses) */
   addCourse: (
     subject: string,
     syllabusName: string | null,
     syllabusData: string | null,
     initialTopics?: Topic[],
     syllabusExtraction?: SyllabusExtraction | null,
+    id?: string,
   ) => string;
   getCourse: (id: string) => Course | undefined;
+  /** เติมวิชาจากข้อมูลที่ backend คืนมา (GET /api/v1/courses/{id}) เข้า local store
+   * — ใช้ตอนเข้าหน้ารายละเอียดวิชาที่ยังไม่มีอยู่ในเครื่องนี้ (เช่นมาจาก session อื่น)
+   * ถ้ามีอยู่ในเครื่องแล้วจะไม่ทับ (ของในเครื่องอาจมีการแก้ไขที่ยังไม่ได้ sync)
+   */
+  importCourse: (course: CourseOut) => void;
 
   /* ---- accessor ของ "วิชาที่ active" (คงชื่อเดิมเพื่อความเข้ากันได้) ---- */
   subject: string;
@@ -171,9 +178,10 @@ function emptyCourse(
   syllabusData: string | null,
   initialTopics?: Topic[],
   syllabusExtraction?: SyllabusExtraction | null,
+  id?: string,
 ): Course {
   return {
-    id: makeId("course"),
+    id: id ?? makeId("course"),
     subject,
     syllabusName,
     syllabusData,
@@ -191,6 +199,43 @@ function emptyCourse(
     quizzes: {},
     submissions: [],
     createdAt: new Date().toISOString(),
+  };
+}
+
+/**
+ * แปลงวิชาที่ backend คืนมา (GET /api/v1/courses/{id}) → Course ของ local store
+ * ฟิลด์ที่ backend ไม่รู้จัก (syllabusData/weekConfig/quizzes/submissions/assessmentActivities)
+ * เริ่มต้นเป็นค่าว่างเสมอ — เครื่องนี้ยังไม่เคยมีข้อมูลพวกนั้นของวิชานี้มาก่อน
+ */
+function courseFromBackend(course: CourseOut): Course {
+  return {
+    id: course.course_id,
+    subject: course.subject,
+    syllabusName: null,
+    syllabusData: null,
+    courseCode: course.course_code,
+    hasWeeklySchedule: course.items.some((i) => i.week_number != null),
+    clos: course.clos,
+    assessmentActivities: [],
+    weeklyScheduleItems: course.items,
+    totalWeeks: Math.max(
+      DEFAULT_WEEK_COUNT,
+      ...course.items.map((i) => i.week_number ?? 0),
+    ),
+    topics: course.items.map((item) => ({
+      id: makeId("t"),
+      title: item.topic,
+      file: "Course Syllabus",
+      selected: false,
+      weekAssigned:
+        item.week_number != null ? `สัปดาห์ที่ ${item.week_number}` : null,
+      aiGenerated: false,
+      relatedClos: item.related_clos,
+    })),
+    weekConfig: {},
+    quizzes: {},
+    submissions: [],
+    createdAt: course.created_at,
   };
 }
 
@@ -358,6 +403,7 @@ export function CourseProvider({ children }: { children: ReactNode }) {
     syllabusData: string | null,
     initialTopics?: Topic[],
     syllabusExtraction?: SyllabusExtraction | null,
+    id?: string,
   ): string {
     const course = emptyCourse(
       subject,
@@ -365,6 +411,7 @@ export function CourseProvider({ children }: { children: ReactNode }) {
       syllabusData,
       initialTopics,
       syllabusExtraction,
+      id,
     );
     setCourses((prev) => [...prev, course]);
     setActiveCourseId(course.id);
@@ -373,6 +420,14 @@ export function CourseProvider({ children }: { children: ReactNode }) {
 
   function getCourse(id: string) {
     return courses.find((c) => c.id === id);
+  }
+
+  function importCourse(course: CourseOut) {
+    setCourses((prev) =>
+      prev.some((c) => c.id === course.course_id)
+        ? prev
+        : [...prev, courseFromBackend(course)],
+    );
   }
 
   /* ---- accessor ของวิชาที่ active ---- */
@@ -526,6 +581,7 @@ export function CourseProvider({ children }: { children: ReactNode }) {
         setActiveCourse: setActiveCourseId,
         addCourse,
         getCourse,
+        importCourse,
 
         subject: activeCourse?.subject ?? "",
         syllabusName: activeCourse?.syllabusName ?? null,

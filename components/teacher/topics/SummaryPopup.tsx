@@ -1,33 +1,55 @@
 "use client";
 
+import { useState } from "react";
+import type { SyllabusClo } from "@/lib/syllabus";
 import type { Topic } from "@/lib/types";
 import type { WeekSummary } from "@/lib/useTopics";
 import { buildPlanPayload } from "@/lib/planPayload";
+import { syncCourse, type CourseOut } from "@/lib/coursesApi";
 import Modal, { ModalHeader } from "@/components/ui/Modal";
 import { resolveHex } from "@/lib/weeks";
 
 /** ป็อปอัปสรุปการจัดกลุ่มหัวข้อทั้งหมดก่อนยืนยันส่ง */
 export default function SummaryPopup({
   open,
+  courseId,
   topics,
   weekSummaries,
-  courseId,
   courseCode,
   subject,
+  clos,
   onClose,
   onConfirm,
 }: {
   open: boolean;
+  /** id ของวิชานี้ (ตรงกับที่ backend ใช้ตั้งแต่ตอนสร้างวิชา) — ใช้เป็นปลายทาง PUT sync */
+  courseId: string;
   topics: Topic[];
   weekSummaries: WeekSummary[];
-  courseId: string;
   courseCode: string | null;
   subject: string;
+  clos: SyllabusClo[];
   onClose: () => void;
-  onConfirm: () => void;
+  /** เรียกหลังบันทึกที่ backend สำเร็จแล้ว พร้อมวิชาที่ backend ส่งกลับมา (state ล่าสุด) */
+  onConfirm: (course: CourseOut) => void;
 }) {
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const unassigned = topics.filter((t) => t.weekAssigned === null);
-  const payload = buildPlanPayload(courseId, courseCode, subject, topics);
+  const payload = buildPlanPayload(courseCode, subject, clos, topics);
+
+  async function handleSubmit() {
+    setSubmitting(true);
+    setError(null);
+    try {
+      const course = await syncCourse(courseId, payload);
+      onConfirm(course);
+    } catch {
+      setError("ส่งข้อมูลไม่สำเร็จ ลองใหม่อีกครั้ง");
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   return (
     <Modal open={open} onClose={onClose} maxWidth="max-w-md">
@@ -90,8 +112,7 @@ export default function SummaryPopup({
         )}
       </div>
 
-      {/* payload ที่จะส่งให้ backend ตอนกด "ยืนยันและส่งข้อมูล" — ยังไม่มี endpoint จริง
-          ให้ preview ไว้ก่อนต่อสาย API จริง */}
+      {/* payload ที่จะส่งให้ backend ตอนกด "ยืนยันและส่งข้อมูล" (PUT /api/v1/courses/{course_id}) */}
       <details className="group mb-4 rounded-lg border border-line-soft bg-paper-50">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-xs font-semibold text-ink-600 [&::-webkit-details-marker]:hidden">
           <span>ดู payload ที่จะส่งไป backend (JSON)</span>
@@ -111,12 +132,22 @@ export default function SummaryPopup({
         </div>
       </details>
 
+      {error && (
+        <p className="mb-3 rounded-lg bg-tu-red-50 px-3 py-2 text-xs font-medium text-tu-red-600">
+          {error}
+        </p>
+      )}
+
       <div className="flex justify-end gap-2 border-t border-line-soft pt-4">
-        <button onClick={onClose} className="btn-ghost">
+        <button onClick={onClose} className="btn-ghost" disabled={submitting}>
           แก้ไขเพิ่มเติม
         </button>
-        <button onClick={onConfirm} className="btn-primary px-5">
-          ยืนยันและส่งข้อมูล
+        <button
+          onClick={handleSubmit}
+          className="btn-primary px-5 disabled:cursor-not-allowed disabled:opacity-60"
+          disabled={submitting}
+        >
+          {submitting ? "กำลังส่ง…" : "ยืนยันและส่งข้อมูล"}
         </button>
       </div>
     </Modal>

@@ -8,6 +8,8 @@ import {
   topicsFromSyllabusSchedule,
 } from "@/lib/courseStore";
 import { extractSyllabus, type SyllabusExtraction } from "@/lib/syllabus";
+import { buildPlanPayload } from "@/lib/planPayload";
+import { createCourse } from "@/lib/coursesApi";
 import FileDropzone from "./FileDropzone";
 import SyllabusUpload from "./SyllabusUpload";
 import AiLoading from "@/components/ui/AiLoading";
@@ -94,12 +96,34 @@ export default function UploadForm({ mode }: { mode: "new" | "slides" }) {
       const initialTopics =
         syllabusTopics.length > 0 ? syllabusTopics : undefined;
 
+      // สร้างวิชาที่ backend ก่อน (POST /api/v1/courses) เพื่อให้ id ฝั่งเครื่องนี้
+      // ตรงกับ id ที่ backend ใช้ตั้งแต่ต้น — ส่งเฉพาะหัวข้อที่แกะได้จริงจาก syllabus
+      // (ไม่ส่งหัวข้อจำลอง/mock) หัวข้อที่ยังไม่ได้จัดสัปดาห์จริงจะถูก sync เข้า backend
+      // อีกทีตอนกด "ยืนยันและส่งข้อมูล" ในหน้าจัดหัวข้อ — ถ้า backend ล่ม/เข้าไม่ถึงตอนนี้
+      // ก็ยังสร้างวิชาในเครื่องนี้ต่อได้ตามปกติด้วย id ที่สร้างเอง แล้ว PUT ตอน sync
+      // (idempotent upsert) จะสร้างแถวที่ backend ให้เองตอนนั้นแทน
+      let backendCourseId: string | undefined;
+      try {
+        const created = await createCourse(
+          buildPlanPayload(
+            extraction?.course_code ?? null,
+            subject.trim(),
+            extraction?.clos ?? [],
+            syllabusTopics,
+          ),
+        );
+        backendCourseId = created.course_id;
+      } catch (err) {
+        console.error("สร้างวิชาที่ backend ไม่สำเร็จ (จะ sync ใหม่ตอนยืนยันข้อมูล)", err);
+      }
+
       addCourse(
         subject.trim(),
         syllabus?.name ?? null,
         syllabusData,
         initialTopics,
         extraction,
+        backendCourseId,
       );
     } else {
       // เพิ่มหัวข้อชุดใหม่ (จำลองผลวิเคราะห์สไลด์) เข้าวิชาที่กำลังเปิดอยู่

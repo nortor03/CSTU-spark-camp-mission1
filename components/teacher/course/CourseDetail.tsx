@@ -5,6 +5,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useCourse, topicsFromSyllabusSchedule } from "@/lib/courseStore";
 import { weekNumber, resolveHex, tagStyles } from "@/lib/weeks";
 import { extractSyllabus } from "@/lib/syllabus";
+import { buildPlanPayload } from "@/lib/planPayload";
+import { fetchCourse, syncCourse } from "@/lib/coursesApi";
 import PageHeader from "@/components/ui/PageHeader";
 import Modal, { ModalHeader } from "@/components/ui/Modal";
 import { ChevronDown, Pencil, Trash2, FileText } from "lucide-react";
@@ -32,6 +34,7 @@ export default function CourseDetail({ courseId }: { courseId: string }) {
     setTopics,
     toggleQuizActive,
     deleteQuiz,
+    importCourse,
     hydrated,
   } = useCourse();
 
@@ -39,6 +42,8 @@ export default function CourseDetail({ courseId }: { courseId: string }) {
   const syllabusRef = useRef<HTMLInputElement>(null);
   const [extracting, setExtracting] = useState(false);
   const [extractError, setExtractError] = useState("");
+  // ยังไม่พบวิชานี้ในเครื่อง — กำลังลองโหลดจาก backend (เช่น session/เครื่องอื่นเคยสร้างไว้)
+  const [remoteLoading, setRemoteLoading] = useState(false);
   // สัปดาห์ที่กางรายการควิซอยู่ (accordion) — กางได้หลายสัปดาห์พร้อมกัน
   const [expandedWeeks, setExpandedWeeks] = useState<Set<string>>(new Set());
 
@@ -92,10 +97,24 @@ export default function CourseDetail({ courseId }: { courseId: string }) {
     if (course && activeCourseId !== courseId) setActiveCourse(courseId);
   }, [course, courseId, activeCourseId, setActiveCourse]);
 
+  // ยังไม่มีวิชานี้ในเครื่อง (เช่นมาจากลิงก์ในหน้ารายวิชาทั้งหมด แต่เครื่องนี้ยังไม่เคย
+  // เปิด/สร้างวิชานี้มาก่อน) — ลองโหลดจาก backend (GET /api/v1/courses/{id}) แล้วเติมเข้า
+  // local store ให้ ก่อนจะฟันธงว่า "ไม่พบรายวิชานี้"
+  useEffect(() => {
+    if (!hydrated || course) return;
+    setRemoteLoading(true);
+    fetchCourse(courseId)
+      .then((remote) => importCourse(remote))
+      .catch(() => {
+        // ไม่มีวิชานี้ที่ backend ด้วย — ปล่อยให้ !course branch ด้านล่างแสดง "ไม่พบรายวิชานี้"
+      })
+      .finally(() => setRemoteLoading(false));
+  }, [hydrated, course, courseId, importCourse]);
+
   function onPickSyllabus(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = "";
-    if (!file) return;
+    if (!file || !course) return;
 
     const reader = new FileReader();
     reader.onload = () => setSyllabus(file.name, reader.result as string);
@@ -110,6 +129,21 @@ export default function CourseDetail({ courseId }: { courseId: string }) {
         // (ของเดิมถูกทิ้ง — ถ้าแกะไม่ได้อะไรเลยก็คงหัวข้อเดิมไว้ ไม่ล้างทิ้งเปล่าๆ)
         const newTopics = topicsFromSyllabusSchedule(extraction, file.name);
         if (newTopics.length > 0) setTopics(newTopics);
+
+        // sync CLO/หัวข้อชุดใหม่เข้า backend ทันที (PUT — best-effort ถ้าพลาดยังแก้ไข
+        // ต่อในเครื่องได้ แล้วจะ sync ใหม่ตอนกด "ยืนยันและส่งข้อมูล" ในหน้าจัดหัวข้อ)
+        const topicsForSync = newTopics.length > 0 ? newTopics : course.topics;
+        syncCourse(
+          courseId,
+          buildPlanPayload(
+            extraction.course_code,
+            course.subject,
+            extraction.clos,
+            topicsForSync,
+          ),
+        ).catch((err) =>
+          console.error("sync วิชาไปที่ backend ไม่สำเร็จ", err),
+        );
       })
       .catch(() =>
         setExtractError("แยกข้อมูลจาก syllabus ไม่สำเร็จ ลองแนบไฟล์ใหม่อีกครั้ง"),
@@ -135,7 +169,7 @@ export default function CourseDetail({ courseId }: { courseId: string }) {
       .sort((a, b) => Number(weekNumber(a.week)) - Number(weekNumber(b.week)));
   }, [course]);
 
-  if (!hydrated) {
+  if (!hydrated || (!course && remoteLoading)) {
     return (
       <div className="grid place-items-center py-24 text-sm text-ink-400">
         กำลังโหลด…
@@ -143,7 +177,7 @@ export default function CourseDetail({ courseId }: { courseId: string }) {
     );
   }
 
-  // เผื่อ id ไม่ตรงกับวิชาใด (เช่นถูกลบไปแล้ว)
+  // เผื่อ id ไม่ตรงกับวิชาใด ทั้งในเครื่องนี้และที่ backend (เช่นถูกลบไปแล้ว)
   if (!course) {
     return (
       <div className="card-empty">

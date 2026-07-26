@@ -255,11 +255,12 @@ export default function TopicWorkspace() {
       />
       <SummaryPopup
         open={summaryOpen}
+        courseId={activeCourseId ?? ""}
         topics={t.topics}
         weekSummaries={t.weekSummaries}
-        courseId={activeCourseId ?? ""}
         courseCode={courseCode}
         subject={subject}
+        clos={clos}
         onClose={() => setSummaryOpen(false)}
         onConfirm={handleConfirm}
       />

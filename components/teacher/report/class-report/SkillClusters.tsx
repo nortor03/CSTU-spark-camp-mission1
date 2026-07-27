@@ -3,6 +3,19 @@ import { useState } from "react";
 interface Axis {
   topic: string;
   percent: number;
+  /** ชื่อย่อสำหรับแสดงในกราฟ/legend (ถ้าไม่ระบุจะย่อให้อัตโนมัติ) */
+  short?: string;
+}
+
+/** ชื่อย่อที่โชว์จริง — ตัดจาก ":" หรือ "(" ก่อน, ไม่งั้นตัดความยาว */
+function shortLabel(a: Axis): string {
+  if (a.short) return a.short;
+  const t = a.topic.trim();
+  const colon = t.indexOf(":");
+  if (colon > 0) return t.slice(0, colon).trim();
+  const paren = t.indexOf("(");
+  if (paren > 0) return t.slice(0, paren).trim();
+  return t.length > 12 ? t.slice(0, 12).trim() + "…" : t;
 }
 interface Cluster {
   key: string;
@@ -75,34 +88,11 @@ export default function SkillClusters({
       </div>
 
       <div className="mt-2 flex w-full flex-col items-center gap-6">
-        {/* Radar + legend */}
+        {/* Radar — label อยู่บนกราฟ, hover เพื่อดูชื่อเต็ม + % */}
         <div className="w-full max-w-[320px]">
-          <div className="relative flex items-center justify-center rounded-2xl border border-line bg-gradient-to-b from-paper-50 to-white p-3 shadow-sm">
+          <div className="relative flex items-center justify-center rounded-2xl border border-line bg-gradient-to-b from-paper-50 to-white px-8 py-9 shadow-sm">
             <SkillRadar axes={currentData.radarAxes} />
           </div>
-          {currentData.radarAxes.length >= 3 && (
-            <ol className="mt-3 space-y-0.5">
-              {currentData.radarAxes.map((a, i) => (
-                <li
-                  key={a.topic}
-                  className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 transition-colors hover:bg-paper-100"
-                >
-                  <span className="grid h-5 w-5 flex-shrink-0 place-items-center rounded-full bg-tu-red-500 text-[10px] font-bold text-white">
-                    {i + 1}
-                  </span>
-                  <span className="min-w-0 flex-1 truncate text-[13px] text-ink-700">
-                    {a.topic}
-                  </span>
-                  <span
-                    className="text-[13px] font-bold tabular-nums"
-                    style={{ color: pctColor(a.percent) }}
-                  >
-                    {a.percent}%
-                  </span>
-                </li>
-              ))}
-            </ol>
-          )}
         </div>
 
         {/* Clusters */}
@@ -197,76 +187,81 @@ function SkillRadar({ axes }: { axes: Axis[] }) {
   };
 
   const rings = [0.25, 0.5, 0.75, 1];
-  const dataPath = axes
-    .map((a, i) => point(i, (a.percent / 100) * r))
-    .map((p) => `${p.x},${p.y}`)
-    .join(" ");
+  const dataPts = axes.map((a, i) => point(i, (a.percent / 100) * r));
+  const dataPath = dataPts.map((p) => `${p.x},${p.y}`).join(" ");
 
   return (
-    <svg
-      viewBox={`0 0 ${size} ${size}`}
-      className="mx-auto w-full max-w-[220px]"
-      role="img"
-      aria-label="กราฟเรดาร์ความเข้าใจรายหัวข้อของทั้งห้อง (ดูรายละเอียดที่รายการด้านล่าง)"
-    >
-      {rings.map((ring) => (
-        <polygon
-          key={ring}
-          points={axes
-            .map((_, i) => point(i, r * ring))
-            .map((p) => `${p.x},${p.y}`)
-            .join(" ")}
-          fill="none"
-          stroke="#E8DED0"
-          strokeWidth={1}
-        />
-      ))}
-      {axes.map((_, i) => {
-        const p = point(i, r);
-        return (
-          <line
-            key={i}
-            x1={cx}
-            y1={cy}
-            x2={p.x}
-            y2={p.y}
+    <div className="relative mx-auto w-full max-w-[220px]">
+      <svg
+        viewBox={`0 0 ${size} ${size}`}
+        className="w-full overflow-visible"
+        role="img"
+        aria-label="กราฟเรดาร์ความเข้าใจรายหัวข้อของทั้งห้อง"
+      >
+        {rings.map((ring) => (
+          <polygon
+            key={ring}
+            points={axes
+              .map((_, i) => point(i, r * ring))
+              .map((p) => `${p.x},${p.y}`)
+              .join(" ")}
+            fill="none"
             stroke="#E8DED0"
             strokeWidth={1}
           />
-        );
-      })}
+        ))}
+        {axes.map((_, i) => {
+          const p = point(i, r);
+          return (
+            <line
+              key={i}
+              x1={cx}
+              y1={cy}
+              x2={p.x}
+              y2={p.y}
+              stroke="#E8DED0"
+              strokeWidth={1}
+            />
+          );
+        })}
 
-      {/* พื้นที่ข้อมูล — โทนแดงธรรมศาสตร์ */}
-      <polygon
-        points={dataPath}
-        fill="#C8102E"
-        fillOpacity={0.12}
-        stroke="#C8102E"
-        strokeWidth={2.5}
-        strokeLinejoin="round"
-      />
+        {/* พื้นที่ข้อมูล — โทนแดงธรรมศาสตร์ */}
+        <polygon
+          points={dataPath}
+          fill="#C8102E"
+          fillOpacity={0.12}
+          stroke="#C8102E"
+          strokeWidth={2.5}
+          strokeLinejoin="round"
+        />
+        {dataPts.map((p, i) => (
+          <circle key={i} cx={p.x} cy={p.y} r={3.5} fill="#C8102E" />
+        ))}
 
-      {/* หมุดตัวเลขที่ปลายแกน (แทน label ยาว ๆ ที่อ่านไม่ออก) */}
+      {/* ป้ายชื่อย่อรอบแกน — hover เพื่อดูชื่อเต็ม + % */}
       {axes.map((a, i) => {
         const tip = point(i, r + 14);
+        const c = Math.cos(angle(i));
+        const anchor = c > 0.35 ? "start" : c < -0.35 ? "end" : "middle";
         return (
           <g key={a.topic}>
             <title>{`${a.topic} — ${a.percent}%`}</title>
-            <circle cx={tip.x} cy={tip.y} r={9} fill="#C8102E" />
             <text
               x={tip.x}
               y={tip.y}
-              textAnchor="middle"
-              dominantBaseline="central"
+              textAnchor={anchor}
+              dominantBaseline="middle"
+              fill="#374151" /* text-ink-700 */
               fontSize={10}
               fontWeight={700}
-              fill="#ffffff"
+              className="cursor-help"
             >
-              {i + 1}
+              {shortLabel(a)}
             </text>
           </g>
         );
       })}
-    </svg>
+      </svg>
+    </div>
   );
 }

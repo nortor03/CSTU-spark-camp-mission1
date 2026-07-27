@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useCourse } from "@/lib/courseStore";
 import { buildClassReport, LEVEL_META, type Submission } from "@/lib/analytics";
@@ -12,6 +12,7 @@ import MasteryBar, { MasteryLegend } from "@/components/ui/MasteryBar";
 import SynthesisNotes from "@/components/teacher/report/class-report/SynthesisNotes";
 import SkillClusters from "@/components/teacher/report/class-report/SkillClusters";
 import SubmissionsTable from "@/components/teacher/report/class-report/SubmissionsTable";
+import { ChevronDown, Check, CalendarDays } from "lucide-react";
 
 /**
  * รายงานภาพรวมทั้งชั้นเรียนของ 1 สัปดาห์ ในวิชาหนึ่ง (สำหรับอาจารย์)
@@ -95,37 +96,21 @@ export default function ClassReport({
           </p>
         </div>
 
-        <label className="relative flex items-center gap-2 self-start rounded-xl border border-line bg-white pl-4 pr-1 shadow-sm transition focus-within:border-tu-red-400 focus-within:ring-2 focus-within:ring-tu-red-500/20 hover:border-line-strong">
-          <span className="text-xs font-bold uppercase tracking-wide text-ink-400">
-            สัปดาห์
-          </span>
-          <select
-            value={weekNumber(week)}
-            onChange={(e) => {
-              router.push(`/report/${courseId}/${e.target.value}`);
-            }}
-            className="cursor-pointer appearance-none bg-transparent py-2.5 pr-9 text-sm font-bold text-ink-900 focus:outline-none"
-          >
-            {Array.from(
-              new Set([
+        <WeekDropdown
+          currentWeek={weekNumber(week)}
+          weeks={Array.from(
+            new Set(
+              [
                 ...Object.keys(course.quizzes),
                 ...(course.topics.map((t) => t.weekAssigned).filter(Boolean) as string[]),
-                "Week 4",
-              ])
-            )
-              .sort()
-              .map((w) => (
-                <option key={w} value={weekNumber(w)}>
-                  สัปดาห์ที่ {weekNumber(w)}
-                </option>
-              ))}
-          </select>
-          <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-ink-500">
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
-            </svg>
-          </div>
-        </label>
+                week,
+              ].map(weekNumber),
+            ),
+          )
+            .filter(Boolean)
+            .sort((a, b) => Number(a) - Number(b))}
+          onSelect={(w) => router.push(`/report/${courseId}/${w}`)}
+        />
       </div>
 
       {/* ---------- ตัวเลขสำคัญ ---------- */}
@@ -259,6 +244,70 @@ function Kpi({
           {unit}
         </span>
       </p>
+    </div>
+  );
+}
+
+/** Custom Dropdown สำหรับเลือกสัปดาห์ (Cardless, Custom Styled) */
+function WeekDropdown({
+  currentWeek,
+  weeks,
+  onSelect,
+}: {
+  currentWeek: string;
+  weeks: string[];
+  onSelect: (week: string) => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  return (
+    <div className="relative self-start" ref={ref}>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex items-center gap-3 rounded-full border border-line bg-white pl-5 pr-4 py-2.5 shadow-sm transition hover:border-line-strong focus:outline-none focus:ring-2 focus:ring-tu-red-500/20"
+      >
+        <span className="text-base font-bold text-ink-900">สัปดาห์ที่ {currentWeek}</span>
+        <ChevronDown className="h-4 w-4 text-ink-500" strokeWidth={2.5} />
+      </button>
+
+      {isOpen && (
+        <div className="absolute top-full left-0 z-50 mt-2 w-56 rounded-xl border border-line bg-white p-1.5 shadow-lg animate-in fade-in zoom-in-95 duration-100">
+          {weeks.map((w) => {
+            const isSelected = w === currentWeek;
+            return (
+              <button
+                key={w}
+                onClick={() => {
+                  onSelect(w);
+                  setIsOpen(false);
+                }}
+                className={`flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                  isSelected
+                    ? "bg-tu-red-50 text-tu-red-600"
+                    : "text-ink-600 hover:bg-paper-50 hover:text-ink-900"
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <CalendarDays className={`h-4 w-4 ${isSelected ? "text-tu-red-500" : "text-ink-400"}`} />
+                  <span>สัปดาห์ที่ {w}</span>
+                </div>
+                {isSelected && <Check className="h-4 w-4" strokeWidth={3} />}
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

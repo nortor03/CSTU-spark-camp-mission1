@@ -312,9 +312,9 @@ export interface ClassReport {
   distribution: ScoreBucket[];
   topics: TopicMastery[];
   hardest: HardQuestion[];
-  /** หัวข้อที่ควรทบทวนในคาบถัดไป (คำนวณจากสถิติคะแนนโดยตรง) */
+  /** หัวข้อที่ควรทบทวนในคาบถัดไป */
   reviewPlan: string[];
-  /** ข้อสังเกตระดับชั้นเรียน สังเคราะห์จาก Student Summary ของทุกคน พร้อม evidence รายคน */
+  /** ข้อสังเกตที่สังเคราะห์จากสรุปของนักเรียนแต่ละคน (แทนการสร้างจากควิซตรงๆ) */
   insights: ClassInsight[];
 }
 

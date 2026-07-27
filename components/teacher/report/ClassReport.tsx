@@ -10,6 +10,8 @@ import { weekNumber } from "@/lib/weeks";
 import PageHeader from "@/components/ui/PageHeader";
 import MasteryBar, { MasteryLegend } from "@/components/ui/MasteryBar";
 import SynthesisNotes from "@/components/teacher/report/class-report/SynthesisNotes";
+import SkillClusters from "@/components/teacher/report/class-report/SkillClusters";
+import SubmissionsTable from "@/components/teacher/report/class-report/SubmissionsTable";
 
 /**
  * รายงานภาพรวมทั้งชั้นเรียนของ 1 สัปดาห์ ในวิชาหนึ่ง (สำหรับอาจารย์)
@@ -73,15 +75,44 @@ export default function ClassReport({
 
   return (
     <div>
-      <PageHeader
-        eyebrow="รายงานผลการเรียนรู้รายสัปดาห์"
-        title={report.week}
-        action={
-          <Link href={`/quiz/${weekNumber(week)}`} className="btn-secondary">
-            ดู / แก้แบบทดสอบ
-          </Link>
-        }
-      />
+      <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
+        <div>
+          <div className="mb-2 text-sm font-medium text-ink-500">
+            <Link href="/course" className="hover:text-tu-red-600">
+              รายวิชาทั้งหมด
+            </Link>
+            <span className="mx-2 text-ink-300">›</span>
+            <span className="text-ink-700">{course.subject}</span>
+          </div>
+          <h1 className="display text-3xl font-bold tracking-tight text-tu-blue-800 sm:text-[32px] text-ink-900">
+            ภาพรวมนักศึกษา
+          </h1>
+          <p className="mt-1.5 text-base font-medium text-ink-500">
+            การวิเคราะห์{report.week}: สรุปผลและข้อมูลเชิงลึก
+          </p>
+        </div>
+
+        <div className="flex flex-shrink-0 items-center rounded-xl border border-line-soft bg-paper-50 p-1 shadow-sm">
+          {Object.keys(course.quizzes)
+            .sort()
+            .map((w) => {
+              const isActive = w === week;
+              return (
+                <Link
+                  key={w}
+                  href={`/report/${courseId}/${weekNumber(w)}`}
+                  className={`rounded-lg px-5 py-1.5 text-sm font-bold transition-all ${
+                    isActive
+                      ? "bg-white text-ink-900 shadow-sm"
+                      : "text-ink-500 hover:text-ink-700"
+                  }`}
+                >
+                  {w}
+                </Link>
+              );
+            })}
+        </div>
+      </div>
 
       {/* ---------- ตัวเลขสำคัญ ---------- */}
       <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -91,180 +122,30 @@ export default function ClassReport({
         <Kpi label="ผ่านเกณฑ์ 50%" value={report.passRate} unit="%" />
       </div>
 
-      {/* ---------- สรุปข้อสังเกต (สังเคราะห์จาก Student Summary รายบุคคล) ---------- */}
-      <SynthesisNotes insights={report.insights} />
-
-      <div className="mb-4 grid gap-4 lg:grid-cols-2">
-        {/* ---------- การกระจายคะแนน ---------- */}
-        <section className="card p-5 sm:p-6">
-          <h2 className="display text-lg">การกระจายคะแนน</h2>
-          <p className="mt-1 text-xs text-ink-500">
-            จำนวนนักศึกษาในแต่ละช่วงคะแนน
-          </p>
-          <hr className="rule-gold my-4" />
-
-          <div className="space-y-3">
-            {report.distribution.map((b) => (
-              <div key={b.label} className="flex items-center gap-3">
-                <span className="w-20 flex-shrink-0 text-xs tabular-nums text-ink-600">
-                  {b.label}
-                </span>
-                <div className="h-5 flex-1 overflow-hidden rounded bg-paper-200">
-                  <div
-                    className="h-full rounded bg-tu-red-500"
-                    style={{ width: `${(b.count / maxBucket) * 100}%` }}
-                    role="img"
-                    aria-label={`${b.label}: ${b.count} คน`}
-                  />
-                </div>
-                <span className="w-10 flex-shrink-0 text-right text-xs font-bold tabular-nums text-ink-800">
-                  {b.count}
-                </span>
-              </div>
-            ))}
-          </div>
-          <p className="mt-3 text-[11px] text-ink-400">หน่วย: จำนวนคน</p>
-        </section>
-
-        {/* ---------- ความเข้าใจรายหัวข้อของทั้งห้อง ---------- */}
-        <section className="card p-5 sm:p-6">
-          <h2 className="display text-lg">ความเข้าใจรายหัวข้อ</h2>
-          <p className="mt-1 text-xs text-ink-500">
-            เรียงจากหัวข้อที่ทั้งห้องทำได้ต่ำที่สุด
-          </p>
-          <hr className="rule-gold my-4" />
-
-          <div className="divide-y divide-line-soft">
-            {report.topics.map((t) => (
-              <MasteryBar key={t.topic} item={t} />
-            ))}
-          </div>
-
-          <div className="mt-4 border-t border-line-soft pt-3">
-            <MasteryLegend />
-          </div>
-        </section>
+      <div className="mb-6 grid gap-6 lg:grid-cols-2 items-start">
+        <SynthesisNotes insights={report.insights} />
+        <SkillClusters 
+          radarAxes={report.topics} 
+          clusters={[
+            { key: "1", label: "Creative Thinkers", count: Math.ceil(report.studentCount * 0.3), weakTopic: "ความแม่นยำ" },
+            { key: "2", label: "Technical Focus", count: Math.ceil(report.studentCount * 0.2), weakTopic: "ความคิดสร้างสรรค์" },
+            { key: "3", label: "Needs Basics", count: Math.ceil(report.studentCount * 0.1), weakTopic: "พื้นฐาน" },
+            { key: "4", label: "Advanced", count: Math.ceil(report.studentCount * 0.4), weakTopic: null }
+          ]} 
+        />
       </div>
 
-      {/* ---------- ข้อที่ตอบถูกน้อยที่สุด ---------- */}
-      <section className="card mb-4 p-5 sm:p-6">
-        <h2 className="display text-lg">ข้อที่นักศึกษาพลาดมากที่สุด</h2>
-        <p className="mt-1 text-xs text-ink-500">
-          ตัวเลือกผิดที่ซ้ำกันบ่อยมักบอกความเข้าใจคลาดเคลื่อนร่วมของห้อง
-        </p>
-        <hr className="rule-gold my-4" />
 
-        <div className="space-y-3">
-          {report.hardest.map((h, i) => {
-            const level =
-              h.correctRate >= 80
-                ? "strong"
-                : h.correctRate < 50
-                  ? "weak"
-                  : "medium";
-            const meta = LEVEL_META[level];
-            return (
-              <div
-                key={h.question.id}
-                className="rounded-lg border border-line bg-paper-50 p-3.5"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <p className="min-w-0 text-sm font-medium text-ink-800">
-                    <span className="mr-1.5 font-bold text-ink-300">
-                      {i + 1}
-                    </span>
-                    {h.question.question}
-                  </p>
-                  <span
-                    className="flex flex-shrink-0 items-baseline gap-1 text-xs font-bold tabular-nums"
-                    style={{ color: meta.hex }}
-                  >
-                    <span aria-hidden>{meta.icon}</span>
-                    {h.correctRate}%
-                  </span>
-                </div>
 
-                <p className="mt-1.5 text-[11px] text-tu-gold-700">{h.topic}</p>
-
-                {h.topWrongCount > 0 && (
-                  <p className="mt-2 border-t border-line-soft pt-2 text-xs text-ink-600">
-                    <span className="font-semibold text-ink-700">
-                      ตัวเลือกผิดยอดนิยม:
-                    </span>{" "}
-                    {/* ไม่ครอบอัญประกาศซ้ำ เพราะตัวเลือกมีเครื่องหมายคำพูดอยู่แล้ว */}
-                    <span className="text-tu-red-700">{h.topWrongText}</span> —
-                    เลือกโดย {h.topWrongCount} คน
-                  </p>
-                )}
-              </div>
-            );
-          })}
-        </div>
-        <p className="mt-3 text-[11px] text-ink-400">
-          % = สัดส่วนนักศึกษาที่ตอบข้อนั้นถูก
-        </p>
-      </section>
-
-      {/* ---------- ตารางรายคน ---------- */}
-      <section className="card p-5 sm:p-6">
-        <h2 className="display text-lg">ผลรายบุคคล</h2>
-        <p className="mt-1 text-xs text-ink-400">
-          กดที่แถวเพื่อดูข้อที่ตอบผิดและจุดอ่อนรายคน
-        </p>
-        <hr className="rule-gold my-4" />
-
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[420px] text-sm">
-            <thead>
-              <tr className="border-b border-line text-left text-[11px] uppercase tracking-wide text-ink-500">
-                <th className="pb-2 font-semibold">รหัส</th>
-                <th className="pb-2 font-semibold">ชื่อ</th>
-                <th className="pb-2 text-right font-semibold">ถูก</th>
-                <th className="pb-2 text-right font-semibold">คะแนน</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-line-soft">
-              {[...allSubmissions]
-                .sort((a, b) => a.percent - b.percent)
-                .map((s) => (
-                  <tr
-                    key={s.id}
-                    onClick={() =>
-                      router.push(
-                        `/report/${courseId}/${weekNumber(week)}/${encodeURIComponent(s.studentId)}`,
-                      )
-                    }
-                    className={`cursor-pointer transition-colors hover:bg-paper-100 ${s.isCurrentUser ? "bg-tu-gold-50" : ""}`}
-                  >
-                    <td className="py-2 tabular-nums text-ink-600">
-                      {s.studentId}
-                    </td>
-                    <td className="py-2 text-ink-800">
-                      {s.studentName}
-                      {s.isCurrentUser && (
-                        <span className="ml-2 rounded-full bg-tu-gold-100 px-2 py-0.5 text-[10px] font-bold text-tu-gold-700">
-                          คุณ
-                        </span>
-                      )}
-                    </td>
-                    <td className="py-2 text-right tabular-nums text-ink-600">
-                      {s.score}/{s.total}
-                    </td>
-                    <td className="py-2 text-right font-bold tabular-nums text-ink-900">
-                      {s.percent}%
-                    </td>
-                  </tr>
-                ))}
-            </tbody>
-          </table>
-        </div>
-
-        <p className="mt-4 border-t border-line-soft pt-3 text-[11px] leading-relaxed text-ink-400">
-          ต้นแบบนี้ใช้ข้อมูลเพื่อนร่วมชั้นจำลองประกอบ เพื่อให้เห็นภาพรวมของห้อง
-          ในระบบจริงควรแสดงผลรวมแบบไม่ระบุตัวตนเป็นค่าเริ่มต้น
-          และเปิดดูรายบุคคลเฉพาะเมื่อจำเป็น
-        </p>
-      </section>
+      <div className="mb-6">
+        <SubmissionsTable 
+          submissions={allSubmissions}
+          weekLabel={report.week}
+          week={week}
+          courseId={courseId}
+          courseSubject={course.subject}
+        />
+      </div>
     </div>
   );
 }

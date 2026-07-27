@@ -11,6 +11,7 @@ import {
   SlidersHorizontal,
   ChevronDown,
   ChevronUp,
+  ExternalLink,
 } from "lucide-react";
 
 const PAGE_SIZE = 8;
@@ -79,13 +80,10 @@ export default function SubmissionsTable({
   }
 
   return (
-    <section className="rounded-2xl border border-line bg-white p-5 shadow-card sm:p-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <section className="card p-5 sm:p-6 shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
         <div>
-          <h2 className="display text-lg">ผลแบบทดสอบ: {weekLabel}</h2>
-          <p className="mt-1 text-xs text-ink-400">
-            กดที่แถวเพื่อดูข้อที่ตอบผิดและจุดอ่อนรายคน
-          </p>
+          <h2 className="display text-xl sm:text-2xl font-bold tracking-tight text-ink-900">ผลแบบทดสอบ: {weekLabel}</h2>
         </div>
 
         <div className="flex flex-shrink-0 items-center gap-2">
@@ -134,11 +132,11 @@ export default function SubmissionsTable({
       <div className="overflow-x-auto">
         <table className="w-full min-w-[520px] text-sm">
           <thead>
-            <tr className="border-b border-line text-left text-[11px] uppercase tracking-wide text-ink-500">
-              <th className="pb-2 font-semibold">ชื่อนักศึกษา</th>
-              <th className="pb-2 text-right font-semibold">คะแนน</th>
-              <th className="pb-2 text-center font-semibold">สถานะ</th>
-              <th className="pb-2 text-right font-semibold">สรุปรายบุคคล</th>
+            <tr className="border-b-2 border-line text-left text-[11px] font-bold uppercase tracking-wider text-ink-500">
+              <th className="pb-3">ชื่อนักศึกษา</th>
+              <th className="pb-3 text-right">คะแนน</th>
+              <th className="pb-3 text-center">สถานะ</th>
+              <th className="pb-3 text-right">สรุปรายบุคคล</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-line-soft">
@@ -171,19 +169,19 @@ export default function SubmissionsTable({
                     {s.score}/{s.total}
                     <span className="ml-1.5 font-bold text-ink-900">({s.percent}%)</span>
                   </td>
-                  <td className="py-2.5 text-center">
+                  <td className="py-3 text-center">
                     <span
-                      className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
-                        pass ? "bg-emerald-50 text-emerald-700" : "bg-tu-red-50 text-tu-red-700"
+                      className={`inline-flex rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wider ${
+                        pass ? "bg-emerald-100 text-emerald-800" : "bg-tu-red-100 text-tu-red-800"
                       }`}
                     >
-                      {pass ? "ผ่าน" : "ไม่ผ่าน"}
+                      {pass ? "Pass" : "Fail"}
                     </span>
                   </td>
-                  <td className="py-2.5 text-right">
-                    <span className="inline-flex items-center gap-1 text-xs font-bold text-tu-red-600">
-                      ดูสรุป
-                      <ChevronRight className="h-3.5 w-3.5" />
+                  <td className="py-3 text-right">
+                    <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-tu-blue-600 group-hover:text-tu-blue-700">
+                      ดูข้อสังเกต
+                      <ExternalLink className="h-4 w-4" />
                     </span>
                   </td>
                 </tr>

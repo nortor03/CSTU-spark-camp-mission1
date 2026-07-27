@@ -202,6 +202,7 @@ export interface InsightEvidence {
 /** ข้อสังเกตระดับชั้นเรียน 1 ข้อ — สังเคราะห์จาก StudentSummary ของนักศึกษาหลายคนที่มีลักษณะคล้ายกัน */
 export interface ClassInsight {
   id: string;
+  type?: string;
   topic: string;
   /** สรุปสั้น ๆ ระดับชั้นเรียน (สิ่งที่ AI "สังเกตเห็น") */
   headline: string;

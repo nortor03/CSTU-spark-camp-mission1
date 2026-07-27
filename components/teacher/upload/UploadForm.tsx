@@ -104,7 +104,7 @@ export default function UploadForm({ mode }: { mode: "new" | "slides" }) {
             extraction?.course_code ?? null,
             subject.trim(),
             extraction?.clos ?? [],
-            syllabusTopics,
+            initialTopics,
           ),
         );
         backendCourseId = created.course_id;

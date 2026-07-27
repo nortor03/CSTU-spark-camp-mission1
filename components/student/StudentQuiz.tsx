@@ -6,6 +6,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useCourse } from "@/lib/courseStore";
 import { generateMockQuiz, emptyPrompt, type Quiz } from "@/lib/quiz";
 import { gradeQuiz, type QuizResult, type StudentAnswers } from "@/lib/feedback";
+import { buildStudentSummary, type StudentSummary } from "@/lib/analytics";
+import StudentSkillRadar from "./StudentSkillRadar";
 import SurveyQuizForm from "./SurveyQuizForm";
 import { savePracticeAttempt } from "@/lib/practiceHistory";
 import { ChevronDown, ChevronLeft, Smile, Meh, Frown } from "lucide-react";
@@ -26,6 +28,7 @@ export default function StudentQuiz({ week }: { week: string }) {
   const [quiz, setQuiz] = useState<Quiz | null>(null);
   const [phase, setPhase] = useState<Phase>("loading");
   const [result, setResult] = useState<QuizResult | null>(null);
+  const [summary, setSummary] = useState<StudentSummary | null>(null);
   const inited = useRef(false);
 
   // ชุดที่จะทำ — ปกติใช้ควิซของอาจารย์ · โหมดฝึกซ้อมเจนชุดใหม่ (mock) จากหัวข้อเดิม
@@ -60,7 +63,9 @@ export default function StudentQuiz({ week }: { week: string }) {
     (answers: StudentAnswers) => {
       if (!quiz) return;
       const graded = gradeQuiz(quiz, answers);
+      const summ = buildStudentSummary(quiz, answers);
       setResult(graded);
+      setSummary(summ);
 
       if (!practice) {
         // ผลทางการ — บันทึกเข้าระบบ (มีผลกับสรุป/รายงาน)
@@ -133,11 +138,12 @@ export default function StudentQuiz({ week }: { week: string }) {
     );
   }
 
-  if (phase === "result" && result) {
+  if (phase === "result" && result && summary) {
     return (
       <ResultView
         week={week}
         result={result}
+        summary={summary}
         onRetry={retry}
         practice={practice}
       />
@@ -225,16 +231,20 @@ function ScoreRing({ percent }: { percent: number }) {
   );
 }
 
-function ResultView({
+export function ResultView({
   week,
   result,
+  summary,
   onRetry,
   practice = false,
+  isModal = false,
 }: {
   week: string;
   result: QuizResult;
+  summary: StudentSummary;
   onRetry: () => void;
   practice?: boolean;
+  isModal?: boolean;
 }) {
   const percent = Math.round((result.score / result.total) * 100);
 
@@ -334,15 +344,12 @@ function ResultView({
               </span>
             </div>
 
-            <div className="mt-5 flex justify-center sm:justify-start">
-              {practice ? (
-                <span className="rounded-lg bg-tu-gold-100 px-3.5 py-2 text-xs font-semibold text-tu-gold-700">
-                  โหมดฝึกซ้อม — บันทึกเป็นประวัติ ไม่กระทบผลทางการ
-                </span>
-              ) : (
+            <div className="mt-5 flex flex-col justify-center sm:justify-start gap-3">
+
+              {!isModal && (
                 <Link
-                  href={`/student/summary/${week.match(/\d+/)?.[0] ?? ""}`}
-                  className="btn-primary"
+                  href={`/student/summary/${week.match(/\d+/)?.[0] ?? "1"}`}
+                  className="btn-primary w-fit"
                 >
                   ดูสรุปจุดแข็ง / จุดอ่อน →
                 </Link>
@@ -351,6 +358,8 @@ function ResultView({
           </div>
         </div>
       </div>
+
+
 
       {/* Per-question review — accordion + ตัวกรอง (ข้อที่ผิดกางไว้ให้) */}
       <div className="mt-8">
@@ -480,14 +489,16 @@ function ResultView({
         </div>
       </div>
 
-      <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-6">
-        <Link href="/student" className="btn-ghost">
-          ← เลือกสัปดาห์อื่น
-        </Link>
-        <button type="button" onClick={onRetry} className="btn-secondary">
-          ทำแบบทดสอบใหม่
-        </button>
-      </div>
+      {!isModal && (
+        <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-6">
+          <Link href="/student" className="btn-ghost">
+            ← เลือกสัปดาห์อื่น
+          </Link>
+          <button type="button" onClick={onRetry} className="btn-secondary">
+            ทำแบบทดสอบใหม่
+          </button>
+        </div>
+      )}
     </div>
   );
 }

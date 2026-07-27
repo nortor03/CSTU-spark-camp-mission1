@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo } from "react";
 import { useCourse } from "@/lib/courseStore";
 import PageHeader from "@/components/ui/PageHeader";
@@ -11,7 +12,8 @@ import { ChevronRight } from "lucide-react";
  * เลือกวิชาแล้วจึงไปดูสรุปรายสัปดาห์จากควิซที่ทำ
  */
 export default function StudentSummarySelect() {
-  const { courses, studentId, hydrated } = useCourse();
+  const router = useRouter();
+  const { courses, studentId, hydrated, setActiveCourse } = useCourse();
 
   const items = useMemo(
     () =>
@@ -53,10 +55,13 @@ export default function StudentSummarySelect() {
       ) : (
         <div className="flex flex-col divide-y divide-line border-y border-line">
           {items.map((c) => (
-            <Link
+            <button
               key={c.id}
-              href={`/student/summary/course/${c.id}`}
-              className="group -mx-4 flex items-center justify-between gap-4 px-4 py-5 transition-colors hover:bg-paper-50 sm:-mx-6 sm:px-6"
+              onClick={() => {
+                setActiveCourse(c.id);
+                router.push("/student/summary/1");
+              }}
+              className="group -mx-4 flex w-full text-left items-center justify-between gap-4 px-4 py-5 transition-colors hover:bg-paper-50 sm:-mx-6 sm:px-6"
             >
               <div className="min-w-0">
                 <h2 className="truncate text-lg font-semibold text-ink-900 transition-colors group-hover:text-tu-red-600">
@@ -69,7 +74,7 @@ export default function StudentSummarySelect() {
                 </p>
               </div>
               <ChevronRight className="h-5 w-5 flex-shrink-0 text-ink-300 transition group-hover:translate-x-1 group-hover:text-tu-red-500" />
-            </Link>
+            </button>
           ))}
         </div>
       )}

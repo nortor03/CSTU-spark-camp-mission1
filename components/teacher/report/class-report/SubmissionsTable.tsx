@@ -25,12 +25,14 @@ export default function SubmissionsTable({
   week,
   courseId,
   courseSubject,
+  isQuizAssigned,
 }: {
   submissions: Submission[];
   weekLabel: string;
   week: string;
   courseId: string;
   courseSubject: string;
+  isQuizAssigned?: boolean;
 }) {
   const router = useRouter();
   const [statusFilter, setStatusFilter] = useState<"all" | "pass" | "fail">("all");
@@ -83,9 +85,12 @@ export default function SubmissionsTable({
     <section className="card p-5 sm:p-6 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
         <div>
-          <h2 className="display text-xl sm:text-2xl font-bold tracking-tight text-ink-900">ผลแบบทดสอบ: {weekLabel}</h2>
+          <h2 className="display text-xl sm:text-2xl font-bold tracking-tight text-ink-900">
+            {isQuizAssigned !== false ? `ผลแบบทดสอบ: ${weekLabel}` : "ภาพรวมกิจกรรมรายสัปดาห์"}
+          </h2>
         </div>
 
+        {isQuizAssigned !== false && (
         <div className="flex flex-shrink-0 items-center gap-2">
           <div className="relative">
             <button type="button" onClick={() => setFilterOpen((v) => !v)} className="btn-secondary">
@@ -125,6 +130,7 @@ export default function SubmissionsTable({
             ส่งออก CSV
           </button>
         </div>
+        )}
       </div>
 
       <hr className="rule-gold my-4" />
@@ -132,16 +138,28 @@ export default function SubmissionsTable({
       <div className="overflow-x-auto">
         <table className="w-full min-w-[520px] text-sm">
           <thead>
-            <tr className="border-b-2 border-line text-left text-[11px] font-bold uppercase tracking-wider text-ink-500">
-              <th className="pb-3">ชื่อนักศึกษา</th>
-              <th className="pb-3 text-right">คะแนน</th>
-              <th className="pb-3 text-center">สถานะ</th>
-              <th className="pb-3 text-right">สรุปรายบุคคล</th>
+            <tr className="border-b-2 border-line text-left text-[11px] font-bold uppercase tracking-wider text-ink-500 bg-paper-50">
+              <th className="pb-3 pt-3 pl-3">ชื่อนักศึกษา</th>
+              {isQuizAssigned !== false ? (
+                <>
+                  <th className="pb-3 pt-3 text-right">คะแนน</th>
+                  <th className="pb-3 pt-3 text-center">สถานะ</th>
+                  <th className="pb-3 pt-3 text-right pr-3">สรุปรายบุคคล</th>
+                </>
+              ) : (
+                <>
+                  <th className="pb-3 pt-3 text-center">สถานะ</th>
+                  <th className="pb-3 pt-3 text-right pr-3">บันทึกสรุป</th>
+                </>
+              )}
             </tr>
           </thead>
           <tbody className="divide-y divide-line-soft">
             {pageRows.map((s) => {
               const pass = s.percent >= WEAK_BELOW;
+              // Mock summary submission status for No Quiz mode
+              const isSubmitted = s.percent > 20; 
+              
               return (
                 <tr
                   key={s.id}
@@ -152,7 +170,7 @@ export default function SubmissionsTable({
                     s.isCurrentUser ? "bg-tu-gold-50" : ""
                   }`}
                 >
-                  <td className="py-2.5">
+                  <td className="py-2.5 pl-3">
                     <div className="flex items-center gap-3">
                       <Avatar name={s.studentName} />
                       <span className="font-medium text-ink-800">
@@ -165,25 +183,55 @@ export default function SubmissionsTable({
                       </span>
                     </div>
                   </td>
-                  <td className="py-2.5 text-right tabular-nums text-ink-600">
-                    {s.score}/{s.total}
-                    <span className="ml-1.5 font-bold text-ink-900">({s.percent}%)</span>
-                  </td>
-                  <td className="py-3 text-center">
-                    <span
-                      className={`inline-flex rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wider ${
-                        pass ? "bg-emerald-100 text-emerald-800" : "bg-tu-red-100 text-tu-red-800"
-                      }`}
-                    >
-                      {pass ? "Pass" : "Fail"}
-                    </span>
-                  </td>
-                  <td className="py-3 text-right">
-                    <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-tu-blue-600 group-hover:text-tu-blue-700">
-                      ดูข้อสังเกต
-                      <ExternalLink className="h-4 w-4" />
-                    </span>
-                  </td>
+                  {isQuizAssigned !== false ? (
+                    <>
+                      <td className="py-2.5 text-right tabular-nums text-ink-600">
+                        {s.score}/{s.total}
+                        <span className="ml-1.5 font-bold text-ink-900">({s.percent}%)</span>
+                      </td>
+                      <td className="py-3 text-center">
+                        <span
+                          className={`inline-flex rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wider ${
+                            pass ? "bg-emerald-100 text-emerald-800" : "bg-tu-red-100 text-tu-red-800"
+                          }`}
+                        >
+                          {pass ? "Pass" : "Fail"}
+                        </span>
+                      </td>
+                      <td className="py-3 text-right pr-3">
+                        <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-tu-blue-600 group-hover:text-tu-blue-700">
+                          ดูข้อสังเกต
+                          <ExternalLink className="h-4 w-4" />
+                        </span>
+                      </td>
+                    </>
+                  ) : (
+                    <>
+                      <td className="py-3 text-center">
+                        <span
+                          className={`inline-flex rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wider ${
+                            isSubmitted
+                              ? "bg-emerald-100 text-emerald-800"
+                              : "bg-paper-200 text-ink-500"
+                          }`}
+                        >
+                          {isSubmitted ? "ส่งแล้ว" : "ยังไม่ส่ง"}
+                        </span>
+                      </td>
+                      <td className="py-3 text-right pr-3">
+                        <span
+                          className={`inline-flex items-center gap-1.5 text-sm font-semibold ${
+                            isSubmitted
+                              ? "text-tu-blue-600 group-hover:text-tu-blue-700"
+                              : "text-ink-300 cursor-not-allowed"
+                          }`}
+                        >
+                          ดูบันทึก
+                          <ExternalLink className="h-4 w-4" />
+                        </span>
+                      </td>
+                    </>
+                  )}
                 </tr>
               );
             })}

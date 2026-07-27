@@ -6,13 +6,15 @@ import { useCourse } from "@/lib/courseStore";
 import { buildStudentSummary } from "@/lib/analytics";
 import PageHeader from "@/components/ui/PageHeader";
 import MasteryBar, { MasteryLegend } from "@/components/ui/MasteryBar";
+import { ChevronLeft } from "lucide-react";
 
 /**
  * หน้าสรุปผลการเรียนรู้ของนักเรียน 1 คน 1 สัปดาห์
  * ตอบข้อ 6 ของ mission: "สรุป strong points / weak points ของนักศึกษา"
  */
 export default function StudentSummary({ week }: { week: string }) {
-  const { getQuiz, submissions, studentId, hydrated } = useCourse();
+  const { getQuiz, submissions, studentId, activeCourseId, hydrated } =
+    useCourse();
 
   const quiz = getQuiz(week);
 
@@ -54,13 +56,25 @@ export default function StudentSummary({ week }: { week: string }) {
 
   return (
     <div>
+      {activeCourseId && (
+        <Link
+          href={`/student/summary/course/${activeCourseId}`}
+          className="mb-3 inline-flex items-center gap-1 text-xs font-semibold text-ink-500 transition hover:text-tu-red-600"
+        >
+          <ChevronLeft className="h-3.5 w-3.5" />
+          จุดแข็ง / จุดอ่อน (ทั้งวิชา)
+        </Link>
+      )}
       <PageHeader
         eyebrow={`สรุปผลการเรียนรู้ · ${week}`}
         title="จุดแข็งและจุดอ่อนของคุณ"
         subtitle={summary.headline}
         tone="gold"
         action={
-          <Link href={`/student/quiz/${week.match(/\d+/)?.[0] ?? ""}`} className="btn-secondary">
+          <Link
+            href={`/student/quiz/${week.match(/\d+/)?.[0] ?? ""}?practice=1`}
+            className="btn-secondary"
+          >
             ทำแบบทดสอบซ้ำ
           </Link>
         }

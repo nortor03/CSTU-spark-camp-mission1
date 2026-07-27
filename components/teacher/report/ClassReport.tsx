@@ -138,7 +138,9 @@ export default function ClassReport({
         </div>
       )}
 
-      <div className="mb-6 grid gap-6 lg:grid-cols-2 items-start">
+      <div
+        className={`mb-6 grid gap-6 items-start ${quiz ? "lg:grid-cols-2" : ""}`}
+      >
         <SynthesisNotes 
           insights={[
             {
@@ -176,9 +178,10 @@ export default function ClassReport({
               studentCount: 15,
               evidence: []
             }
-          ]} 
+          ]}
         />
-        <SkillClusters 
+        {quiz && (
+        <SkillClusters
           isQuizAssigned={!!quiz}
           cloData={{
             radarAxes: [
@@ -218,12 +221,13 @@ export default function ClassReport({
                 }
           }
         />
+        )}
       </div>
 
 
 
       <div className="mb-6">
-        <SubmissionsTable 
+        <SubmissionsTable
           submissions={allSubmissions}
           weekLabel={report.week}
           week={week}

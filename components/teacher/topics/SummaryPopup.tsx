@@ -6,6 +6,7 @@ import type { Topic } from "@/lib/types";
 import type { WeekSummary } from "@/lib/useTopics";
 import { buildPlanPayload } from "@/lib/planPayload";
 import { syncCourse, type CourseOut } from "@/lib/coursesApi";
+import { USE_MOCK_COURSE_PREVIEW } from "@/lib/mockCourseSeed";
 import Modal, { ModalHeader } from "@/components/ui/Modal";
 import { resolveHex } from "@/lib/weeks";
 
@@ -30,8 +31,9 @@ export default function SummaryPopup({
   subject: string;
   clos: SyllabusClo[];
   onClose: () => void;
-  /** เรียกหลังบันทึกที่ backend สำเร็จแล้ว พร้อมวิชาที่ backend ส่งกลับมา (state ล่าสุด) */
-  onConfirm: (course: CourseOut) => void;
+  /** เรียกหลังบันทึกที่ backend สำเร็จแล้ว พร้อมวิชาที่ backend ส่งกลับมา (state ล่าสุด)
+   *  — ในโหมดพรีวิว (mock) จะเรียกโดยไม่มี argument เพราะยังไม่ได้ยิง backend */
+  onConfirm: (course?: CourseOut) => void;
 }) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,6 +43,14 @@ export default function SummaryPopup({
   async function handleSubmit() {
     setSubmitting(true);
     setError(null);
+
+    // โหมดพรีวิว (หลังบ้านยังไม่พร้อม) — ข้าม sync ไปหน้าถัดไปได้เลย กันปุ่มค้าง/ยืนยันไม่ได้
+    if (USE_MOCK_COURSE_PREVIEW) {
+      onConfirm();
+      setSubmitting(false);
+      return;
+    }
+
     try {
       const course = await syncCourse(courseId, payload);
       onConfirm(course);

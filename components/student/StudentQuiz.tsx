@@ -2,10 +2,14 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCourse } from "@/lib/courseStore";
-import type { Quiz } from "@/lib/quiz";
+import { generateMockQuiz, emptyPrompt, type Quiz } from "@/lib/quiz";
 import { gradeQuiz, type QuizResult, type StudentAnswers } from "@/lib/feedback";
+import { buildStudentSummary, type StudentSummary } from "@/lib/analytics";
+import StudentSkillRadar from "./StudentSkillRadar";
 import SurveyQuizForm from "./SurveyQuizForm";
+import { savePracticeAttempt } from "@/lib/practiceHistory";
 import { ChevronDown, ChevronLeft, Smile, Meh, Frown } from "lucide-react";
 
 type Phase = "loading" | "empty" | "doing" | "result";
@@ -15,53 +19,94 @@ type Phase = "loading" | "empty" | "doing" | "result";
  * ไหลเป็น: ทำข้อสอบ (เลือกตอบ) → ส่งคำตอบ → เห็นคะแนน + feedback จาก AI
  */
 export default function StudentQuiz({ week }: { week: string }) {
-  const { getQuiz, hydrated, studentId, saveSubmission } = useCourse();
+  const { getQuiz, hydrated, studentId, activeCourseId, saveSubmission } =
+    useCourse();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const practice = searchParams.get("practice") === "1";
 
   const [quiz, setQuiz] = useState<Quiz | null>(null);
   const [phase, setPhase] = useState<Phase>("loading");
   const [result, setResult] = useState<QuizResult | null>(null);
+  const [summary, setSummary] = useState<StudentSummary | null>(null);
   const inited = useRef(false);
+
+  // ชุดที่จะทำ — ปกติใช้ควิซของอาจารย์ · โหมดฝึกซ้อมเจนชุดใหม่ (mock) จากหัวข้อเดิม
+  const makeQuiz = useCallback((): Quiz | null => {
+    const official = getQuiz(week);
+    if (!practice) return official ?? null;
+    const topics = official
+      ? (Array.from(
+          new Set(official.questions.map((q) => q.topic).filter(Boolean)),
+        ) as string[])
+      : [];
+    return generateMockQuiz(week, {
+      ...emptyPrompt(),
+      topics,
+      count: official?.questions.length ?? 5,
+    });
+  }, [practice, week, getQuiz]);
 
   useEffect(() => {
     if (!hydrated || inited.current) return;
     inited.current = true;
-    const q = getQuiz(week);
+    const q = makeQuiz();
     if (q) {
       setQuiz(q);
       setPhase("doing");
     } else {
       setPhase("empty");
     }
-  }, [hydrated, week, getQuiz]);
+  }, [hydrated, makeQuiz]);
 
   const finish = useCallback(
     (answers: StudentAnswers) => {
       if (!quiz) return;
       const graded = gradeQuiz(quiz, answers);
+      const summ = buildStudentSummary(quiz, answers);
       setResult(graded);
+      setSummary(summ);
 
-      const id = studentId ?? "ไม่ระบุรหัส";
-      saveSubmission({
-        id: `${quiz.revision}-${id}`,
-        studentId: id,
-        studentName: `นักศึกษา ${id}`,
-        week,
-        quizRevision: quiz.revision,
-        answers,
-        score: graded.score,
-        total: graded.total,
-        percent: graded.percent,
-        submittedAt: new Date().toISOString(),
-        isCurrentUser: true,
-      });
+      if (!practice) {
+        // ผลทางการ — บันทึกเข้าระบบ (มีผลกับสรุป/รายงาน)
+        const id = studentId ?? "ไม่ระบุรหัส";
+        saveSubmission({
+          id: `${quiz.revision}-${id}`,
+          studentId: id,
+          studentName: `นักศึกษา ${id}`,
+          week,
+          quizRevision: quiz.revision,
+          answers,
+          score: graded.score,
+          total: graded.total,
+          percent: graded.percent,
+          submittedAt: new Date().toISOString(),
+          isCurrentUser: true,
+        });
+      } else {
+        // โหมดฝึกซ้อม — เก็บเป็นประวัติ (ดูย้อนได้ทุกรอบ) แยกจากผลทางการ
+        savePracticeAttempt(studentId, activeCourseId, week, {
+          id: `${Date.now()}`,
+          at: new Date().toISOString(),
+          score: graded.score,
+          total: graded.total,
+          percent: graded.percent,
+          quiz,
+          answers,
+        });
+      }
 
       setPhase("result");
       window.scrollTo({ top: 0, behavior: "smooth" });
     },
-    [quiz, week, studentId, saveSubmission],
+    [quiz, week, studentId, activeCourseId, saveSubmission, practice],
   );
 
   function retry() {
+    if (practice) {
+      const q = makeQuiz(); // เจนคำถามชุดใหม่ทุกครั้งที่ฝึกซ้อม
+      if (q) setQuiz(q);
+    }
     setResult(null);
     setPhase("doing");
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -93,8 +138,16 @@ export default function StudentQuiz({ week }: { week: string }) {
     );
   }
 
-  if (phase === "result" && result) {
-    return <ResultView week={week} result={result} onRetry={retry} />;
+  if (phase === "result" && result && summary) {
+    return (
+      <ResultView
+        week={week}
+        result={result}
+        summary={summary}
+        onRetry={retry}
+        practice={practice}
+      />
+    );
   }
 
   return (
@@ -102,16 +155,24 @@ export default function StudentQuiz({ week }: { week: string }) {
       {/* Quiz header — เลื่อนตามเนื้อหา (ไม่ sticky) เพื่อไม่ให้ชื่อควิซค้างเวลาเลื่อนลง */}
       <div className="mb-6 border-b border-line-soft pb-5 pt-1">
         <div className="mb-4 flex items-center justify-between gap-3">
-          <Link
-            href="/student"
+          <button
+            type="button"
+            onClick={() => router.back()}
             className="-ml-2.5 inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium text-ink-500 transition hover:bg-paper-200 hover:text-ink-800"
           >
             <ChevronLeft className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-            ออก
-          </Link>
-          <span className="rounded-full bg-tu-red-50 px-3 py-1 text-[11px] font-bold text-tu-red-600 ring-1 ring-tu-red-100">
-            {week}
-          </span>
+            ย้อนกลับ
+          </button>
+          <div className="flex items-center gap-2">
+            {practice && (
+              <span className="rounded-full bg-tu-gold-100 px-3 py-1 text-[11px] font-bold text-tu-gold-700">
+                โหมดฝึกซ้อม
+              </span>
+            )}
+            <span className="rounded-full bg-tu-red-50 px-3 py-1 text-[11px] font-bold text-tu-red-600 ring-1 ring-tu-red-100">
+              {week}
+            </span>
+          </div>
         </div>
 
         <h1 className="display text-xl leading-snug sm:text-2xl">{quiz.title}</h1>
@@ -170,14 +231,20 @@ function ScoreRing({ percent }: { percent: number }) {
   );
 }
 
-function ResultView({
+export function ResultView({
   week,
   result,
+  summary,
   onRetry,
+  practice = false,
+  isModal = false,
 }: {
   week: string;
   result: QuizResult;
+  summary: StudentSummary;
   onRetry: () => void;
+  practice?: boolean;
+  isModal?: boolean;
 }) {
   const percent = Math.round((result.score / result.total) * 100);
 
@@ -231,7 +298,9 @@ function ResultView({
           </div>
 
           <div className="min-w-0 flex-1 text-center sm:text-left">
-            <p className="eyebrow-gold">ผลแบบทดสอบ · {week}</p>
+            <p className="eyebrow-gold">
+              {practice ? "ผลฝึกซ้อม" : "ผลแบบทดสอบ"} · {week}
+            </p>
             <span
               className={`mt-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wide ${band.pill}`}
             >
@@ -275,17 +344,22 @@ function ResultView({
               </span>
             </div>
 
-            <div className="mt-5 flex justify-center sm:justify-start">
-              <Link
-                href={`/student/summary/${week.match(/\d+/)?.[0] ?? ""}`}
-                className="btn-primary"
-              >
-                ดูสรุปจุดแข็ง / จุดอ่อน →
-              </Link>
+            <div className="mt-5 flex flex-col justify-center sm:justify-start gap-3">
+
+              {!isModal && (
+                <Link
+                  href={`/student/summary/${week.match(/\d+/)?.[0] ?? "1"}`}
+                  className="btn-primary w-fit"
+                >
+                  ดูสรุปจุดแข็ง / จุดอ่อน →
+                </Link>
+              )}
             </div>
           </div>
         </div>
       </div>
+
+
 
       {/* Per-question review — accordion + ตัวกรอง (ข้อที่ผิดกางไว้ให้) */}
       <div className="mt-8">
@@ -415,14 +489,16 @@ function ResultView({
         </div>
       </div>
 
-      <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-6">
-        <Link href="/student" className="btn-ghost">
-          ← เลือกสัปดาห์อื่น
-        </Link>
-        <button type="button" onClick={onRetry} className="btn-secondary">
-          ทำแบบทดสอบใหม่
-        </button>
-      </div>
+      {!isModal && (
+        <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-6">
+          <Link href="/student" className="btn-ghost">
+            ← เลือกสัปดาห์อื่น
+          </Link>
+          <button type="button" onClick={onRetry} className="btn-secondary">
+            ทำแบบทดสอบใหม่
+          </button>
+        </div>
+      )}
     </div>
   );
 }

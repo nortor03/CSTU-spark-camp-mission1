@@ -1,10 +1,10 @@
 import { StudentShell } from "@/components/ui/Shells";
-import SummaryIndex from "@/components/student/SummaryIndex";
+import StudentSummarySelect from "@/components/student/StudentSummarySelect";
 
 export default function StudentSummaryIndexPage() {
   return (
     <StudentShell>
-      <SummaryIndex />
+      <StudentSummarySelect />
     </StudentShell>
   );
 }

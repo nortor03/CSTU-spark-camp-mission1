@@ -43,10 +43,10 @@ export default function ClassReport({
     if (!course) return [];
     if (!quiz) {
       return [
-        { id: "1", studentId: "6600123", studentName: "Marcus Sterling", score: 0, total: 10, percent: 100, isCurrentUser: false, week },
-        { id: "2", studentId: "6600456", studentName: "Lena Johansson", score: 0, total: 10, percent: 0, isCurrentUser: false, week },
-        { id: "3", studentId: "6600789", studentName: "David Chen", score: 0, total: 10, percent: 100, isCurrentUser: false, week },
-        { id: "4", studentId: "6600000", studentName: "Amara Williams", score: 0, total: 10, percent: 100, isCurrentUser: false, week },
+        { id: "1", studentId: "6600123", studentName: "Marcus Sterling", score: 0, total: 10, percent: 100, isCurrentUser: false, week } as Submission,
+        { id: "2", studentId: "6600456", studentName: "Lena Johansson", score: 0, total: 10, percent: 0, isCurrentUser: false, week } as Submission,
+        { id: "3", studentId: "6600789", studentName: "David Chen", score: 0, total: 10, percent: 100, isCurrentUser: false, week } as Submission,
+        { id: "4", studentId: "6600000", studentName: "Amara Williams", score: 0, total: 10, percent: 100, isCurrentUser: false, week } as Submission,
       ];
     }
     const real = course.submissions.filter((s) => s.week === week);
@@ -75,7 +75,11 @@ export default function ClassReport({
     );
   }
 
-  if (!report) return null;
+  if (!report || !course) return (
+    <div className="p-8 text-center text-ink-500">
+      ไม่พบข้อมูลรายวิชา หรือยังไม่มีการประเมินผล
+    </div>
+  );
 
   return (
     <div>
@@ -130,6 +134,7 @@ export default function ClassReport({
           insights={[
             {
               id: "1",
+              topic: "Typography",
               type: "friction",
               headline: "Typography Hierarchy",
               description: "นักศึกษาส่วนใหญ่ยังสับสนเรื่องลำดับชั้นของตัวอักษร (Typography Hierarchy) และการปรับขนาดแบบ Responsive โดย 64% ของบันทึกสรุป (Summary Note) ระบุว่ามีปัญหาในการเลือกจับคู่ฟอนต์",
@@ -141,6 +146,7 @@ export default function ClassReport({
             },
             {
               id: "2",
+              topic: "Color",
               type: "strength",
               headline: "Color Theory",
               description: "มีความเข้าใจเรื่องการประยุกต์ใช้ทฤษฎีสีเป็นอย่างดี (อิงจาก 85% ของบันทึกสรุปที่ระบุว่านำไปใช้ได้จริง)",
@@ -149,6 +155,7 @@ export default function ClassReport({
             },
             {
               id: "3",
+              topic: "Micro-interactions",
               type: "suggestion",
               headline: "Micro-interactions",
               description: "เริ่มมีความสนใจเรื่อง Micro-interactions เพิ่มขึ้น (มีการพูดถึงใน Summary Note 22 ครั้ง)",
@@ -157,6 +164,7 @@ export default function ClassReport({
             },
             {
               id: "4",
+              topic: "Grid",
               type: "friction",
               headline: "Alignment and Grid",
               description: "เริ่มมีการนำระบบ Grid และ Alignment มาใช้ในงานออกแบบ แต่ยังขาดความแม่นยำในบางจุด",

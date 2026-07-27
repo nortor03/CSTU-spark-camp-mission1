@@ -30,9 +30,11 @@ export default function CourseList() {
         setCourses(items);
         setStatus("ready");
       })
-      .catch(() => {
+      .catch((err) => {
         if (cancelled) return;
-        setStatus("error");
+        console.warn("ไม่สามารถดึงข้อมูลจาก Backend ได้ จะแสดงหน้าว่างแทน", err);
+        setCourses([]);
+        setStatus("ready");
       });
     return () => {
       cancelled = true;

@@ -4,6 +4,10 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useCourse, topicsFromSyllabusSchedule } from "@/lib/courseStore";
 import { extractSyllabus, type SyllabusExtraction } from "@/lib/syllabus";
+import {
+  buildMockCourseSeed,
+  USE_MOCK_COURSE_PREVIEW,
+} from "@/lib/mockCourseSeed";
 import { buildPlanPayload } from "@/lib/planPayload";
 import { createCourse } from "@/lib/coursesApi";
 import FileDropzone from "./FileDropzone";
@@ -68,58 +72,88 @@ export default function UploadForm({ mode }: { mode: "new" | "slides" }) {
       // เก็บ syllabus เป็น data URL เพื่อให้ดาวน์โหลดได้ภายหลัง
       const syllabusData = syllabus ? await fileToDataUrl(syllabus) : null;
 
-      // ยิงไปแยก CLO/ตารางสอน/เกณฑ์ประเมินจาก syllabus ตอนกดสร้างวิชาเลย
-      let extraction: SyllabusExtraction | null = null;
-      if (syllabus) {
-        setExtracting(true);
-        setExtractError("");
+      if (USE_MOCK_COURSE_PREVIEW) {
+        // ───────── โหมดพรีวิว mock (ชั่วคราว — ระหว่างทำ UI/UX) ─────────
+        // สร้างวิชาพร้อมข้อมูลจำลอง เพื่อให้หน้าจัดหัวข้อ (/topics) และหน้ารายละเอียด
+        // วิชา (/course/[id]) มีเนื้อหาให้ดู/แก้ทันที — ตั้ง USE_MOCK_COURSE_PREVIEW=false
+        // ใน lib/mockCourseSeed.ts เมื่อหลังบ้านพร้อม เพื่อสลับไปใช้ path จริงด้านล่าง
+        const seed = buildMockCourseSeed(syllabus?.name ?? null);
+
+        let backendCourseId: string | undefined;
         try {
-          extraction = await extractSyllabus(syllabus);
-        } catch {
-          setExtractError(
-            "แยกข้อมูลจาก syllabus ไม่สำเร็จ — สร้างวิชาต่อได้ แต่ยังไม่มี CLO",
+          const created = await createCourse(
+            buildPlanPayload(
+              seed.extraction.course_code,
+              subject.trim(),
+              seed.extraction.clos,
+              seed.topics,
+            ),
           );
-        } finally {
-          setExtracting(false);
+          backendCourseId = created.course_id;
+        } catch (err) {
+          console.error("สร้างวิชาที่ backend ไม่สำเร็จ (best-effort ในโหมด mock)", err);
         }
-      }
 
-      // หัวข้อของวิชามาจากการแยก syllabus จริงเท่านั้น (ไม่มีหัวข้อจำลองแล้ว)
-      // หัวข้อที่มีเลขสัปดาห์กำกับจะถูกจัดเข้าสัปดาห์อัตโนมัติ ที่เหลือไปอยู่กองยังไม่จัด
-      // ถ้าแยกไม่สำเร็จ = ไม่มีหัวข้อ (อาจารย์เพิ่มเองภายหลังได้)
-      const initialTopics = extraction
-        ? topicsFromSyllabusSchedule(extraction, syllabus?.name ?? null)
-        : [];
-
-      // สร้างวิชาที่ backend ก่อน (POST /api/v1/courses) เพื่อให้ id ฝั่งเครื่องนี้
-      // ตรงกับ id ที่ backend ใช้ตั้งแต่ต้น — ส่งเฉพาะหัวข้อที่แกะได้จริงจาก syllabus
-      // (ไม่ส่งหัวข้อจำลอง/mock) หัวข้อที่ยังไม่ได้จัดสัปดาห์จริงจะถูก sync เข้า backend
-      // อีกทีตอนกด "ยืนยันและส่งข้อมูล" ในหน้าจัดหัวข้อ — ถ้า backend ล่ม/เข้าไม่ถึงตอนนี้
-      // ก็ยังสร้างวิชาในเครื่องนี้ต่อได้ตามปกติด้วย id ที่สร้างเอง แล้ว PUT ตอน sync
-      // (idempotent upsert) จะสร้างแถวที่ backend ให้เองตอนนั้นแทน
-      let backendCourseId: string | undefined;
-      try {
-        const created = await createCourse(
-          buildPlanPayload(
-            extraction?.course_code ?? null,
-            subject.trim(),
-            extraction?.clos ?? [],
-            syllabusTopics,
-          ),
+        addCourse(
+          subject.trim(),
+          syllabus?.name ?? null,
+          syllabusData,
+          seed.topics,
+          seed.extraction,
+          backendCourseId,
+          seed.quizzes,
         );
-        backendCourseId = created.course_id;
-      } catch (err) {
-        console.error("สร้างวิชาที่ backend ไม่สำเร็จ (จะ sync ใหม่ตอนยืนยันข้อมูล)", err);
-      }
+      } else {
+        // ───────── โหมดจริง (หลังบ้านพร้อมแล้ว) ─────────
+        // แยก CLO/ตารางสอนจาก syllabus จริง — ถ้าแยกไม่ได้/ไม่มีข้อมูล หัวข้อจะว่าง
+        // และหน้าเว็บจะขึ้น "สถานะว่าง" ตามปกติ (ไม่มีข้อมูลจำลองมาแทน)
+        let extraction: SyllabusExtraction | null = null;
+        if (syllabus) {
+          setExtracting(true);
+          setExtractError("");
+          try {
+            extraction = await extractSyllabus(syllabus);
+          } catch {
+            setExtractError(
+              "แยกข้อมูลจาก syllabus ไม่สำเร็จ — สร้างวิชาต่อได้ แต่ยังไม่มี CLO",
+            );
+          } finally {
+            setExtracting(false);
+          }
+        }
 
-      addCourse(
-        subject.trim(),
-        syllabus?.name ?? null,
-        syllabusData,
-        initialTopics,
-        extraction,
-        backendCourseId,
-      );
+        // หัวข้อของวิชามาจากการแยก syllabus จริงเท่านั้น (หัวข้อที่มีเลขสัปดาห์กำกับ
+        // จะถูกจัดเข้าสัปดาห์อัตโนมัติ ที่เหลือไปกองยังไม่จัด) — แยกไม่สำเร็จ = ไม่มีหัวข้อ
+        const initialTopics = extraction
+          ? topicsFromSyllabusSchedule(extraction, syllabus?.name ?? null)
+          : [];
+
+        // สร้างวิชาที่ backend ก่อน (POST) เพื่อให้ id ตรงกันตั้งแต่ต้น — ล้มเหลวก็ยัง
+        // สร้างในเครื่องต่อได้ แล้ว sync ใหม่ตอนกด "ยืนยันและส่งข้อมูล" ในหน้าจัดหัวข้อ
+        let backendCourseId: string | undefined;
+        try {
+          const created = await createCourse(
+            buildPlanPayload(
+              extraction?.course_code ?? null,
+              subject.trim(),
+              extraction?.clos ?? [],
+              initialTopics,
+            ),
+          );
+          backendCourseId = created.course_id;
+        } catch (err) {
+          console.error("สร้างวิชาที่ backend ไม่สำเร็จ (จะ sync ใหม่ตอนยืนยันข้อมูล)", err);
+        }
+
+        addCourse(
+          subject.trim(),
+          syllabus?.name ?? null,
+          syllabusData,
+          initialTopics,
+          extraction,
+          backendCourseId,
+        );
+      }
     } else {
       // อัปสไลด์เพิ่มเติม — ไม่สร้างหัวข้อใหม่
       // (หัวข้อของวิชายึดตาม course syllabus ที่แนบไว้ตอนสร้างวิชา)

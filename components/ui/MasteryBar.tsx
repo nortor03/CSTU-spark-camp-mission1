@@ -39,7 +39,7 @@ export default function MasteryBar({ item }: { item: TopicMastery }) {
           aria-label={`${item.topic}: ถูก ${item.correct} จาก ${item.total} ข้อ (${item.percent}%) ระดับ${meta.label}`}
         >
           <div
-            className="h-full rounded-full"
+            className="bar-grow h-full rounded-full"
             style={{ width: `${item.percent}%`, backgroundColor: meta.hex }}
           />
         </div>

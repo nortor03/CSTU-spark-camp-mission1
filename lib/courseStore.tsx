@@ -73,6 +73,7 @@ interface CourseContextValue {
     initialTopics?: Topic[],
     syllabusExtraction?: SyllabusExtraction | null,
     id?: string,
+    initialQuizzes?: Record<string, Quiz[]>,
   ) => string;
   getCourse: (id: string) => Course | undefined;
   /** เติมวิชาจากข้อมูลที่ backend คืนมา (GET /api/v1/courses/{id}) เข้า local store
@@ -179,6 +180,7 @@ function emptyCourse(
   initialTopics?: Topic[],
   syllabusExtraction?: SyllabusExtraction | null,
   id?: string,
+  initialQuizzes?: Record<string, Quiz[]>,
 ): Course {
   return {
     id: id ?? makeId("course"),
@@ -196,7 +198,7 @@ function emptyCourse(
     ),
     topics: initialTopics ?? [],
     weekConfig: {},
-    quizzes: {},
+    quizzes: initialQuizzes ?? {},
     submissions: [],
     createdAt: new Date().toISOString(),
   };
@@ -404,6 +406,7 @@ export function CourseProvider({ children }: { children: ReactNode }) {
     initialTopics?: Topic[],
     syllabusExtraction?: SyllabusExtraction | null,
     id?: string,
+    initialQuizzes?: Record<string, Quiz[]>,
   ): string {
     const course = emptyCourse(
       subject,
@@ -412,6 +415,7 @@ export function CourseProvider({ children }: { children: ReactNode }) {
       initialTopics,
       syllabusExtraction,
       id,
+      initialQuizzes,
     );
     setCourses((prev) => [...prev, course]);
     setActiveCourseId(course.id);

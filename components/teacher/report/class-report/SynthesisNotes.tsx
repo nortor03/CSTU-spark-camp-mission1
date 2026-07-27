@@ -21,7 +21,7 @@ export default function SynthesisNotes({
   return (
     <section className="card flex flex-col overflow-hidden p-5 sm:p-6 shadow-sm">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="display text-xl sm:text-2xl font-bold tracking-tight text-ink-900">สรุปข้อสังเกต</h2>
+        <h2 className="display text-xl sm:text-2xl font-bold tracking-tight text-ink-900">สรุป feedback</h2>
         <span className="rounded-full bg-tu-blue-100 px-3 py-1 text-xs font-bold text-tu-blue-700 bg-blue-50 text-blue-600">
           AI Insights
         </span>

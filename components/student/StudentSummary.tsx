@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useMemo, useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCourse } from "@/lib/courseStore";
+import { generateMockSubmissions } from "@/lib/mockClass";
 import {
   buildStudentSummary,
   levelOf,
@@ -394,13 +395,20 @@ export default function StudentSummary({ week }: { week: string }) {
   const course = getCourse(activeCourseId ?? "");
   const wk = weekNumber(week);
 
+  // อาจารย์เปิดดูสรุปของนักศึกษาคนหนึ่ง (จากตารางในหน้ารายงาน) — ส่ง ?student=<id> มา
+  const searchParams = useSearchParams();
+  const viewStudentId = searchParams.get("student");
+  const isTeacherView = !!viewStudentId;
+
   const [activeRound, setActiveRound] = useState<string>("official");
 
   const attempts = useMemo(() => {
+    // มุมมองอาจารย์ = ดูเฉพาะผลสอบจริง ไม่มีรอบฝึกซ้อม (ของนักศึกษาแต่ละคน)
+    if (isTeacherView) return [];
     return submissions
       .filter((s) => s.week === week && s.isCurrentUser)
       .sort((a, b) => a.submittedAt.localeCompare(b.submittedAt));
-  }, [submissions, week]);
+  }, [submissions, week, isTeacherView]);
 
   const attemptResults = useMemo(
     () =>
@@ -427,9 +435,13 @@ export default function StudentSummary({ week }: { week: string }) {
         attemptResults[0].result.percent
       : null;
 
-  const officialMine = submissions
-    .filter((s) => s.week === week && s.isCurrentUser)
-    .sort((a, b) => a.submittedAt.localeCompare(b.submittedAt))[0];
+  const officialMine = isTeacherView
+    ? quiz
+      ? generateMockSubmissions(quiz).find((s) => s.studentId === viewStudentId)
+      : undefined
+    : submissions
+        .filter((s) => s.week === week && s.isCurrentUser)
+        .sort((a, b) => a.submittedAt.localeCompare(b.submittedAt))[0];
 
   const officialSummary =
     officialMine && quiz ? buildStudentSummary(quiz, officialMine.answers) : null;
@@ -506,9 +518,18 @@ export default function StudentSummary({ week }: { week: string }) {
       <div>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <p className="eyebrow">Learning Analytics · สัปดาห์ที่ {wk}</p>
-            <h1 className="display mt-1.5 text-2xl sm:text-3xl md:text-[34px] whitespace-nowrap">
-              จุดแข็งและจุดอ่อนของคุณ
+            <p className="eyebrow">
+              {isTeacherView ? "รายงานรายบุคคล" : "Learning Analytics"} · สัปดาห์ที่{" "}
+              {wk}
+            </p>
+            <h1
+              className={`display mt-1.5 text-2xl sm:text-3xl md:text-[34px] ${
+                isTeacherView ? "" : "whitespace-nowrap"
+              }`}
+            >
+              {isTeacherView
+                ? `จุดแข็งและจุดอ่อนของ ${officialMine.studentName}`
+                : "จุดแข็งและจุดอ่อนของคุณ"}
             </h1>
             <hr className="rule-gold my-3" />
             <p className="max-w-lg text-sm leading-relaxed text-ink-500">{summary.headline}</p>
@@ -519,22 +540,35 @@ export default function StudentSummary({ week }: { week: string }) {
               <WeekDropdown
                 currentWeek={week}
                 weeks={weeksAvailable}
-                onSelect={(w) => router.push(`/student/summary/${w}`)}
+                onSelect={(w) =>
+                  router.push(
+                    `/student/summary/${w}${
+                      isTeacherView
+                        ? `?student=${encodeURIComponent(viewStudentId!)}`
+                        : ""
+                    }`,
+                  )
+                }
               />
             )}
-            <RoundDropdown
-              activeRound={activeRound}
-              attemptResults={attemptResults}
-              onSelectRound={(r) => setActiveRound(r)}
-            />
-            <Link
-              href={`/student/quiz/${week.match(/\d+/)?.[0] ?? ""}?practice=1`}
-              className="group flex items-center gap-2 rounded-xl border border-tu-gold-200 bg-gradient-to-r from-tu-gold-50 to-amber-50 px-4 py-2 text-sm font-bold text-tu-gold-700 shadow-sm transition-all hover:from-tu-gold-100 hover:to-amber-100 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-tu-gold-500/15"
-            >
-              <Sparkles className="h-4 w-4 transition-transform duration-300 group-hover:rotate-12" />
-              <span>สร้างข้อสอบฝึกซ้อมด้วย AI</span>
-              <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
-            </Link>
+            {/* รอบฝึกซ้อม + ปุ่มสร้างข้อสอบ = เฉพาะมุมมองนักศึกษาเจ้าของ (ไม่โชว์ให้อาจารย์) */}
+            {!isTeacherView && (
+              <>
+                <RoundDropdown
+                  activeRound={activeRound}
+                  attemptResults={attemptResults}
+                  onSelectRound={(r) => setActiveRound(r)}
+                />
+                <Link
+                  href={`/student/quiz/${week.match(/\d+/)?.[0] ?? ""}?practice=1`}
+                  className="group flex items-center gap-2 rounded-xl border border-tu-gold-200 bg-gradient-to-r from-tu-gold-50 to-amber-50 px-4 py-2 text-sm font-bold text-tu-gold-700 shadow-sm transition-all hover:from-tu-gold-100 hover:to-amber-100 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-tu-gold-500/15"
+                >
+                  <Sparkles className="h-4 w-4 transition-transform duration-300 group-hover:rotate-12" />
+                  <span>สร้างข้อสอบฝึกซ้อมด้วย AI</span>
+                  <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
+                </Link>
+              </>
+            )}
           </div>
         </div>
 

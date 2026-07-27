@@ -2,11 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  useCourse,
-  freshTopics,
-  topicsFromSyllabusSchedule,
-} from "@/lib/courseStore";
+import { useCourse, topicsFromSyllabusSchedule } from "@/lib/courseStore";
 import { extractSyllabus, type SyllabusExtraction } from "@/lib/syllabus";
 import { buildPlanPayload } from "@/lib/planPayload";
 import { createCourse } from "@/lib/coursesApi";
@@ -31,7 +27,7 @@ function fileToDataUrl(file: File): Promise<string> {
  */
 export default function UploadForm({ mode }: { mode: "new" | "slides" }) {
   const router = useRouter();
-  const { addCourse, addTopics, subject: activeSubject } = useCourse();
+  const { addCourse, subject: activeSubject } = useCourse();
 
   const [subject, setSubject] = useState("");
   const [syllabus, setSyllabus] = useState<File | null>(null);
@@ -55,6 +51,10 @@ export default function UploadForm({ mode }: { mode: "new" | "slides" }) {
 
     if (isNew && !subject.trim()) {
       setError("กรุณากรอกชื่อวิชา");
+      return;
+    }
+    if (isNew && !syllabus) {
+      setError("กรุณาแนบ course syllabus (PDF) — ใช้แยกหัวข้อและ CLO ของวิชา");
       return;
     }
     if (files.length === 0) {
@@ -84,17 +84,12 @@ export default function UploadForm({ mode }: { mode: "new" | "slides" }) {
         }
       }
 
-      // ถ้า syllabus แกะหัวข้อออกมาได้ ใช้ชุดนั้นแทนหัวข้อจำลอง — หัวข้อที่มีเลขสัปดาห์
-      // กำกับจะถูกจัดเข้าสัปดาห์ให้อัตโนมัติ ส่วนที่ไม่มีเลขสัปดาห์จะไปอยู่ในกองที่ยังไม่จัด
-      // ให้ลากจัดเอง (ไม่ได้ขึ้นกับ has_weekly_schedule เพราะแม้เอกสารจะไม่ได้จัดเป็นรายสัปดาห์
-      // ทั้งฉบับ ก็ยังอาจมีบางหัวข้อที่ระบุสัปดาห์ไว้ได้)
-      // หมายเหตุ: บางแถวมีแค่เลขสัปดาห์แต่ไม่มีชื่อหัวข้อ ถูกกรองทิ้งใน
-      // topicsFromSyllabusSchedule แล้ว — ถ้ากรองแล้วว่างเปล่า ให้ fallback ไปหัวข้อจำลอง
-      const syllabusTopics = extraction
+      // หัวข้อของวิชามาจากการแยก syllabus จริงเท่านั้น (ไม่มีหัวข้อจำลองแล้ว)
+      // หัวข้อที่มีเลขสัปดาห์กำกับจะถูกจัดเข้าสัปดาห์อัตโนมัติ ที่เหลือไปอยู่กองยังไม่จัด
+      // ถ้าแยกไม่สำเร็จ = ไม่มีหัวข้อ (อาจารย์เพิ่มเองภายหลังได้)
+      const initialTopics = extraction
         ? topicsFromSyllabusSchedule(extraction, syllabus?.name ?? null)
         : [];
-      const initialTopics =
-        syllabusTopics.length > 0 ? syllabusTopics : undefined;
 
       // สร้างวิชาที่ backend ก่อน (POST /api/v1/courses) เพื่อให้ id ฝั่งเครื่องนี้
       // ตรงกับ id ที่ backend ใช้ตั้งแต่ต้น — ส่งเฉพาะหัวข้อที่แกะได้จริงจาก syllabus
@@ -126,8 +121,8 @@ export default function UploadForm({ mode }: { mode: "new" | "slides" }) {
         backendCourseId,
       );
     } else {
-      // เพิ่มหัวข้อชุดใหม่ (จำลองผลวิเคราะห์สไลด์) เข้าวิชาที่กำลังเปิดอยู่
-      addTopics(freshTopics());
+      // อัปสไลด์เพิ่มเติม — ไม่สร้างหัวข้อใหม่
+      // (หัวข้อของวิชายึดตาม course syllabus ที่แนบไว้ตอนสร้างวิชา)
     }
 
     router.push("/topics");
@@ -161,9 +156,8 @@ export default function UploadForm({ mode }: { mode: "new" | "slides" }) {
             <div>
               <label className="label">
                 Course Syllabus{" "}
-                <span className="font-normal text-ink-400">
-                  (PDF · ไม่บังคับ)
-                </span>
+                <span className="font-normal text-ink-400">(PDF)</span>
+                <span className="text-tu-red-500"> *</span>
               </label>
               <SyllabusUpload
                 file={syllabus}
@@ -201,6 +195,10 @@ export default function UploadForm({ mode }: { mode: "new" | "slides" }) {
           <div>
             <label className="label">สไลด์ที่ต้องการเพิ่ม (PDF)</label>
             <FileDropzone files={files} onFilesChange={setFiles} />
+            <p className="mt-2 text-xs text-ink-400">
+              หมายเหตุ: หัวข้อของวิชายึดตาม course syllabus เดิม —
+              การเพิ่มสไลด์จะไม่สร้างหัวข้อใหม่
+            </p>
           </div>
         </>
       )}
@@ -222,7 +220,7 @@ export default function UploadForm({ mode }: { mode: "new" | "slides" }) {
               : "กำลังประมวลผล…"
             : isNew
               ? "สร้างรายวิชา"
-              : "จับหัวข้อจากสไลด์"}
+              : "เพิ่มสไลด์"}
         </button>
       </div>
     </form>

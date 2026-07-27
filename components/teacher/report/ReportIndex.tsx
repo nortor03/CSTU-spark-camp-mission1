@@ -60,7 +60,7 @@ function ReportCourseCard({ course }: { course: Course }) {
 
   return (
     <Link
-      href={`/report/${course.id}`}
+      href={`/report/${course.id}/1`}
       className="group flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-5 transition-colors hover:bg-paper-50 -mx-4 px-4 sm:-mx-6 sm:px-6"
     >
       <div className="min-w-0 flex-1">

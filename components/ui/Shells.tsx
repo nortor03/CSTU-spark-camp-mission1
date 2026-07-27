@@ -70,6 +70,7 @@ export function TeacherShell({
       <AppShell
         nav={TEACHER_NAV}
         width={width}
+        homeHref="/course"
         action={<SignOut href="/login" role="อาจารย์" />}
       >
         {children}
@@ -93,6 +94,7 @@ export function StudentShell({
       <AppShell
         nav={STUDENT_NAV}
         width={width}
+        homeHref="/student"
         action={<SignOut href="/login" role="นักเรียน" />}
       >
         {children}

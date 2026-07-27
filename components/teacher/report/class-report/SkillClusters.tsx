@@ -35,11 +35,26 @@ const CLUSTER_TONE = [
   { dot: "bg-tu-red-50 text-tu-red-600", title: "text-tu-red-700" },
 ];
 
-/** สีของ % ตามระดับ */
-function pctColor(p: number): string {
-  if (p >= 80) return "#047857"; // emerald
-  if (p >= 50) return "#C4870B"; // gold
-  return "#C8102E"; // red
+/**
+ * แปลงข้อมูลชุด "ข้อสอบอาจารย์" → เวอร์ชัน "จากการฝึกซ้อม"
+ * แนวคิด: นักเรียนฝึกซ้อมซ้ำจนคะแนนดีขึ้น → แกนเรดาร์สูงขึ้น และสัดส่วนกลุ่ม
+ * ขยับขึ้นกลุ่มบน (แม่นยำสูง↑ / ต้องทบทวน↓)
+ * (ตอนนี้เป็น mock — ระบบจริงจะดึงจากประวัติการฝึกซ้อมของนักเรียนซึ่งเปลี่ยนได้เรื่อย ๆ)
+ */
+function toPracticeData(d: ClusterData): ClusterData {
+  const bump = (p: number, i: number) =>
+    Math.min(100, Math.round(p + 6 + ((i * 5) % 12)));
+  const last = d.clusters.length - 1;
+  return {
+    radarAxes: d.radarAxes.map((a, i) => ({ ...a, percent: bump(a.percent, i) })),
+    clusters: d.clusters.map((c, i) =>
+      i === 0
+        ? { ...c, percent: Math.min(100, c.percent + 15) }
+        : i === last
+          ? { ...c, percent: Math.max(0, c.percent - 12) }
+          : c,
+    ),
+  };
 }
 
 export default function SkillClusters({
@@ -52,7 +67,9 @@ export default function SkillClusters({
   secondaryData: ClusterData;
 }) {
   const [activeTab, setActiveTab] = useState<"clo" | "secondary">("clo");
-  const currentData = activeTab === "clo" ? cloData : secondaryData;
+  const [source, setSource] = useState<"official" | "practice">("official");
+  const baseData = activeTab === "clo" ? cloData : secondaryData;
+  const currentData = source === "practice" ? toPracticeData(baseData) : baseData;
 
   return (
     <section className="card flex flex-col border border-line-soft p-5 shadow-sm sm:p-6">
@@ -85,6 +102,37 @@ export default function SkillClusters({
             {isQuizAssigned ? "กลุ่มตามควิซ" : "กลุ่มตามบันทึก"}
           </button>
         </div>
+      </div>
+
+      {/* สลับแหล่งข้อมูล: ข้อสอบอาจารย์ (คงที่) ↔ ฝึกซ้อม (เปลี่ยนตามที่นักเรียนทำเรื่อย ๆ) */}
+      <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="inline-flex items-center gap-1 self-start rounded-lg bg-paper-100 p-1">
+          <button
+            onClick={() => setSource("official")}
+            className={`whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-bold transition-colors ${
+              source === "official"
+                ? "bg-white text-tu-red-700 shadow-sm"
+                : "text-ink-500 hover:text-ink-700"
+            }`}
+          >
+            ข้อสอบอาจารย์
+          </button>
+          <button
+            onClick={() => setSource("practice")}
+            className={`whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-bold transition-colors ${
+              source === "practice"
+                ? "bg-white text-tu-red-700 shadow-sm"
+                : "text-ink-500 hover:text-ink-700"
+            }`}
+          >
+            ฝึกซ้อม
+          </button>
+        </div>
+        <p className="self-start text-[11px] leading-snug text-ink-400 sm:self-auto sm:text-right">
+          {source === "official"
+            ? "อิงผลข้อสอบจากอาจารย์ · ค่าคงที่"
+            : "อิงผลการฝึกซ้อมของนักเรียน · อัปเดตเรื่อย ๆ ตามการฝึก"}
+        </p>
       </div>
 
       <div className="mt-2 flex w-full flex-col items-center gap-6">

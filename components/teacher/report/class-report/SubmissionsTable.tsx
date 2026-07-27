@@ -2,8 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { WEAK_BELOW, type Submission } from "@/lib/analytics";
 import { weekNumber, TAG_COLORS } from "@/lib/weeks";
+import { useCourse } from "@/lib/courseStore";
 import {
   ChevronRight,
   ChevronLeft,
@@ -12,9 +14,43 @@ import {
   ChevronDown,
   ChevronUp,
   ExternalLink,
+  History,
 } from "lucide-react";
 
 const PAGE_SIZE = 8;
+
+/** hash ง่าย ๆ (deterministic) จากสตริง — ใช้ทำค่าจำลองที่คงที่ต่อ input เดิม */
+function hashStr(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return h;
+}
+
+/**
+ * รหัส CLO ที่ใช้ในสัปดาห์นั้น — ดึงจากตารางสอนจริงของวิชาก่อน (related_clos ของสัปดาห์)
+ * ถ้าไม่มี ค่อยจำลองแบบ deterministic (เช่น สัปดาห์ 1 → CLO 1, 2)
+ */
+function deriveWeekCloCodes(allCodes: string[], wk: number): string[] {
+  if (allCodes.length <= 2) return allCodes;
+  const start = (wk - 1) % allCodes.length;
+  const len = Math.min(allCodes.length, 2 + ((wk - 1) % 2)); // 2–3 ตัวต่อสัปดาห์
+  const picked = new Set<string>();
+  for (let k = 0; k < len; k++) picked.add(allCodes[(start + k) % allCodes.length]);
+  // คงลำดับตามชุด CLO เดิม (CLO 1 → 2 → 3 …) ให้คอลัมน์เรียงขึ้น
+  return allCodes.filter((c) => picked.has(c));
+}
+
+/** คะแนน CLO 0–5 (จำลอง) — อิงเปอร์เซ็นต์รวมของนักศึกษา + แกว่งเล็กน้อยต่อ CLO */
+function cloScore(percent: number, studentId: string, cloCode: string): number {
+  const base = (percent / 100) * 5;
+  const jitter = (hashStr(studentId + cloCode) % 3) - 1; // -1, 0, +1
+  return Math.max(0, Math.min(5, Math.round(base + jitter)));
+}
+
+/** จำนวนครั้งที่ฝึกซ้อม (จำลอง) 0–3 — คงที่ต่อนักศึกษา */
+function practiceCount(studentId: string): number {
+  return hashStr(studentId + "practice") % 4;
+}
 
 /**
  * ตารางผลแบบทดสอบรายคน — กรองตามสถานะ, ส่งออก CSV, และแบ่งหน้า
@@ -35,9 +71,29 @@ export default function SubmissionsTable({
   isQuizAssigned?: boolean;
 }) {
   const router = useRouter();
+  const { getCourse } = useCourse();
   const [statusFilter, setStatusFilter] = useState<"all" | "pass" | "fail">("all");
   const [filterOpen, setFilterOpen] = useState(false);
   const [page, setPage] = useState(1);
+
+  // CLO ที่จะแสดงเป็นคอลัมน์ — อิงเฉพาะ CLO ของสัปดาห์นี้
+  const wkStr = weekNumber(week);
+  const wk = Number(wkStr);
+  const weekCloCodes = useMemo(() => {
+    const course = getCourse(courseId);
+    const courseCodes = (course?.clos ?? []).map((c) => c.code);
+    // วิชาเก่าที่ยังไม่มี CLO (สร้างก่อนมีระบบ) — ใช้ CLO 1–4 เริ่มต้นให้เห็นคอลัมน์ในโหมดพรีวิว
+    const allCodes =
+      courseCodes.length > 0
+        ? courseCodes
+        : ["CLO 1", "CLO 2", "CLO 3", "CLO 4"];
+    const itemClos = (course?.weeklyScheduleItems ?? [])
+      .filter((it) => it.week_number === wk)
+      .flatMap((it) => it.related_clos);
+    return itemClos.length > 0
+      ? allCodes.filter((c) => itemClos.includes(c))
+      : deriveWeekCloCodes(allCodes, wk);
+  }, [getCourse, courseId, wk]);
 
   const sorted = useMemo(
     () => [...submissions].sort((a, b) => a.percent - b.percent),
@@ -142,9 +198,13 @@ export default function SubmissionsTable({
               <th className="pb-3 pt-3 pl-3">ชื่อนักศึกษา</th>
               {isQuizAssigned !== false ? (
                 <>
-                  <th className="pb-3 pt-3 text-right">คะแนน</th>
-                  <th className="pb-3 pt-3 text-center">สถานะ</th>
-                  <th className="pb-3 pt-3 text-right pr-3">สรุปรายบุคคล</th>
+                  {weekCloCodes.map((code) => (
+                    <th key={code} className="pb-3 pt-3 text-center">
+                      {code}
+                    </th>
+                  ))}
+                  <th className="pb-3 pt-3 text-center">ฝึกซ้อม</th>
+                  <th className="pb-3 pt-3 text-center pr-3">สรุปรายบุคคล</th>
                 </>
               ) : (
                 <>
@@ -156,10 +216,9 @@ export default function SubmissionsTable({
           </thead>
           <tbody className="divide-y divide-line-soft">
             {pageRows.map((s) => {
-              const pass = s.percent >= WEAK_BELOW;
               // Mock summary submission status for No Quiz mode
-              const isSubmitted = s.percent > 20; 
-              
+              const isSubmitted = s.percent > 20;
+
               return (
                 <tr
                   key={s.id}
@@ -185,24 +244,36 @@ export default function SubmissionsTable({
                   </td>
                   {isQuizAssigned !== false ? (
                     <>
-                      <td className="py-2.5 text-right tabular-nums text-ink-600">
-                        {s.score}/{s.total}
-                        <span className="ml-1.5 font-bold text-ink-900">({s.percent}%)</span>
-                      </td>
-                      <td className="py-3 text-center">
-                        <span
-                          className={`inline-flex rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wider ${
-                            pass ? "bg-emerald-100 text-emerald-800" : "bg-tu-red-100 text-tu-red-800"
-                          }`}
+                      {weekCloCodes.map((code) => (
+                        <td
+                          key={code}
+                          className="py-2.5 text-center font-bold tabular-nums text-ink-900"
                         >
-                          {pass ? "Pass" : "Fail"}
-                        </span>
+                          {cloScore(s.percent, s.studentId, code)}
+                        </td>
+                      ))}
+                      <td className="py-3 text-center">
+                        {practiceCount(s.studentId) > 0 ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-paper-100 px-2.5 py-1 text-xs font-semibold text-ink-600 ring-1 ring-line">
+                            <History className="h-3.5 w-3.5" />+
+                            {practiceCount(s.studentId)} ครั้ง
+                          </span>
+                        ) : (
+                          <span className="text-ink-300">-</span>
+                        )}
                       </td>
-                      <td className="py-3 text-right pr-3">
-                        <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-tu-blue-600 group-hover:text-tu-blue-700">
-                          ดูข้อสังเกต
+                      <td
+                        className="py-3 text-center pr-3"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Link
+                          href={`/student/summary/${wkStr}?student=${encodeURIComponent(s.studentId)}`}
+                          title="ดูสรุปรายบุคคล"
+                          aria-label="ดูสรุปรายบุคคล"
+                          className="inline-flex text-tu-blue-600 transition-colors hover:text-tu-blue-700"
+                        >
                           <ExternalLink className="h-4 w-4" />
-                        </span>
+                        </Link>
                       </td>
                     </>
                   ) : (
@@ -237,7 +308,10 @@ export default function SubmissionsTable({
             })}
             {pageRows.length === 0 && (
               <tr>
-                <td colSpan={4} className="py-8 text-center text-sm text-ink-400">
+                <td
+                  colSpan={isQuizAssigned !== false ? 3 + weekCloCodes.length : 3}
+                  className="py-8 text-center text-sm text-ink-400"
+                >
                   ไม่พบนักศึกษาตามเงื่อนไขที่กรอง
                 </td>
               </tr>

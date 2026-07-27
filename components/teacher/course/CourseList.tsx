@@ -1,23 +1,79 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
-import { useCourse, type Course } from "@/lib/courseStore";
-import { weekNumber } from "@/lib/weeks";
+import { useEffect, useState } from "react";
+import { deleteCourse, fetchCourses, type CourseSummary } from "@/lib/coursesApi";
 import PageHeader from "@/components/ui/PageHeader";
-import { ChevronRight } from "lucide-react";
+import Modal, { ModalHeader } from "@/components/ui/Modal";
+import { ChevronRight, Trash2 } from "lucide-react";
 
 /**
  * หน้าภาพรวมรายวิชา — สรุป "ทุกวิชา" ที่อาจารย์คนนี้สอน
+ * ดึงจาก backend รายวิชา (GET /api/v1/courses) โดยตรง
  * กดการ์ดวิชาเพื่อเข้าไปดูรายละเอียดของวิชานั้น
  */
 export default function CourseList() {
-  const { courses, hydrated } = useCourse();
+  const [courses, setCourses] = useState<CourseSummary[]>([]);
+  const [status, setStatus] = useState<"loading" | "error" | "ready">(
+    "loading",
+  );
+  const [deleteTarget, setDeleteTarget] = useState<CourseSummary | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  if (!hydrated) {
+  useEffect(() => {
+    let cancelled = false;
+    setStatus("loading");
+    fetchCourses()
+      .then((items) => {
+        if (cancelled) return;
+        setCourses(items);
+        setStatus("ready");
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setStatus("error");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  function closeDeleteModal() {
+    if (deleting) return;
+    setDeleteTarget(null);
+    setDeleteError(null);
+  }
+
+  async function confirmDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await deleteCourse(deleteTarget.course_id);
+      setCourses((prev) =>
+        prev.filter((c) => c.course_id !== deleteTarget.course_id),
+      );
+      setDeleteTarget(null);
+    } catch {
+      setDeleteError("ลบวิชาไม่สำเร็จ ลองใหม่อีกครั้ง");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  if (status === "loading") {
     return (
       <div className="grid place-items-center py-24 text-sm text-ink-400">
         กำลังโหลด…
+      </div>
+    );
+  }
+
+  if (status === "error") {
+    return (
+      <div className="grid place-items-center py-24 text-sm text-tu-red-600">
+        โหลดรายวิชาไม่สำเร็จ ลองรีเฟรชหน้าอีกครั้ง
       </div>
     );
   }
@@ -51,35 +107,65 @@ export default function CourseList() {
       ) : (
         <div className="mt-6 flex flex-col divide-y divide-line border-y border-line">
           {courses.map((c) => (
-            <CourseCard key={c.id} course={c} />
+            <CourseCard
+              key={c.course_id}
+              course={c}
+              onDeleteClick={() => setDeleteTarget(c)}
+            />
           ))}
         </div>
       )}
+
+      {/* ป็อปอัปยืนยันการลบวิชา */}
+      <Modal open={deleteTarget !== null} onClose={closeDeleteModal}>
+        {deleteTarget && (
+          <>
+            <ModalHeader title="ยืนยันการลบ" />
+            <p className="text-sm leading-relaxed text-ink-600">
+              ต้องการลบวิชา “{deleteTarget.subject}” ใช่ไหม? หัวข้อและ CLO
+              ทั้งหมดของวิชานี้จะถูกลบไปด้วย การลบนี้ย้อนกลับไม่ได้
+            </p>
+            {deleteError && (
+              <p className="mt-3 rounded-lg bg-tu-red-50 px-3 py-2 text-xs font-medium text-tu-red-600">
+                {deleteError}
+              </p>
+            )}
+            <div className="mt-6 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={closeDeleteModal}
+                disabled={deleting}
+                className="btn-ghost disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                ยกเลิก
+              </button>
+              <button
+                type="button"
+                onClick={confirmDelete}
+                disabled={deleting}
+                className="rounded-lg bg-tu-red-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-tu-red-600 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {deleting ? "กำลังลบ…" : "ลบ"}
+              </button>
+            </div>
+          </>
+        )}
+      </Modal>
     </div>
   );
 }
 
 /** การ์ดสรุป 1 วิชา */
-function CourseCard({ course }: { course: Course }) {
-  const stats = useMemo(() => {
-    const weeks = new Set(
-      course.topics
-        .filter((t) => t.weekAssigned)
-        .map((t) => t.weekAssigned as string),
-    );
-    return {
-      weeks: weeks.size,
-      topics: course.topics.filter((t) => t.weekAssigned).length,
-      // นับเฉพาะสัปดาห์ที่มีควิซที่ใช้งานอยู่อย่างน้อย 1 ชุด
-      quizzes: Object.values(course.quizzes).filter((list) =>
-        list.some((q) => q.isActive),
-      ).length,
-    };
-  }, [course]);
-
+function CourseCard({
+  course,
+  onDeleteClick,
+}: {
+  course: CourseSummary;
+  onDeleteClick: () => void;
+}) {
   return (
     <Link
-      href={`/course/${course.id}`}
+      href={`/course/${course.course_id}`}
       className="group flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-5 transition-colors hover:bg-paper-50 -mx-4 px-4 sm:-mx-6 sm:px-6"
     >
       <div className="min-w-0 flex-1">
@@ -95,10 +181,22 @@ function CourseCard({ course }: { course: Course }) {
 
       <div className="flex items-center gap-6 sm:gap-10">
         <div className="flex items-center gap-6">
-          <Stat value={stats.weeks} label="สัปดาห์" />
-          <Stat value={stats.topics} label="หัวข้อ" />
-          <Stat value={stats.quizzes} label="แบบทดสอบ" />
+          <Stat value={course.week_count} label="สัปดาห์" />
+          <Stat value={course.topic_count} label="หัวข้อ" />
+          <Stat value={course.quiz_count} label="แบบทดสอบ" />
         </div>
+        <button
+          type="button"
+          title="ลบวิชา"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onDeleteClick();
+          }}
+          className="grid h-8 w-8 flex-shrink-0 place-items-center rounded-lg border border-line bg-white text-ink-400 transition hover:border-tu-red-200 hover:bg-tu-red-50/50 hover:text-tu-red-600"
+        >
+          <Trash2 className="h-[15px] w-[15px]" />
+        </button>
         <span className="hidden sm:block text-ink-300 transition-colors group-hover:text-tu-red-500">
           <ChevronRight className="h-5 w-5" strokeWidth={2} />
         </span>

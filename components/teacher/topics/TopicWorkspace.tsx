@@ -18,8 +18,16 @@ import SummaryPopup from "./SummaryPopup";
 /** ตัวควบคุมหลักของหน้าสรุปหัวข้อ — รวม state, grid และ modal ทั้งหมด */
 export default function TopicWorkspace() {
   const router = useRouter();
-  const { subject, activeCourseId, clos, addClo, totalWeeks, addWeek, removeWeek } =
-    useCourse();
+  const {
+    subject,
+    courseCode,
+    activeCourseId,
+    clos,
+    addClo,
+    totalWeeks,
+    addWeek,
+    removeWeek,
+  } = useCourse();
   const t = useTopics();
   const weekOptionsList = buildWeekOptions(totalWeeks);
 
@@ -247,8 +255,12 @@ export default function TopicWorkspace() {
       />
       <SummaryPopup
         open={summaryOpen}
+        courseId={activeCourseId ?? ""}
         topics={t.topics}
         weekSummaries={t.weekSummaries}
+        courseCode={courseCode}
+        subject={subject}
+        clos={clos}
         onClose={() => setSummaryOpen(false)}
         onConfirm={handleConfirm}
       />

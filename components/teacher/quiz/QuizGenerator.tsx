@@ -8,6 +8,7 @@ import type { Quiz, QuizPrompt } from "@/lib/quiz";
 import { emptyPrompt } from "@/lib/quiz";
 import { generateQuizJSON } from "@/lib/aiQuiz";
 import PageHeader from "@/components/ui/PageHeader";
+import AiLoading from "@/components/ui/AiLoading";
 import QuizPromptForm from "./QuizPromptForm";
 import QuizEditor from "./QuizEditor";
 
@@ -135,17 +136,18 @@ export default function QuizGenerator({ week }: { week: string }) {
       />
 
       <div className="card p-6 sm:p-8">
-        {(phase === "loading" || phase === "generating") && (
+        {/* ระหว่าง AI เจนแบบทดสอบ — หน้าโหลดเอกสารไหลเข้าหาบอท (เหมือนหน้าสร้างรายวิชา) */}
+        {phase === "generating" && (
+          <AiLoading
+            title="กำลังสร้างแบบทดสอบ"
+            subtitle="AI กำลังออกข้อสอบจากหัวข้อและไฟล์ที่เลือก"
+          />
+        )}
+
+        {phase === "loading" && (
           <div className="flex flex-col items-center justify-center gap-3 py-20 text-center">
             <div className="h-10 w-10 animate-spin rounded-full border-[3px] border-line-strong border-t-tu-red-500" />
-            <p className="display text-base">
-              {phase === "generating" ? "กำลังสร้างแบบทดสอบ…" : "กำลังโหลด…"}
-            </p>
-            {phase === "generating" && (
-              <p className="text-xs text-ink-500">
-                ระบบกำลังออกข้อสอบจากหัวข้อและไฟล์ที่เลือก
-              </p>
-            )}
+            <p className="display text-base">กำลังโหลด…</p>
           </div>
         )}
 

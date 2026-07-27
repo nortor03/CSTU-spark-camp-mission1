@@ -33,6 +33,7 @@ export default function UploadForm({ mode }: { mode: "new" | "slides" }) {
   const router = useRouter();
   const { addCourse, subject: activeSubject } = useCourse();
 
+  const [courseCode, setCourseCode] = useState("");
   const [subject, setSubject] = useState("");
   const [syllabus, setSyllabus] = useState<File | null>(null);
   const [extracting, setExtracting] = useState(false);
@@ -78,6 +79,8 @@ export default function UploadForm({ mode }: { mode: "new" | "slides" }) {
         // วิชา (/course/[id]) มีเนื้อหาให้ดู/แก้ทันที — ตั้ง USE_MOCK_COURSE_PREVIEW=false
         // ใน lib/mockCourseSeed.ts เมื่อหลังบ้านพร้อม เพื่อสลับไปใช้ path จริงด้านล่าง
         const seed = buildMockCourseSeed(syllabus?.name ?? null);
+        // ใช้รหัสวิชาที่อาจารย์กรอก (ถ้ามี) แทนรหัสจำลอง
+        if (courseCode.trim()) seed.extraction.course_code = courseCode.trim();
 
         let backendCourseId: string | undefined;
         try {
@@ -128,13 +131,18 @@ export default function UploadForm({ mode }: { mode: "new" | "slides" }) {
           ? topicsFromSyllabusSchedule(extraction, syllabus?.name ?? null)
           : [];
 
+        // รหัสวิชาที่อาจารย์กรอกเองมีความสำคัญกว่าที่แกะได้จาก syllabus
+        const finalCourseCode =
+          courseCode.trim() || extraction?.course_code || null;
+        if (extraction) extraction.course_code = finalCourseCode;
+
         // สร้างวิชาที่ backend ก่อน (POST) เพื่อให้ id ตรงกันตั้งแต่ต้น — ล้มเหลวก็ยัง
         // สร้างในเครื่องต่อได้ แล้ว sync ใหม่ตอนกด "ยืนยันและส่งข้อมูล" ในหน้าจัดหัวข้อ
         let backendCourseId: string | undefined;
         try {
           const created = await createCourse(
             buildPlanPayload(
-              extraction?.course_code ?? null,
+              finalCourseCode,
               subject.trim(),
               extraction?.clos ?? [],
               initialTopics,
@@ -176,13 +184,25 @@ export default function UploadForm({ mode }: { mode: "new" | "slides" }) {
     <form onSubmit={handleSubmit} className="space-y-4">
       {isNew ? (
         <>
-          <div className="grid gap-5 sm:grid-cols-2">
+          {/* รหัสวิชา + ชื่อวิชา + Course Syllabus อยู่แถวเดียวกัน (สไลด์อยู่แถวถัดไป) */}
+          <div className="grid items-start gap-4 sm:grid-cols-[130px_1.6fr_1fr]">
+            <div>
+              <label className="label">รหัสวิชา</label>
+              <input
+                value={courseCode}
+                onChange={(e) => setCourseCode(e.target.value)}
+                placeholder="เช่น CN101"
+                maxLength={6}
+                className="field text-sm"
+              />
+            </div>
+
             <div>
               <label className="label">ชื่อวิชา</label>
               <input
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
-                placeholder="เช่น CN101 การเขียนโปรแกรม"
+                placeholder="เช่น การเขียนโปรแกรม"
                 className="field text-sm"
               />
             </div>

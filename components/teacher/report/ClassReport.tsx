@@ -9,6 +9,7 @@ import { generateMockSubmissions } from "@/lib/mockClass";
 import { weekNumber } from "@/lib/weeks";
 import PageHeader from "@/components/ui/PageHeader";
 import MasteryBar, { MasteryLegend } from "@/components/ui/MasteryBar";
+import SynthesisNotes from "@/components/teacher/report/class-report/SynthesisNotes";
 
 /**
  * รายงานภาพรวมทั้งชั้นเรียนของ 1 สัปดาห์ ในวิชาหนึ่ง (สำหรับอาจารย์)
@@ -90,30 +91,8 @@ export default function ClassReport({
         <Kpi label="ผ่านเกณฑ์ 50%" value={report.passRate} unit="%" />
       </div>
 
-      {/* ---------- สิ่งที่ควรทำในคาบถัดไป ---------- */}
-      <section className="card mb-4 overflow-hidden">
-        <div className="h-1 bg-tu-gold-500" aria-hidden />
-        <div className="p-5 sm:p-6">
-          <h2 className="display text-lg">ข้อเสนอสำหรับคาบถัดไป</h2>
-          <p className="mt-1 text-xs text-ink-500">
-            สรุปจากหัวข้อที่ทั้งห้องทำได้ต่ำ และตัวเลือกผิดที่ซ้ำกันบ่อย
-          </p>
-          <hr className="rule-gold my-4" />
-          <ul className="space-y-2.5">
-            {report.reviewPlan.map((p, i) => (
-              <li
-                key={i}
-                className="flex gap-3 rounded-md bg-paper-50 px-3.5 py-2.5 text-sm leading-relaxed text-ink-700"
-              >
-                <span className="flex-shrink-0 font-bold text-tu-red-600">
-                  {i + 1}
-                </span>
-                {p}
-              </li>
-            ))}
-          </ul>
-        </div>
-      </section>
+      {/* ---------- สรุปข้อสังเกต (สังเคราะห์จาก Student Summary รายบุคคล) ---------- */}
+      <SynthesisNotes insights={report.insights} />
 
       <div className="mb-4 grid gap-4 lg:grid-cols-2">
         {/* ---------- การกระจายคะแนน ---------- */}

@@ -186,7 +186,7 @@ function emptyCourse(
       DEFAULT_WEEK_COUNT,
       ...(syllabusExtraction?.items.map((i) => i.week_number ?? 0) ?? [0]),
     ),
-    topics: initialTopics ?? freshTopics(),
+    topics: initialTopics ?? [],
     weekConfig: {},
     quizzes: {},
     submissions: [],
@@ -270,7 +270,7 @@ function migrate(
         : [],
       totalWeeks:
         typeof d.totalWeeks === "number" ? d.totalWeeks : DEFAULT_WEEK_COUNT,
-      topics: Array.isArray(d.topics) ? (d.topics as Topic[]) : freshTopics(),
+      topics: Array.isArray(d.topics) ? (d.topics as Topic[]) : [],
       weekConfig: (d.weekConfig as WeekConfigMap) ?? {},
       quizzes: (function migrateOldQuizzes() {
         const q = (d.quizzes || {}) as Record<string, any>;

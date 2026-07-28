@@ -11,6 +11,9 @@ import { fetchCourseQuizzes } from "@/lib/quizzesApi";
 import PageHeader from "@/components/ui/PageHeader";
 import Modal, { ModalHeader } from "@/components/ui/Modal";
 import EditCloModal, { type EditingClo } from "./EditCloModal";
+import EditWeekTopicsModal, {
+  type WeekTopicEdit,
+} from "./EditWeekTopicsModal";
 import { ChevronDown, Pencil, Trash2, FileText } from "lucide-react";
 import type { Topic } from "@/lib/types";
 import type { Quiz } from "@/lib/quiz";
@@ -34,6 +37,7 @@ export default function CourseDetail({ courseId }: { courseId: string }) {
     setSyllabus,
     setSyllabusExtraction,
     setTopics,
+    setWeekConfig,
     toggleQuizActive,
     deleteQuiz,
     updateClo,
@@ -53,6 +57,8 @@ export default function CourseDetail({ courseId }: { courseId: string }) {
   const [expandedWeeks, setExpandedWeeks] = useState<Set<string>>(new Set());
   // CLO ที่กำลังแก้ไข (null = ปิด modal)
   const [editingClo, setEditingClo] = useState<EditingClo | null>(null);
+  // สัปดาห์ที่กำลังแก้หัวข้อ (null = ปิด modal)
+  const [editingWeek, setEditingWeek] = useState<string | null>(null);
 
   function toggleWeek(week: string) {
     setExpandedWeeks((prev) => {
@@ -453,29 +459,40 @@ export default function CourseDetail({ courseId }: { courseId: string }) {
 
             return (
               <div key={row.week} className="border-b border-line-soft">
-                {hasQuizzes ? (
-                  /* สัปดาห์ที่มีควิซ — กดหัวเพื่อกาง/พับรายการควิซ */
+                <div className="flex items-center gap-2">
+                  {hasQuizzes ? (
+                    /* สัปดาห์ที่มีควิซ — กดหัวเพื่อกาง/พับรายการควิซ */
+                    <button
+                      type="button"
+                      onClick={() => toggleWeek(row.week)}
+                      aria-expanded={open}
+                      className="flex flex-1 items-center gap-5 py-5 text-left"
+                    >
+                      {WeekNum}
+                      {WeekInfo}
+                      <ChevronDown
+                        className={`h-5 w-5 flex-shrink-0 text-ink-400 transition-transform ${open ? "rotate-180" : ""}`}
+                        aria-hidden
+                      />
+                    </button>
+                  ) : (
+                    /* สัปดาห์ที่ยังไม่มีควิซ — ปุ่มสร้างควิซแทน */
+                    <div className="flex flex-1 items-center gap-5 py-5">
+                      {WeekNum}
+                      {WeekInfo}
+                      {createLink("สร้างควิซ")}
+                    </div>
+                  )}
+                  {/* แก้หัวข้อของสัปดาห์นี้ (เปลี่ยนชื่อ/เอาออก) */}
                   <button
                     type="button"
-                    onClick={() => toggleWeek(row.week)}
-                    aria-expanded={open}
-                    className="flex w-full items-center gap-5 py-5 text-left"
+                    onClick={() => setEditingWeek(row.week)}
+                    title="แก้ไขหัวข้อของสัปดาห์นี้"
+                    className="grid h-8 w-8 flex-shrink-0 place-items-center rounded-lg border border-line bg-white text-ink-400 transition hover:border-line-strong hover:text-tu-red-600"
                   >
-                    {WeekNum}
-                    {WeekInfo}
-                    <ChevronDown
-                      className={`h-5 w-5 flex-shrink-0 text-ink-400 transition-transform ${open ? "rotate-180" : ""}`}
-                      aria-hidden
-                    />
+                    <Pencil className="h-[14px] w-[14px]" />
                   </button>
-                ) : (
-                  /* สัปดาห์ที่ยังไม่มีควิซ — ปุ่มสร้างควิซแทน */
-                  <div className="flex w-full items-center gap-5 py-5">
-                    {WeekNum}
-                    {WeekInfo}
-                    {createLink("สร้างควิซ")}
-                  </div>
-                )}
+                </div>
 
                 {/* รายการควิซที่กางออกมา — เยื้องให้ตรงกับหัวข้อ */}
                 {open && hasQuizzes && (
@@ -653,6 +670,32 @@ export default function CourseDetail({ courseId }: { courseId: string }) {
         editing={editingClo}
         onClose={() => setEditingClo(null)}
         onSave={updateClo}
+      />
+
+      {/* แก้หัวข้อของสัปดาห์ (เปลี่ยนชื่อ / เอาออกจากสัปดาห์) */}
+      <EditWeekTopicsModal
+        week={editingWeek}
+        topics={course.topics.filter((t) => t.weekAssigned === editingWeek)}
+        colorKey={
+          editingWeek ? course.weekConfig?.[editingWeek]?.colorKey : undefined
+        }
+        onClose={() => setEditingWeek(null)}
+        onApply={(edits: WeekTopicEdit[], colorKey: string) => {
+          setTopics((prev) =>
+            prev.map((t) => {
+              const e = edits.find((x) => x.id === t.id);
+              if (!e) return t;
+              if (e.remove) return { ...t, weekAssigned: null };
+              return { ...t, title: e.title || t.title };
+            }),
+          );
+          if (editingWeek) {
+            setWeekConfig((prev) => ({
+              ...prev,
+              [editingWeek]: { ...prev[editingWeek], colorKey },
+            }));
+          }
+        }}
       />
     </div>
   );

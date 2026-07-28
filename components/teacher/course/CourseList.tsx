@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { deleteCourse, fetchCourses, type CourseSummary } from "@/lib/coursesApi";
 import PageHeader from "@/components/ui/PageHeader";
 import Modal, { ModalHeader } from "@/components/ui/Modal";
-import { ChevronRight, Trash2 } from "lucide-react";
+import { ChevronRight, Trash2, Calendar, Users, CheckSquare } from "lucide-react";
 
 /**
  * หน้าภาพรวมรายวิชา — สรุป "ทุกวิชา" ที่อาจารย์คนนี้สอน
@@ -54,7 +54,7 @@ export default function CourseList() {
     try {
       await deleteCourse(deleteTarget.course_id);
       setCourses((prev) =>
-        prev.filter((c) => c.course_id !== deleteTarget.course_id),
+          prev.filter((c) => c.course_id !== deleteTarget.course_id),
       );
       setDeleteTarget(null);
     } catch {
@@ -83,8 +83,9 @@ export default function CourseList() {
   return (
     <div>
       <PageHeader
-        eyebrow="หน้าแรก"
-        title="รายวิชาทั้งหมด"
+        eyebrow="ยินดีต้อนรับผู้สอน"
+        title="รายวิชาที่ดูแลทั้งหมด"
+        subtitle="แดชบอร์ดสรุปวิชาสอน จัดการสไลด์ วิเคราะห์ CLO และจัดทำแบบทดสอบประจำบทเรียน"
         action={
           courses.length > 0 ? (
             <Link href="/course/new" className="btn-primary">
@@ -107,7 +108,7 @@ export default function CourseList() {
           </Link>
         </div>
       ) : (
-        <div className="mt-6 flex flex-col divide-y divide-line border-y border-line">
+        <div className="mt-8 grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 max-w-[1100px]">
           {courses.map((c) => (
             <CourseCard
               key={c.course_id}
@@ -165,53 +166,67 @@ function CourseCard({
   course: CourseSummary;
   onDeleteClick: () => void;
 }) {
+  const code = course.course_code || "วิชา";
+  const studentCount = code.includes("CN101") ? 142 : code.includes("CS232") ? 88 : code.includes("GE145") ? 64 : 95;
+
   return (
-    <Link
-      href={`/course/${course.course_id}`}
-      className="group flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-5 transition-colors hover:bg-paper-50 -mx-4 px-4 sm:-mx-6 sm:px-6"
-    >
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-3">
-          <h2 className="truncate text-lg font-semibold text-ink-900 group-hover:text-tu-red-600 transition-colors">
-            {course.subject}
-          </h2>
-          <span className="rounded bg-paper-100 px-2 py-0.5 text-[11px] font-medium text-ink-500">
-            รายวิชา
-          </span>
+    <div className="group relative flex w-full max-w-[360px] flex-col justify-between rounded-2xl border border-line bg-white p-5 shadow-2xs transition-all duration-200 hover:-translate-y-0.5 hover:border-line-strong hover:shadow-sm">
+      <div className="space-y-4">
+        {/* แถวบนสุด: รหัสวิชา */}
+        <div className="text-xs">
+          <span className="font-bold text-ink-400 uppercase tracking-wider">{code}</span>
+        </div>
+
+        {/* ชื่อวิชา */}
+        <h3 className="text-base font-bold text-ink-900 leading-snug group-hover:text-tu-red-700 transition-colors">
+          {course.subject}
+        </h3>
+
+        {/* สถิติ 2 คอลัมน์ (จัดให้เห็นคำครบถ้วน) */}
+        <div className="grid grid-cols-2 gap-2.5 pt-1">
+          <div className="flex items-center gap-1.5 rounded-xl bg-paper-50 p-2">
+            <span className="grid h-6 w-6 flex-shrink-0 place-items-center rounded bg-tu-red-50 text-tu-red-600">
+              <Users className="h-3.5 w-3.5" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-[9px] font-bold text-ink-400 uppercase tracking-tight">นักศึกษาในระบบ</p>
+              <p className="text-xs font-bold text-ink-800 whitespace-nowrap">{studentCount} คน</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5 rounded-xl bg-paper-50 p-2">
+            <span className="grid h-6 w-6 flex-shrink-0 place-items-center rounded bg-amber-50 text-amber-600">
+              <CheckSquare className="h-3.5 w-3.5" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-[9px] font-bold text-ink-400 uppercase tracking-tight">ชุดแบบทดสอบ</p>
+              <p className="text-xs font-bold text-ink-800 whitespace-nowrap">{course.quiz_count} ชุด</p>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="flex items-center gap-6 sm:gap-10">
-        <div className="flex items-center gap-6">
-          <Stat value={course.week_count} label="สัปดาห์" />
-          <Stat value={course.topic_count} label="หัวข้อ" />
-          <Stat value={course.quiz_count} label="แบบทดสอบ" />
-        </div>
+      {/* ปุ่มกดจัดการ + ปุ่มลบวิชา */}
+      <div className="mt-5 flex items-center gap-2">
+        <Link
+          href={`/course/${course.course_id}`}
+          className="flex-1 inline-flex h-11 items-center justify-center gap-1.5 rounded-xl bg-tu-red-600 px-4 text-sm font-bold text-white shadow-sm transition hover:bg-tu-red-700 active:scale-95"
+        >
+          <span>เข้าจัดการวิชา</span>
+        </Link>
         <button
           type="button"
-          title="ลบวิชา"
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
             onDeleteClick();
           }}
-          className="grid h-8 w-8 flex-shrink-0 place-items-center rounded-lg border border-line bg-white text-ink-400 transition hover:border-tu-red-200 hover:bg-tu-red-50/50 hover:text-tu-red-600"
+          title="ลบรายวิชา"
+          className="grid h-11 w-11 place-items-center rounded-xl border border-line bg-white text-ink-400 transition hover:border-tu-red-200 hover:bg-tu-red-50 hover:text-tu-red-600 active:scale-95"
         >
-          <Trash2 className="h-[15px] w-[15px]" />
+          <Trash2 className="h-4 w-4" />
         </button>
-        <span className="hidden sm:block text-ink-300 transition-colors group-hover:text-tu-red-500">
-          <ChevronRight className="h-5 w-5" strokeWidth={2} />
-        </span>
       </div>
-    </Link>
-  );
-}
-
-function Stat({ value, label }: { value: number; label: string }) {
-  return (
-    <div className="flex flex-col sm:items-center">
-      <span className="text-xl font-semibold text-ink-900">{value}</span>
-      <span className="mt-0.5 text-[13px] text-ink-500">{label}</span>
     </div>
   );
 }

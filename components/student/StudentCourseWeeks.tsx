@@ -171,9 +171,18 @@ export default function StudentCourseWeeks({ courseId }: { courseId: string }) {
                         ? row.topics.join("  ·  ")
                         : "ไม่มีรายละเอียดหัวข้อ"}
                     </p>
-                    <p className="mt-1 text-xs text-ink-400">
-                      {hasQuiz ? "มีแบบทดสอบ" : "ยังไม่มีแบบทดสอบ"}
-                    </p>
+                    <div className="mt-1 flex items-center gap-1.5">
+                      {hasQuiz ? (
+                        <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">
+                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                          มีแบบฝึกหัดทบทวน
+                        </span>
+                      ) : (
+                        <span className="text-[11px] font-semibold text-ink-400 bg-paper-100 px-2 py-0.5 rounded-md border border-line-soft">
+                          ไม่มีแบบฝึกหัดทบทวน
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <ChevronDown
                     className={`h-5 w-5 flex-shrink-0 text-ink-400 transition-transform ${open ? "rotate-180" : ""}`}

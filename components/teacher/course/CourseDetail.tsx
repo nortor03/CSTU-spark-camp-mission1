@@ -21,8 +21,8 @@ import {
   FileText,
   ClipboardList,
   Plus,
-  Layers,
   Check,
+  CheckCircle2,
 } from "lucide-react";
 import type { Topic } from "@/lib/types";
 import type { Quiz } from "@/lib/quiz";
@@ -461,6 +461,7 @@ export default function CourseDetail({ courseId }: { courseId: string }) {
             const hasPending =
               pendingActive[row.week] != null &&
               pendingActive[row.week] !== committedActiveId;
+            const activeQuiz = row.quizzes.find((q) => q.isActive);
 
             // เลขสัปดาห์ตัวใหญ่ (สีตามสัปดาห์) + คำว่า WEEK
             const WeekNum = (
@@ -477,17 +478,31 @@ export default function CourseDetail({ courseId }: { courseId: string }) {
               </div>
             );
 
-            // หัวข้อของสัปดาห์ + จำนวนแบบทดสอบ
+            // หัวข้อของสัปดาห์ + แถวสถานะ (chip)
             const WeekInfo = (
               <div className="min-w-0 flex-1">
-                <p className="max-w-[54ch] text-[15px] font-semibold leading-snug text-ink-900">
+                <p className="max-w-[54ch] text-[15px] font-bold leading-snug text-ink-900 transition-colors group-hover/hdr:text-tu-red-700">
                   {row.topics.map((t) => t.title).join("  ·  ")}
                 </p>
-                <p className="mt-1 text-xs text-ink-400">
-                  {hasQuizzes
-                    ? `${row.quizzes.length} แบบทดสอบ`
-                    : "ยังไม่มีแบบทดสอบ"}
-                </p>
+                <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                  <span className="inline-flex items-center gap-1 rounded-md bg-paper-100 px-2 py-0.5 text-[11px] font-semibold text-ink-500">
+                    <ClipboardList className="h-3 w-3" />
+                    {hasQuizzes
+                      ? `${row.quizzes.length} แบบทดสอบ`
+                      : "ยังไม่มีแบบทดสอบ"}
+                  </span>
+                  {hasQuizzes &&
+                    (activeQuiz ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-[#047857] ring-1 ring-emerald-200/70">
+                        <CheckCircle2 className="h-3 w-3" />
+                        พร้อมสอบ
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-tu-gold-50 px-2 py-0.5 text-[10px] font-bold text-tu-gold-700 ring-1 ring-tu-gold-200/70">
+                        ยังไม่ได้เลือกชุด
+                      </span>
+                    ))}
+                </div>
               </div>
             );
 
@@ -515,18 +530,31 @@ export default function CourseDetail({ courseId }: { courseId: string }) {
                       type="button"
                       onClick={() => toggleWeek(row.week)}
                       aria-expanded={open}
-                      className="flex flex-1 items-center gap-5 py-5 text-left"
+                      className="group/hdr -mx-2 flex flex-1 items-center gap-5 rounded-2xl px-2 py-5 text-left transition-colors hover:bg-paper-100/50"
                     >
                       {WeekNum}
                       {WeekInfo}
-                      <ChevronDown
-                        className={`h-5 w-5 flex-shrink-0 text-ink-400 transition-transform ${open ? "rotate-180" : ""}`}
+                      <span
                         aria-hidden
-                      />
+                        className={`grid h-9 w-9 flex-shrink-0 place-items-center rounded-full border transition-all duration-300 ${
+                          open
+                            ? "border-transparent"
+                            : "border-line text-ink-400 group-hover/hdr:border-line-strong group-hover/hdr:text-ink-600"
+                        }`}
+                        style={
+                          open
+                            ? { backgroundColor: soft.backgroundColor, color: soft.color }
+                            : undefined
+                        }
+                      >
+                        <ChevronDown
+                          className={`h-4 w-4 transition-transform duration-300 ${open ? "rotate-180" : ""}`}
+                        />
+                      </span>
                     </button>
                   ) : (
                     /* สัปดาห์ที่ยังไม่มีควิซ — ปุ่มสร้างควิซแทน */
-                    <div className="flex flex-1 items-center gap-5 py-5">
+                    <div className="-mx-2 flex flex-1 items-center gap-5 rounded-2xl px-2 py-5">
                       {WeekNum}
                       {WeekInfo}
                       {createLink("สร้างควิซ")}
@@ -537,7 +565,7 @@ export default function CourseDetail({ courseId }: { courseId: string }) {
                     type="button"
                     onClick={() => setEditingWeek(row.week)}
                     title="แก้ไขหัวข้อของสัปดาห์นี้"
-                    className="grid h-8 w-8 flex-shrink-0 place-items-center rounded-lg border border-line bg-white text-ink-400 transition hover:border-line-strong hover:text-tu-red-600"
+                    className="grid h-9 w-9 flex-shrink-0 place-items-center rounded-xl border border-line bg-white text-ink-400 transition hover:border-line-strong hover:text-tu-red-600 active:scale-95"
                   >
                     <Pencil className="h-[14px] w-[14px]" />
                   </button>
@@ -546,194 +574,169 @@ export default function CourseDetail({ courseId }: { courseId: string }) {
                 {/* รายการควิซที่กางออกมา — เยื้องให้ตรงกับหัวข้อ */}
                 {open && hasQuizzes && (
                   <div className="ml-0 animate-slide-up pb-7 sm:ml-[76px]">
-                    <div className="relative overflow-hidden rounded-2xl border border-line-soft bg-white/70 shadow-card">
-                      {/* แสงอุ่นสีประจำสัปดาห์มุมบนซ้าย */}
+                    <div className="relative overflow-hidden rounded-2xl border border-line-soft bg-white shadow-card">
+                      {/* แสงอุ่นสีประจำสัปดาห์ + สันซ้าย */}
                       <div
                         aria-hidden
                         className="pointer-events-none absolute inset-0"
                         style={{
-                          background: `radial-gradient(240px 130px at 0% 0%, ${hex}14, transparent 72%)`,
+                          background: `radial-gradient(260px 140px at 0% 0%, ${hex}14, transparent 72%)`,
                         }}
                       />
-                      {/* สันด้านซ้ายสีประจำสัปดาห์ */}
                       <div
                         aria-hidden
-                        className="pointer-events-none absolute inset-y-0 left-0 w-[3px]"
+                        className="pointer-events-none absolute inset-y-0 left-0 w-1"
                         style={{ backgroundColor: hex }}
                       />
 
-                      {/* หัวแผง — บอกบริบทของการเลือกชุด */}
+                      {/* หัวแผง */}
                       <div className="relative flex items-center justify-between gap-3 border-b border-line-soft px-4 py-3">
-                        <div className="flex min-w-0 items-center gap-2.5">
+                        <div className="flex items-center gap-2">
                           <span
-                            className="grid h-7 w-7 flex-shrink-0 place-items-center rounded-lg"
-                            style={{ backgroundColor: soft.backgroundColor, color: soft.color }}
-                          >
-                            <Layers className="h-3.5 w-3.5" strokeWidth={2.2} />
-                          </span>
-                          <div className="min-w-0">
-                            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-ink-400">
-                              ชุดแบบทดสอบ
-                            </p>
-                            <p className="truncate text-[13px] font-semibold text-ink-700">
-                              เลือกชุดที่จะใช้สอบของสัปดาห์นี้
-                            </p>
-                          </div>
+                            className="h-1.5 w-1.5 rounded-full animate-pulse"
+                            style={{ backgroundColor: hex }}
+                          />
+                          <h4 className="text-[11px] font-bold uppercase tracking-widest text-ink-400">
+                            ชุดแบบทดสอบประจำสัปดาห์
+                          </h4>
                         </div>
                         <span className="flex-shrink-0 rounded-full bg-paper-100 px-2.5 py-1 text-[11px] font-bold tabular-nums text-ink-500 ring-1 ring-line-soft">
                           {row.quizzes.length} ชุด
                         </span>
                       </div>
 
-                      {/* รายแถว — แบบ track list เลือกได้ */}
-                      <ul className="relative divide-y divide-line-soft/70 p-2">
+                      {/* รายการควิซ */}
+                      <div className="relative space-y-2 p-2.5">
                         {row.quizzes.map((q, i) => {
                           const active = q.id === selectedId;
                           const isCommitted = q.isActive;
                           return (
-                            <li
+                            <div
                               key={q.id}
-                              className="group/row animate-quiz-row"
-                              style={{ animationDelay: `${i * 60}ms` }}
+                              className={`group/row relative flex items-center gap-3 rounded-xl border border-line p-3.5 transition-all duration-200 animate-quiz-row ${
+                                active
+                                  ? "border-line-strong/70"
+                                  : "hover:border-line-strong hover:bg-paper-100/50 hover:shadow-sm"
+                              }`}
+                              style={{
+                                animationDelay: `${i * 55}ms`,
+                                borderLeftWidth: active ? "4px" : "3px",
+                                borderLeftColor: hex,
+                                ...(active
+                                  ? {
+                                      background: `linear-gradient(90deg, ${hex}17, ${hex}05 60%, transparent)`,
+                                      boxShadow: `inset 0 0 0 1px ${hex}33, 0 0 16px -8px ${hex}80`,
+                                    }
+                                  : {}),
+                              }}
                             >
-                              <div
-                                className="relative flex items-center gap-3 rounded-xl px-3 py-3 transition-all duration-200 hover:bg-paper-100/60"
+                              {/* ปุ่มเลือกชุด */}
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  pickActive(row.week, q.id, committedActiveId)
+                                }
+                                title={active ? "ชุดที่เลือก" : "เลือกชุดนี้"}
+                                aria-pressed={active}
+                                className={`relative grid h-6 w-6 flex-shrink-0 place-items-center rounded-full border-2 bg-white transition-transform duration-200 group-hover/row:scale-110 ${
+                                  active ? "border-transparent" : "border-line-strong"
+                                }`}
                                 style={
                                   active
-                                    ? {
-                                        background: `linear-gradient(90deg, ${hex}1f, ${hex}08 55%, transparent)`,
-                                        boxShadow: `inset 0 0 0 1px ${hex}40`,
-                                      }
+                                    ? { backgroundColor: hex, borderColor: hex }
                                     : undefined
                                 }
                               >
-                                {/* สันเรืองแสงของแถวที่เลือก / เงาตอน hover */}
+                                {active ? (
+                                  <>
+                                    <Check className="h-3.5 w-3.5 text-white" strokeWidth={3.5} />
+                                    <span
+                                      aria-hidden
+                                      className="absolute inset-0 rounded-full"
+                                      style={{ boxShadow: `0 0 0 4px ${hex}22` }}
+                                    />
+                                  </>
+                                ) : (
+                                  <span className="h-1.5 w-1.5 rounded-full bg-transparent transition-colors group-hover/row:bg-ink-300" />
+                                )}
+                              </button>
+
+                              {/* ข้อมูลควิซ */}
+                              <div className="min-w-0 flex-1">
                                 <span
-                                  aria-hidden
-                                  className={`absolute left-0 top-1/2 w-[3px] -translate-y-1/2 rounded-full transition-all duration-300 ${
-                                    active
-                                      ? "h-7 opacity-100"
-                                      : "h-3 opacity-0 group-hover/row:h-5 group-hover/row:opacity-50"
+                                  className={`block truncate text-sm font-bold transition-colors ${
+                                    active ? "" : "text-ink-900 group-hover/row:text-tu-red-700"
                                   }`}
-                                  style={{
-                                    backgroundColor: hex,
-                                    boxShadow: active ? `0 0 10px ${hex}aa` : undefined,
-                                  }}
-                                />
-
-                                {/* ลำดับชุด */}
-                                <span
-                                  className="w-5 flex-shrink-0 text-right text-[12px] font-bold tabular-nums transition-colors"
-                                  style={{ color: active ? soft.color : "#C4B9AF" }}
-                                  aria-hidden
+                                  style={active ? { color: soft.color } : undefined}
                                 >
-                                  {String(i + 1).padStart(2, "0")}
+                                  {q.title}
                                 </span>
-
-                                {/* ปุ่มเลือกชุดที่ใช้งาน (active ได้ทีละชุดต่อสัปดาห์) */}
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    pickActive(row.week, q.id, committedActiveId)
-                                  }
-                                  title={active ? "ชุดที่เลือก" : "เลือกชุดนี้"}
-                                  aria-pressed={active}
-                                  className="relative grid h-5 w-5 flex-shrink-0 place-items-center rounded-full border-2 bg-white transition-transform duration-200 group-hover/row:scale-110"
-                                  style={
-                                    active
-                                      ? { backgroundColor: hex, borderColor: hex }
-                                      : { borderColor: "#D6C8B4" }
-                                  }
-                                >
-                                  {active && (
-                                    <>
-                                      <span className="h-1.5 w-1.5 rounded-full bg-white" />
-                                      <span
-                                        aria-hidden
-                                        className="absolute inset-0 rounded-full"
-                                        style={{ boxShadow: `0 0 0 4px ${hex}22` }}
-                                      />
-                                    </>
-                                  )}
-                                </button>
-
-                                {/* ชื่อชุด + เมตา */}
-                                <div className="min-w-0 flex-1">
-                                  <span
-                                    className={`block truncate text-[13.5px] font-semibold transition-colors ${
-                                      active ? "" : "text-ink-800 group-hover/row:text-ink-900"
-                                    }`}
-                                    style={active ? { color: soft.color } : undefined}
-                                  >
-                                    {q.title}
+                                <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                                  <span className="inline-flex items-center gap-1 rounded-md bg-paper-100 px-1.5 py-0.5 text-[10px] font-bold text-ink-500">
+                                    <ClipboardList className="h-3 w-3 text-ink-400" />
+                                    {q.questions.length} ข้อ
                                   </span>
-                                  <div className="mt-1 flex flex-wrap items-center gap-2">
-                                    <span className="inline-flex items-center gap-1 rounded-md bg-paper-100 px-1.5 py-0.5 text-[10px] font-semibold text-ink-500">
-                                      <ClipboardList className="h-3 w-3" />
-                                      {q.questions.length} ข้อ
-                                    </span>
-                                    {isCommitted && (
-                                      <span
-                                        className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide"
-                                        style={{ color: soft.color }}
-                                      >
-                                        <span className="relative flex h-1.5 w-1.5">
-                                          <span
-                                            className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-60"
-                                            style={{ backgroundColor: hex }}
-                                          />
-                                          <span
-                                            className="relative inline-flex h-1.5 w-1.5 rounded-full"
-                                            style={{ backgroundColor: hex }}
-                                          />
-                                        </span>
-                                        เลือกอยู่
-                                      </span>
-                                    )}
-                                    {active && !isCommitted && (
-                                      <span className="text-[10px] font-semibold text-tu-gold-700">
-                                        ยังไม่บันทึก
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
 
-                                {/* จัดการ — แก้ไข / ลบ (ชัดขึ้นเมื่อชี้แถว) */}
-                                <div className="flex flex-shrink-0 items-center gap-1 opacity-70 transition-opacity duration-200 group-hover/row:opacity-100">
-                                  <Link
-                                    href={`/quiz/${wk}?quiz=${q.id}`}
-                                    title="แก้ไข"
-                                    className="grid h-8 w-8 place-items-center rounded-lg text-ink-400 transition hover:bg-paper-200 hover:text-tu-red-600 active:scale-90"
-                                  >
-                                    <Pencil className="h-[15px] w-[15px]" />
-                                  </Link>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleDelete(row.week, q)}
-                                    title="ลบ"
-                                    className="grid h-8 w-8 place-items-center rounded-lg text-ink-300 transition hover:bg-tu-red-50 hover:text-tu-red-600 active:scale-90"
-                                  >
-                                    <Trash2 className="h-[15px] w-[15px]" />
-                                  </button>
+                                  {isCommitted && (
+                                    <span
+                                      className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide"
+                                      style={{ color: soft.color }}
+                                    >
+                                      <span className="relative flex h-1.5 w-1.5">
+                                        <span
+                                          className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-60"
+                                          style={{ backgroundColor: hex }}
+                                        />
+                                        <span
+                                          className="relative inline-flex h-1.5 w-1.5 rounded-full"
+                                          style={{ backgroundColor: hex }}
+                                        />
+                                      </span>
+                                      เลือกอยู่
+                                    </span>
+                                  )}
+
+                                  {active && !isCommitted && (
+                                    <span className="rounded bg-tu-gold-50 px-1.5 py-0.5 text-[10px] font-bold text-tu-gold-700 ring-1 ring-tu-gold-200/60">
+                                      ยังไม่บันทึก
+                                    </span>
+                                  )}
                                 </div>
                               </div>
-                            </li>
+
+                              {/* ปุ่มจัดการ — เผยบนพื้นขาวเมื่อชี้แถว */}
+                              <div className="flex flex-shrink-0 items-center gap-1 rounded-lg px-1 py-1 opacity-0 transition-all duration-200 group-hover/row:bg-white/80 group-hover/row:opacity-100 group-hover/row:shadow-sm">
+                                <Link
+                                  href={`/quiz/${wk}?quiz=${q.id}`}
+                                  title="แก้ไขควิซ"
+                                  className="grid h-8 w-8 place-items-center rounded-lg text-ink-400 transition hover:bg-paper-200 hover:text-tu-red-600 active:scale-90"
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </Link>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDelete(row.week, q)}
+                                  title="ลบ"
+                                  className="grid h-8 w-8 place-items-center rounded-lg text-ink-300 transition hover:bg-tu-red-50 hover:text-tu-red-600 active:scale-90"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                            </div>
                           );
                         })}
 
-                        {/* สร้างควิซเพิ่ม — แดชบอร์ดแบบ dashed ชวนคลิก */}
-                        <li className="pt-2">
-                          <Link
-                            href={`/quiz/${wk}?new=1`}
-                            className="group/add flex items-center justify-center gap-2 rounded-xl border border-dashed border-line-strong py-2.5 text-[13px] font-semibold text-ink-500 transition-all duration-200 hover:border-tu-red-300 hover:bg-tu-red-50/40 hover:text-tu-red-600"
-                          >
-                            <span className="grid h-5 w-5 place-items-center rounded-full bg-paper-100 text-tu-red-500 transition-all duration-200 group-hover/add:rotate-90 group-hover/add:bg-white">
-                              <Plus className="h-3 w-3" strokeWidth={3} />
-                            </span>
-                            สร้างควิซเพิ่ม
-                          </Link>
-                        </li>
-                      </ul>
+                        {/* สร้างควิซเพิ่ม */}
+                        <Link
+                          href={`/quiz/${wk}?new=1`}
+                          className="group/add flex items-center justify-center gap-2 rounded-xl border border-dashed border-line-strong py-3 text-xs font-bold text-ink-500 transition-all duration-200 hover:border-tu-red-300 hover:bg-tu-red-50/40 hover:text-tu-red-600"
+                        >
+                          <span className="grid h-5 w-5 place-items-center rounded-full bg-paper-100 text-tu-red-500 transition-all duration-300 group-hover/add:rotate-90 group-hover/add:bg-white group-hover/add:shadow-sm">
+                            <Plus className="h-3 w-3" strokeWidth={3} />
+                          </span>
+                          <span>สร้างควิซเพิ่ม</span>
+                        </Link>
+                      </div>
                     </div>
 
                     {/* แถบยืนยันเมื่อมีการเปลี่ยนชุดที่ใช้งาน (ยังไม่บันทึก) */}

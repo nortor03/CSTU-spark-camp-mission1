@@ -192,7 +192,7 @@ export default function UploadForm({ mode }: { mode: "new" | "slides" }) {
                 value={courseCode}
                 onChange={(e) => setCourseCode(e.target.value)}
                 placeholder="เช่น CN101"
-                maxLength={6}
+                maxLength={14}
                 className="field text-sm"
               />
             </div>

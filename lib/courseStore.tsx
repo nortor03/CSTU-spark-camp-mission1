@@ -73,6 +73,8 @@ interface CourseContextValue {
     initialTopics?: Topic[],
     syllabusExtraction?: SyllabusExtraction | null,
     id?: string,
+    /** รหัสวิชาที่อาจารย์กรอกเอง — ถ้ามีจะใช้แทนรหัสที่แกะได้จาก syllabus */
+    courseCode?: string | null,
   ) => string;
   getCourse: (id: string) => Course | undefined;
   /** เติมวิชาจากข้อมูลที่ backend คืนมา (GET /api/v1/courses/{id}) เข้า local store
@@ -80,6 +82,9 @@ interface CourseContextValue {
    * ถ้ามีอยู่ในเครื่องแล้วจะไม่ทับ (ของในเครื่องอาจมีการแก้ไขที่ยังไม่ได้ sync)
    */
   importCourse: (course: CourseOut) => void;
+  /** เติมควิซที่บันทึกไว้แล้วจาก backend (GET /api/v1/courses/{id}/quizzes) เข้าวิชานั้น
+   * — ใช้คู่กับ importCourse ตอนเข้าหน้ารายละเอียดวิชาที่ยังไม่มีอยู่ในเครื่องนี้ */
+  importQuizzes: (courseId: string, quizzes: Quiz[]) => void;
 
   /* ---- accessor ของ "วิชาที่ active" (คงชื่อเดิมเพื่อความเข้ากันได้) ---- */
   subject: string;
@@ -107,6 +112,15 @@ interface CourseContextValue {
   quizzes: Record<string, Quiz[]>;
   saveQuiz: (week: string, quiz: Quiz) => void;
   getQuiz: (week: string) => Quiz | undefined;
+  /** ควิซที่ผู้ช่วย AI แก้ไขมาให้ดูก่อน แต่ยังไม่ได้กด "บันทึก" (key = week) — ใช้โชว์ preview ใน QuizEditor */
+  pendingQuizRevisions: Record<string, Quiz>;
+  /** รหัสคำถามที่ AI แก้ไข/เพิ่มในรอบ preview ล่าสุดของแต่ละสัปดาห์ — ใช้ไฮไลต์การ์ดที่เปลี่ยน */
+  pendingQuizChangedIds: Record<string, string[]>;
+  setPendingQuizRevision: (
+    week: string,
+    quiz: Quiz | null,
+    changedIds?: string[],
+  ) => void;
   toggleQuizActive: (week: string, quizId: string) => void;
   /** ลบควิซ 1 ชุดออกจากสัปดาห์ — ถ้าลบตัวที่ active และยังมีตัวอื่นเหลือ จะเลื่อนตัวแรกขึ้นเป็น active */
   deleteQuiz: (week: string, quizId: string) => void;
@@ -179,13 +193,14 @@ function emptyCourse(
   initialTopics?: Topic[],
   syllabusExtraction?: SyllabusExtraction | null,
   id?: string,
+  courseCode?: string | null,
 ): Course {
   return {
     id: id ?? makeId("course"),
     subject,
     syllabusName,
     syllabusData,
-    courseCode: syllabusExtraction?.course_code ?? null,
+    courseCode: courseCode ?? syllabusExtraction?.course_code ?? null,
     hasWeeklySchedule: syllabusExtraction?.has_weekly_schedule ?? false,
     clos: syllabusExtraction?.clos ?? [],
     assessmentActivities: syllabusExtraction?.assessment_activities ?? [],
@@ -345,6 +360,15 @@ export function CourseProvider({ children }: { children: ReactNode }) {
   const [activeCourseId, setActiveCourseId] = useState<string | null>(null);
   const [studentId, setStudentId] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
+  // ควิซที่ผู้ช่วย AI แก้ไขมาให้ดูก่อน แต่ยังไม่ได้กด "บันทึก" (key = week) — ไม่ persist
+  // ลง localStorage เพราะเป็นแค่ preview ชั่วคราวระหว่างเซสชัน ไม่ใช่ข้อมูลจริงของวิชา
+  const [pendingQuizRevisions, setPendingQuizRevisions] = useState<
+    Record<string, Quiz>
+  >({});
+  // รหัสคำถามที่ AI แก้ไข/เพิ่มในรอบ preview ล่าสุดของแต่ละสัปดาห์ (key = week) — ใช้ไฮไลต์การ์ด
+  const [pendingQuizChangedIds, setPendingQuizChangedIds] = useState<
+    Record<string, string[]>
+  >({});
 
   // โหลดจาก localStorage ตอน mount (ฝั่ง client เท่านั้น)
   useEffect(() => {
@@ -404,6 +428,7 @@ export function CourseProvider({ children }: { children: ReactNode }) {
     initialTopics?: Topic[],
     syllabusExtraction?: SyllabusExtraction | null,
     id?: string,
+    courseCode?: string | null,
   ): string {
     const course = emptyCourse(
       subject,
@@ -412,6 +437,7 @@ export function CourseProvider({ children }: { children: ReactNode }) {
       initialTopics,
       syllabusExtraction,
       id,
+      courseCode,
     );
     setCourses((prev) => [...prev, course]);
     setActiveCourseId(course.id);
@@ -427,6 +453,16 @@ export function CourseProvider({ children }: { children: ReactNode }) {
       prev.some((c) => c.id === course.course_id)
         ? prev
         : [...prev, courseFromBackend(course)],
+    );
+  }
+
+  function importQuizzes(courseId: string, quizList: Quiz[]) {
+    const grouped: Record<string, Quiz[]> = {};
+    for (const q of quizList) {
+      grouped[q.week] = [...(grouped[q.week] ?? []), q];
+    }
+    setCourses((prev) =>
+      prev.map((c) => (c.id === courseId ? { ...c, quizzes: grouped } : c)),
     );
   }
 
@@ -515,6 +551,32 @@ export function CourseProvider({ children }: { children: ReactNode }) {
     return list.find((q) => q.isActive) || list[0];
   }
 
+  /** ตั้ง/ล้าง preview ควิซที่ผู้ช่วย AI แก้ไขมาให้ของสัปดาห์นั้น — quiz: null = ล้าง (ยกเลิก/บันทึกแล้ว) */
+  function setPendingQuizRevision(
+    week: string,
+    quiz: Quiz | null,
+    changedIds?: string[],
+  ) {
+    setPendingQuizRevisions((prev) => {
+      if (quiz === null) {
+        if (!(week in prev)) return prev;
+        const next = { ...prev };
+        delete next[week];
+        return next;
+      }
+      return { ...prev, [week]: quiz };
+    });
+    setPendingQuizChangedIds((prev) => {
+      if (quiz === null) {
+        if (!(week in prev)) return prev;
+        const next = { ...prev };
+        delete next[week];
+        return next;
+      }
+      return { ...prev, [week]: changedIds ?? [] };
+    });
+  }
+
   function toggleQuizActive(week: string, quizId: string) {
     updateActive((c) => {
       const existing = c.quizzes[week] || [];
@@ -582,6 +644,7 @@ export function CourseProvider({ children }: { children: ReactNode }) {
         addCourse,
         getCourse,
         importCourse,
+        importQuizzes,
 
         subject: activeCourse?.subject ?? "",
         syllabusName: activeCourse?.syllabusName ?? null,
@@ -604,6 +667,9 @@ export function CourseProvider({ children }: { children: ReactNode }) {
         quizzes: activeCourse?.quizzes ?? {},
         saveQuiz,
         getQuiz,
+        pendingQuizRevisions,
+        pendingQuizChangedIds,
+        setPendingQuizRevision,
         toggleQuizActive,
         deleteQuiz,
         addTopics,

@@ -23,11 +23,14 @@ interface QuizFormValues {
  */
 export default function QuizEditor({
   quiz,
+  highlightQuestionIds = [],
   onSave,
   onRegenerate,
   onEditPrompt,
 }: {
   quiz: Quiz;
+  /** รหัสคำถามที่ผู้ช่วย AI เพิ่ง แก้ไข/เพิ่มมาให้ (ยังไม่ได้บันทึก) — ใช้ไฮไลต์การ์ด */
+  highlightQuestionIds?: string[];
   onSave: (quiz: Quiz) => void;
   onRegenerate: () => void;
   onEditPrompt: () => void;
@@ -110,6 +113,8 @@ export default function QuizEditor({
           <QuestionCard
             key={field._key}
             index={index}
+            field={field}
+            isChanged={highlightQuestionIds.includes(field.id)}
             control={control}
             register={register}
             onRemove={() => remove(index)}
@@ -154,11 +159,17 @@ export default function QuizEditor({
 
 function QuestionCard({
   index,
+  field,
+  isChanged = false,
   control,
   register,
   onRemove,
 }: {
   index: number;
+  /** ข้อมูลต้นฉบับของคำถามข้อนี้ — ใช้โชว์ metadata ที่ AI แนบมา (อ่านอย่างเดียว ไม่ผูกกับฟอร์ม) */
+  field: QuizQuestion;
+  /** true = ผู้ช่วย AI เพิ่งแก้ไข/เพิ่มข้อนี้มาให้ (ยังไม่ได้บันทึก) — ไฮไลต์ให้เห็นชัด */
+  isChanged?: boolean;
   control: Control<QuizFormValues>;
   register: UseFormRegister<QuizFormValues>;
   onRemove: () => void;
@@ -174,15 +185,37 @@ function QuestionCard({
   });
 
   return (
-    <div className="card group relative overflow-hidden px-6 py-5 transition focus-within:shadow-lift">
-      {/* แถบ accent ซ้ายเมื่อโฟกัส */}
-      <span className="absolute inset-y-0 left-0 w-1 bg-tu-red-500 opacity-0 transition group-focus-within:opacity-100" />
+    <div
+      className={`card group relative overflow-hidden px-6 py-5 transition focus-within:shadow-lift ${
+        isChanged ? "ring-2 ring-tu-gold-400" : ""
+      }`}
+    >
+      {/* แถบ accent ซ้าย — ค้างไว้ถ้า AI เพิ่งแก้ข้อนี้ ไม่งั้นโชว์แค่ตอนโฟกัส */}
+      <span
+        className={`absolute inset-y-0 left-0 w-1 bg-tu-gold-500 transition ${
+          isChanged ? "opacity-100" : "opacity-0 group-focus-within:bg-tu-red-500 group-focus-within:opacity-100"
+        }`}
+      />
 
       {/* โจทย์ */}
       <div className="flex items-start gap-3">
         <span className="display mt-1.5 w-6 flex-shrink-0 text-lg leading-none text-ink-300">
           {index + 1}
         </span>
+        {isChanged && (
+          <span className="mt-1.5 inline-flex flex-shrink-0 items-center gap-1 rounded-full bg-tu-gold-100 px-2 py-0.5 text-[10px] font-bold text-tu-gold-700">
+            <svg
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              className="h-3 w-3"
+              aria-hidden="true"
+            >
+              <path d="M12 2.5c.3 0 .55.2.62.48l1.2 4.6 4.6 1.2a.64.64 0 0 1 0 1.24l-4.6 1.2-1.2 4.6a.64.64 0 0 1-1.24 0l-1.2-4.6-4.6-1.2a.64.64 0 0 1 0-1.24l4.6-1.2 1.2-4.6c.07-.28.32-.48.62-.48Z" />
+              <path d="M19 14.2c.24 0 .45.16.51.4l.42 1.6 1.6.42a.53.53 0 0 1 0 1.02l-1.6.42-.42 1.6a.53.53 0 0 1-1.02 0l-.42-1.6-1.6-.42a.53.53 0 0 1 0-1.02l1.6-.42.42-1.6c.06-.24.27-.4.51-.4Z" />
+            </svg>
+            AI แก้ไขแล้ว
+          </span>
+        )}
         <textarea
           {...register(`questions.${index}.question`, { required: true })}
           rows={1}
@@ -234,6 +267,53 @@ function QuestionCard({
           </button>
         </div>
       </div>
+
+      {/* metadata ที่ AI แนบมาตอน generate — อ่านอย่างเดียว, ไม่มีถ้าเป็นคำถามที่อาจารย์เพิ่มเอง */}
+      {(field.explanation ||
+        field.relatedClos?.length ||
+        field.topicTags?.length ||
+        field.sources?.length) && (
+        <div className="mt-4 ml-9 space-y-1.5 rounded-md bg-paper-50 px-3 py-2.5 text-xs text-ink-600">
+          {(field.relatedClos?.length || field.topicTags?.length) && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              {field.relatedClos?.map((c) => (
+                <span
+                  key={c}
+                  className="rounded-full bg-tu-red-50 px-2 py-0.5 font-semibold text-tu-red-600"
+                >
+                  {c}
+                </span>
+              ))}
+              {field.topicTags?.map((t) => (
+                <span
+                  key={t}
+                  className="rounded-full bg-paper-200 px-2 py-0.5 text-ink-600"
+                >
+                  {t}
+                </span>
+              ))}
+            </div>
+          )}
+          {field.explanation && (
+            <p>
+              <span className="font-semibold text-ink-500">คำอธิบายเฉลย: </span>
+              {field.explanation}
+            </p>
+          )}
+          {field.sources && field.sources.length > 0 && (
+            <p className="text-ink-500">
+              <span className="font-semibold">ที่มา: </span>
+              {field.sources
+                .map((s) =>
+                  s.sourceLocation
+                    ? `${s.filename} (${s.sourceLocation})`
+                    : s.filename,
+                )
+                .join(", ")}
+            </p>
+          )}
+        </div>
+      )}
 
       {/* แถบล่าง: คะแนน + ลบข้อ */}
       <div className="mt-4 flex items-center justify-end gap-4 border-t border-line-soft pt-3">

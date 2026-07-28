@@ -34,6 +34,7 @@ export default function UploadForm({ mode }: { mode: "new" | "slides" }) {
   const { addCourse, addTopics, subject: activeSubject } = useCourse();
 
   const [subject, setSubject] = useState("");
+  const [courseCode, setCourseCode] = useState("");
   const [syllabus, setSyllabus] = useState<File | null>(null);
   const [extracting, setExtracting] = useState(false);
   const [extractError, setExtractError] = useState("");
@@ -102,11 +103,14 @@ export default function UploadForm({ mode }: { mode: "new" | "slides" }) {
       // อีกทีตอนกด "ยืนยันและส่งข้อมูล" ในหน้าจัดหัวข้อ — ถ้า backend ล่ม/เข้าไม่ถึงตอนนี้
       // ก็ยังสร้างวิชาในเครื่องนี้ต่อได้ตามปกติด้วย id ที่สร้างเอง แล้ว PUT ตอน sync
       // (idempotent upsert) จะสร้างแถวที่ backend ให้เองตอนนั้นแทน
+      // รหัสวิชาที่อาจารย์กรอกเองมาก่อน — ถ้าไม่กรอกค่อย fallback ไปใช้ที่แกะได้จาก syllabus
+      const finalCourseCode = courseCode.trim() || extraction?.course_code || null;
+
       let backendCourseId: string | undefined;
       try {
         const created = await createCourse(
           buildPlanPayload(
-            extraction?.course_code ?? null,
+            finalCourseCode,
             subject.trim(),
             extraction?.clos ?? [],
             syllabusTopics,
@@ -124,6 +128,7 @@ export default function UploadForm({ mode }: { mode: "new" | "slides" }) {
         initialTopics,
         extraction,
         backendCourseId,
+        finalCourseCode,
       );
     } else {
       // เพิ่มหัวข้อชุดใหม่ (จำลองผลวิเคราะห์สไลด์) เข้าวิชาที่กำลังเปิดอยู่
@@ -148,14 +153,31 @@ export default function UploadForm({ mode }: { mode: "new" | "slides" }) {
       {isNew ? (
         <>
           <div className="grid gap-5 sm:grid-cols-2">
-            <div>
-              <label className="label">ชื่อวิชา</label>
-              <input
-                value={subject}
-                onChange={(e) => setSubject(e.target.value)}
-                placeholder="เช่น CN101 การเขียนโปรแกรม"
-                className="field text-sm"
-              />
+            <div className="space-y-5">
+              <div>
+                <label className="label">ชื่อวิชา</label>
+                <input
+                  value={subject}
+                  onChange={(e) => setSubject(e.target.value)}
+                  placeholder="เช่น CN101 การเขียนโปรแกรม"
+                  className="field text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="label">
+                  รหัสวิชา{" "}
+                  <span className="font-normal text-ink-400">
+                    (ไม่บังคับ · ถ้าไม่กรอกจะใช้ที่แกะได้จาก syllabus แทน)
+                  </span>
+                </label>
+                <input
+                  value={courseCode}
+                  onChange={(e) => setCourseCode(e.target.value)}
+                  placeholder="เช่น คพ.232"
+                  className="field text-sm"
+                />
+              </div>
             </div>
 
             <div>

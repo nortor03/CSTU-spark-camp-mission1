@@ -6,6 +6,14 @@ export interface QuizChoice {
   text: string;
 }
 
+/** เอกสารอ้างอิงที่ AI ใช้อ้างอิงตอนสร้างคำถามข้อนี้ */
+export interface QuizSource {
+  documentId: string;
+  filename: string;
+  /** ตำแหน่งในเอกสาร เช่น "page 12" */
+  sourceLocation: string;
+}
+
 /** คำถาม 1 ข้อ (ตอนนี้รองรับเฉพาะปรนัย/เลือกตอบ) */
 export interface QuizQuestion {
   id: string;
@@ -21,17 +29,28 @@ export interface QuizQuestion {
    * optional เพราะควิซที่บันทึกไว้ก่อนหน้านี้ยังไม่มีฟิลด์นี้
    */
   topic?: string;
+  /** คำอธิบายว่าทำไมตัวเลือกที่ถูกถึงถูก — มาจาก AI ตอน generate (ไม่มีในคำถามที่อาจารย์เพิ่มเอง) */
+  explanation?: string;
+  /** รหัส CLO ที่คำถามข้อนี้เกี่ยวข้อง (อาจมีมากกว่า 1 ข้อ) */
+  relatedClos?: string[];
+  /** แท็กหัวข้อย่อยของคำถามข้อนี้ */
+  topicTags?: string[];
+  /** ที่มาของคำถาม เช่น "course_material" | "general_knowledge" */
+  grounding?: string;
+  /** เอกสารอ้างอิงที่ AI ใช้สร้างคำถามข้อนี้ */
+  sources?: QuizSource[];
 }
 
-/** โจทย์ที่อาจารย์กรอกเพื่อสั่ง generate */
+/**
+ * โจทย์ที่อาจารย์กรอกเพื่อสั่ง generate — ตรงกับ payload.prompt ที่ส่งให้ backend ทุกฟิลด์
+ * ข้อจำกัดจริงของ AI service: clo/topics ต้องมีอย่างน้อย 1 รายการ, count ห้ามเกิน 20
+ */
 export interface QuizPrompt {
-  /** ผลลัพธ์การเรียนรู้ (Course Learning Outcome) */
+  /** ผลลัพธ์การเรียนรู้ (CLO) ที่เกี่ยวข้องกับสัปดาห์นี้ — ต้องมีอย่างน้อย 1 รายการ */
   clo: string[];
-  /** หัวข้อที่จะทดสอบ (ชื่อหัวข้อ) */
+  /** หัวข้อที่จะทดสอบของสัปดาห์นี้ — ต้องมีอย่างน้อย 1 รายการ */
   topics: string[];
-  /** ไฟล์ PDF อ้างอิง */
-  files: string[];
-  /** จำนวนข้อ */
+  /** จำนวนข้อ (5-20) */
   count: number;
   /** โน้ตเพิ่มเติมถึง AI */
   note: string;
@@ -73,7 +92,6 @@ export function emptyPrompt(): QuizPrompt {
   return {
     clo: [],
     topics: [],
-    files: [],
     count: 5,
     note: "",
   };
@@ -97,44 +115,3 @@ export function blankQuestion(): QuizQuestion {
   };
 }
 
-/* ---------- ตัวสร้างคำถามจำลอง (แทนการเรียก AI จริง) ---------- */
-
-function mockMcq(topic: string): QuizQuestion {
-  const choices: QuizChoice[] = [
-    { id: uid("c"), text: `นิยามหลักของ "${topic}"` },
-    { id: uid("c"), text: `แนวคิดที่ไม่เกี่ยวข้องกับ "${topic}"` },
-    { id: uid("c"), text: `ตัวอย่างการใช้งานที่ผิดของ "${topic}"` },
-    { id: uid("c"), text: `คำจำกัดความที่คลาดเคลื่อนของ "${topic}"` },
-  ];
-  return {
-    id: uid("q"),
-    type: "mcq",
-    question: `ข้อใดอธิบายแนวคิดเรื่อง "${topic}" ได้ถูกต้องที่สุด`,
-    choices,
-    answer: choices[0].id,
-    points: 1,
-    topic,
-  };
-}
-
-/**
- * จำลองการ generate ควิซจากโจทย์ที่อาจารย์กรอก
- * (ยังไม่ได้ต่อ AI จริง — สร้างคำถามปรนัยจากหัวข้อที่เลือกแบบวนรอบ)
- */
-export function generateMockQuiz(week: string, prompt: QuizPrompt): Quiz {
-  const topics = prompt.topics.length > 0 ? prompt.topics : ["หัวข้อการเรียน"];
-  const count = Math.max(1, Math.min(prompt.count || 1, 30));
-
-  const questions: QuizQuestion[] = Array.from({ length: count }, (_, i) =>
-    mockMcq(topics[i % topics.length]),
-  );
-
-  return {
-    id: uid("quiz"),
-    isActive: false,
-    revision: uid("rev"),
-    week,
-    title: `แบบทดสอบ ${week}`,
-    questions,
-  };
-}

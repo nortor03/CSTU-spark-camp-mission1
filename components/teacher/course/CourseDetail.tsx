@@ -7,6 +7,7 @@ import { weekNumber, resolveHex, tagStyles } from "@/lib/weeks";
 import { extractSyllabus } from "@/lib/syllabus";
 import { buildPlanPayload } from "@/lib/planPayload";
 import { fetchCourse, syncCourse } from "@/lib/coursesApi";
+import { fetchCourseQuizzes } from "@/lib/quizzesApi";
 import PageHeader from "@/components/ui/PageHeader";
 import Modal, { ModalHeader } from "@/components/ui/Modal";
 import { ChevronDown, Pencil, Trash2, FileText } from "lucide-react";
@@ -35,6 +36,7 @@ export default function CourseDetail({ courseId }: { courseId: string }) {
     toggleQuizActive,
     deleteQuiz,
     importCourse,
+    importQuizzes,
     hydrated,
   } = useCourse();
 
@@ -104,12 +106,21 @@ export default function CourseDetail({ courseId }: { courseId: string }) {
     if (!hydrated || course) return;
     setRemoteLoading(true);
     fetchCourse(courseId)
-      .then((remote) => importCourse(remote))
+      .then(async (remote) => {
+        importCourse(remote);
+        // ดึงควิซที่บันทึกไว้แล้วของวิชานี้มาเติมด้วย — ไม่ critical ถ้าไม่มี/ดึงไม่สำเร็จ
+        try {
+          const remoteQuizzes = await fetchCourseQuizzes(courseId);
+          importQuizzes(courseId, remoteQuizzes);
+        } catch {
+          // ไม่มีควิซที่ backend หรือดึงไม่สำเร็จ — ปล่อยว่างไว้ก่อนได้
+        }
+      })
       .catch(() => {
         // ไม่มีวิชานี้ที่ backend ด้วย — ปล่อยให้ !course branch ด้านล่างแสดง "ไม่พบรายวิชานี้"
       })
       .finally(() => setRemoteLoading(false));
-  }, [hydrated, course, courseId, importCourse]);
+  }, [hydrated, course, courseId, importCourse, importQuizzes]);
 
   function onPickSyllabus(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];

@@ -2,131 +2,78 @@
 
 import { useState } from "react";
 import type { QuizPrompt } from "@/lib/quiz";
-import { QUIZ_SOURCE_TOPICS, emptyPrompt, MOCK_CLOS } from "@/lib/quiz";
+import { QUIZ_SOURCE_TOPICS, emptyPrompt } from "@/lib/quiz";
 
 /**
  * ฟอร์มกรอกโจทย์เพื่อสั่ง generate ควิซ (ปรนัยล้วน)
- * อาจารย์กรอก CLO, เลือกหัวข้อ+ไฟล์ที่จะทดสอบ, จำนวนข้อ
+ * CLO มาจากหัวข้อของสัปดาห์นั้นอัตโนมัติ (ล็อกไว้ ไม่ให้แก้) อาจารย์เลือกแค่หัวข้อ+ไฟล์ที่จะทดสอบ, จำนวนข้อ
  */
 export default function QuizPromptForm({
   initial,
   sourceTopics = QUIZ_SOURCE_TOPICS,
-  cloOptions = MOCK_CLOS,
   onGenerate,
 }: {
   initial: QuizPrompt | null;
   /** รายการหัวข้อ/ไฟล์ให้เลือก (ค่าปริยาย = ทุกหัวข้อ mock) */
   sourceTopics?: { title: string; file: string }[];
-  /** รายการ CLO ให้เลือก (ค่าปริยาย = mock CLO เมื่อวิชายังไม่มีผลแยกจาก syllabus) */
-  cloOptions?: string[];
   onGenerate: (prompt: QuizPrompt) => void;
 }) {
   const [prompt, setPrompt] = useState<QuizPrompt>(initial ?? emptyPrompt());
   const [error, setError] = useState("");
 
-  /** เลือก/ยกเลิกหัวข้อ (เก็บทั้งชื่อหัวข้อและไฟล์คู่กัน) */
-  function toggleTopic(title: string, file: string) {
-    setPrompt((p) => {
-      const has = p.topics.includes(title);
-      return {
-        ...p,
-        topics: has
-          ? p.topics.filter((t) => t !== title)
-          : [...p.topics, title],
-        files: has ? p.files.filter((f) => f !== file) : [...p.files, file],
-      };
-    });
-  }
-
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
-    if (prompt.clo.length === 0) return setError("กรุณาเลือก CLO อย่างน้อย 1 ข้อ");
-    if (prompt.topics.length === 0)
-      return setError("กรุณาเลือกหัวข้อที่จะทดสอบอย่างน้อย 1 หัวข้อ");
-    if (prompt.count < 1) return setError("จำนวนข้อต้องมากกว่า 0");
-    if (!prompt.note.trim()) return setError("กรุณากรอกรายละเอียด");
+    if (prompt.count < 5) return setError("จำนวนข้อขั้นต่ำ 5 ข้อ");
     onGenerate(prompt);
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* CLO */}
+      {/* CLO — มาจากหัวข้อของสัปดาห์นี้อัตโนมัติ ล็อกไว้ไม่ให้แก้ */}
       <div>
         <label className="label">
           ผลลัพธ์การเรียนรู้ (CLO) <span className="font-normal text-ink-400">จาก Course Syllabus</span>
         </label>
         <div className="mt-2 flex flex-col gap-2">
-          {cloOptions.map((clo) => {
-            const selected = prompt.clo.includes(clo);
-            return (
-              <label
+          {prompt.clo.length === 0 ? (
+            <p className="text-sm text-ink-400">ไม่พบ CLO ที่เกี่ยวข้องกับหัวข้อของสัปดาห์นี้</p>
+          ) : (
+            prompt.clo.map((clo) => (
+              <div
                 key={clo}
-                className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition ${
-                  selected
-                    ? "border-tu-red-500 bg-tu-red-50"
-                    : "border-line bg-paper-100 hover:border-line-strong hover:bg-paper-200"
-                }`}
+                className="flex items-start gap-3 rounded-lg border border-tu-red-500 bg-tu-red-50 p-3"
               >
-                <input
-                  type="checkbox"
-                  name="clo"
-                  value={clo}
-                  checked={selected}
-                  onChange={() => {
-                    setPrompt((p) => {
-                      const has = p.clo.includes(clo);
-                      return {
-                        ...p,
-                        clo: has
-                          ? p.clo.filter((c) => c !== clo)
-                          : [...p.clo, clo],
-                      };
-                    });
-                  }}
-                  className="mt-0.5 h-4 w-4 shrink-0 rounded text-tu-red-500 accent-tu-red-500"
-                />
+                <span className="mt-0.5 h-4 w-4 shrink-0 rounded-full bg-tu-red-500" />
                 <span className="text-sm font-medium text-ink-700">{clo}</span>
-              </label>
-            );
-          })}
+              </div>
+            ))
+          )}
         </div>
       </div>
 
-      {/* หัวข้อ + ไฟล์ */}
+      {/* หัวข้อ + ไฟล์ — หัวข้อทั้งหมดของสัปดาห์นี้ ล็อกไว้ไม่ให้แก้ */}
       <div>
         <label className="label">
           หัวข้อที่จะทดสอบ / ไฟล์อ้างอิง
         </label>
         <div className="grid max-h-56 gap-2 overflow-y-auto sm:grid-cols-2">
-          {sourceTopics.map((t) => {
-            const checked = prompt.topics.includes(t.title);
-            return (
-              <label
-                key={t.file}
-                className={`flex cursor-pointer items-start gap-2 rounded-lg p-2.5 transition ${
-                  checked
-                    ? "bg-tu-red-50"
-                    : "bg-paper-100 hover:bg-paper-200"
-                }`}
-              >
-                <input
-                  type="checkbox"
-                  checked={checked}
-                  onChange={() => toggleTopic(t.title, t.file)}
-                  className="mt-0.5 h-4 w-4 accent-tu-red-500"
-                />
-                <span className="min-w-0">
-                  <span className="block text-xs font-semibold text-ink-800">
-                    {t.title}
-                  </span>
-                  <span className="block truncate text-[10px] text-ink-400">
-                    {t.file}
-                  </span>
+          {sourceTopics.map((t) => (
+            <div
+              key={t.file}
+              className="flex items-start gap-2 rounded-lg bg-tu-red-50 p-2.5"
+            >
+              <span className="mt-0.5 h-4 w-4 shrink-0 rounded-full bg-tu-red-500" />
+              <span className="min-w-0">
+                <span className="block text-xs font-semibold text-ink-800">
+                  {t.title}
                 </span>
-              </label>
-            );
-          })}
+                <span className="block truncate text-[10px] text-ink-400">
+                  {t.file}
+                </span>
+              </span>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -137,21 +84,22 @@ export default function QuizPromptForm({
         </label>
         <input
           type="number"
-          min={1}
-          max={30}
+          min={5}
+          max={20}
           value={prompt.count}
           onChange={(e) =>
-            setPrompt((p) => ({ ...p, count: Number(e.target.value) }))
+            setPrompt((p) => ({
+              ...p,
+              count: Math.min(20, Math.max(5, Number(e.target.value) || 5)),
+            }))
           }
           className="field w-28"
         />
       </div>
 
-      {/* รายละเอียด */}
+      {/* รายละเอียด (ไม่บังคับ) */}
       <div>
-        <label className="label">
-          รายละเอียด <span className="text-tu-red-500">*</span>
-        </label>
+        <label className="label">รายละเอียด</label>
         <textarea
           value={prompt.note}
           onChange={(e) => setPrompt((p) => ({ ...p, note: e.target.value }))}

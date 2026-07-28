@@ -2,13 +2,23 @@
 
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
-import { Sparkles, Send, X, ClipboardList } from "lucide-react";
+import { Sparkles, Send, X, ClipboardList, Undo2, Check } from "lucide-react";
+import { useCourse } from "@/lib/courseStore";
+import {
+  reviseQuiz,
+  summarizeQuizDiff,
+  getChangedQuestionIds,
+} from "@/lib/quizChatApi";
+import type { Quiz } from "@/lib/quiz";
+import { saveQuizToBackend } from "@/lib/quizzesApi";
 
 /**
  * ผู้ช่วยจัดการรายวิชาฝั่งอาจารย์ — side panel สไตล์ "Claude in Chrome"
  * (คู่กับ StudentAssistant ฝั่งนักเรียน) mount ใน TeacherShell → ขึ้นทุกหน้า
  * รวมความสามารถของ QuizChat เดิม (ช่วยออกแบบคำถาม) ไว้เป็น quick action
- * ตอนนี้ยังเป็น mock (ยังไม่ต่อ AI จริง)
+ *
+ * โหมด: ถ้าอยู่ในหน้าสร้าง/แก้ควิซของสัปดาห์ใด ๆ (path มี /quiz/{n}) จะกลายเป็น
+ * ผู้ช่วยแก้ไขควิซจริง (ต่อ AI จริงผ่าน lib/quizChatApi.ts) — หน้าอื่นยังเป็น mock อยู่
  */
 
 interface Msg {
@@ -34,6 +44,12 @@ function contextLabel(pathname: string): string {
   return "พร้อมช่วยจัดการรายวิชา";
 }
 
+/** key สัปดาห์ภายใน ("สัปดาห์ที่ N") ถ้ากำลังอยู่หน้าสร้าง/แก้ควิซของสัปดาห์นั้น — ไม่งั้น null */
+function weekKeyFromPathname(pathname: string): string | null {
+  const wk = pathname.match(/\/quiz\/(\d+)/)?.[1];
+  return wk ? `สัปดาห์ที่ ${wk}` : null;
+}
+
 /** คำตอบจำลอง — ปรับตามข้อความ */
 function mockReply(text: string): string {
   if (text.includes("ออกแบบคำถาม") || text.includes("เพิ่มคำถาม")) {
@@ -54,6 +70,23 @@ function mockReply(text: string): string {
 export default function TeacherAssistant() {
   const pathname = usePathname();
   const ctx = contextLabel(pathname);
+  const weekKey = weekKeyFromPathname(pathname);
+
+  const {
+    topics,
+    clos,
+    courseCode,
+    activeCourseId,
+    getQuiz,
+    saveQuiz,
+    pendingQuizRevisions,
+    setPendingQuizRevision,
+  } = useCourse();
+  // จำ editPrompt แรกของบทสนทนานี้ไว้ส่งเป็น originalPrompt (optional) ในการแก้ไขรอบถัด ๆ ไป
+  const firstPromptRef = useRef<string | null>(null);
+  // ผลแก้ไขล่าสุดที่ยังไม่ได้กดยืนยันบันทึก — อยู่ใน store กลาง (ไม่ใช่ local state) เพราะ
+  // QuizEditor ต้องอ่านค่าเดียวกันนี้ไปโชว์ preview ด้วย
+  const pendingRevision = weekKey ? (pendingQuizRevisions[weekKey] ?? null) : null;
 
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
@@ -73,18 +106,121 @@ export default function TeacherAssistant() {
     }
   }, [messages, typing, open]);
 
+  function pushBotMessage(text: string) {
+    setMessages((prev) => [...prev, { id: `${Date.now()}-bot`, sender: "bot", text }]);
+  }
+
+  /** โหมดแก้ไขควิซจริง — เฉพาะตอนอยู่หน้าสร้าง/แก้ควิซของสัปดาห์ใดสัปดาห์หนึ่ง */
+  async function sendQuizEdit(text: string, week: string) {
+    try {
+      if (!courseCode) {
+        throw new Error(
+          "วิชานี้ยังไม่มีรหัสวิชา — กรุณาระบุรหัสวิชาก่อนใช้ผู้ช่วยแก้ไขควิซ",
+        );
+      }
+
+      // ถ้ามีผลแก้ไขที่ยังไม่ได้บันทึกค้างอยู่ ให้คุยต่อยอดจากอันนั้น ไม่ใช่ย้อนกลับไปตัวที่บันทึกไว้แล้ว
+      const currentQuiz = pendingRevision ?? getQuiz(week) ?? null;
+      if (!currentQuiz) {
+        throw new Error(
+          "สัปดาห์นี้ยังไม่มีแบบทดสอบให้แก้ไข — ไปสร้างแบบทดสอบก่อนแล้วค่อยกลับมาคุยกับผู้ช่วย",
+        );
+      }
+      if (clos.length === 0) {
+        throw new Error(
+          "วิชานี้ยังไม่มี CLO เลย — กรุณาเพิ่ม CLO อย่างน้อย 1 ข้อก่อนใช้ผู้ช่วยแก้ไขควิซ",
+        );
+      }
+
+      const topic =
+        topics
+          .filter((t) => t.weekAssigned === week)
+          .map((t) => t.title)
+          .join(", ") || week;
+      const questionCount = currentQuiz.questions.length || 1;
+      // backend บังคับ description ต้องเป็น string ไม่ว่าง ๆ — CLO ที่ syllabus ไม่ได้ระบุคำอธิบาย (null) fallback เป็น code แทน
+      const closPayload = clos.map((c) => ({
+        code: c.code,
+        description: c.description || c.code,
+      }));
+
+      const revised = await reviseQuiz({
+        week,
+        courseCode,
+        topic,
+        clos: closPayload,
+        questionCount,
+        editPrompt: text,
+        previousQuiz: currentQuiz,
+        originalPrompt: firstPromptRef.current ?? undefined,
+      });
+      if (firstPromptRef.current === null) firstPromptRef.current = text;
+
+      // backend/AI มินต์ id ใหม่ให้ทุกครั้ง (ไม่คืน id เดิมมาด้วย) — ถ้าไม่บังคับให้ตรงกับ
+      // ของเดิม ตอน saveQuiz จะมองว่าเป็นควิซใหม่แล้ว push เพิ่มเป็นชุดที่ 2 แทนที่จะทับของเดิม
+      // (revise ควรแก้ไขต่อยอดชุดเดียวกัน ไม่ใช่สร้างชุดใหม่) เก็บ isActive เดิมไว้ด้วยเหตุผลเดียวกัน
+      const edited: Quiz = {
+        ...revised,
+        id: currentQuiz.id,
+        isActive: currentQuiz.isActive,
+      };
+
+      const diff = summarizeQuizDiff(currentQuiz, edited);
+      const changedIds = getChangedQuestionIds(currentQuiz, edited);
+
+      // ยังไม่บันทึก — แค่โชว์ผลให้ดูก่อน คุยต่อแก้เพิ่มได้ หรือกด "บันทึกแบบทดสอบ" ด้านล่างเมื่อพอใจ
+      setPendingQuizRevision(week, edited, changedIds);
+      pushBotMessage(
+        `ลองแก้ไขมาให้ดูก่อนนะครับ (ยังไม่ได้บันทึก)\n\nสิ่งที่เปลี่ยน:\n${diff}\n\nพอใจแล้วกด "บันทึกการแก้ไข" ด้านล่าง หรือจะบอกให้แก้เพิ่มก็ได้เลย`,
+      );
+    } catch (err) {
+      pushBotMessage(
+        err instanceof Error ? err.message : "แก้ไขแบบทดสอบไม่สำเร็จ ลองใหม่อีกครั้ง",
+      );
+    } finally {
+      setTyping(false);
+    }
+  }
+
+  /** ยืนยันบันทึกผลแก้ไขที่ค้างไว้ — เพิ่งตอนนี้ที่ค่อย persist (เหมือนกด "บันทึกแบบทดสอบ" ใน QuizEditor) */
+  function confirmRevision() {
+    if (!weekKey || !pendingRevision) return;
+    saveQuiz(weekKey, pendingRevision);
+    if (activeCourseId) {
+      saveQuizToBackend(activeCourseId, weekKey, pendingRevision).catch((err) => {
+        console.error(
+          "บันทึกแบบทดสอบที่ backend ไม่สำเร็จ (ยังบันทึกในเครื่องได้ปกติ)",
+          err,
+        );
+      });
+    }
+    setPendingQuizRevision(weekKey, null);
+    pushBotMessage("บันทึกการแก้ไขเรียบร้อยแล้ว!");
+  }
+
+  /** ยกเลิกผลแก้ไขที่ค้างไว้ — ยังใช้ชุดเดิมที่บันทึกไว้ล่าสุดต่อไป */
+  function discardRevision() {
+    if (!weekKey) return;
+    setPendingQuizRevision(weekKey, null);
+    pushBotMessage("ย้อนกลับแล้วครับ ยังใช้แบบทดสอบชุดเดิมอยู่");
+  }
+
   function send(text: string) {
     if (!text.trim()) return;
     const userMsg: Msg = { id: Date.now().toString(), sender: "user", text };
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
     setTyping(true);
+
+    if (weekKey) {
+      sendQuizEdit(text, weekKey);
+      return;
+    }
+
+    // หน้าอื่น ๆ ที่ไม่ใช่การสร้าง/แก้ควิซ — ยังเป็น mock อยู่
     setTimeout(() => {
       setTyping(false);
-      setMessages((prev) => [
-        ...prev,
-        { id: `${Date.now()}-bot`, sender: "bot", text: mockReply(text) },
-      ]);
+      pushBotMessage(mockReply(text));
     }, 900);
   }
 
@@ -184,6 +320,32 @@ export default function TeacherAssistant() {
             </div>
           )}
         </div>
+
+        {/* มีผลแก้ไขที่ยังไม่ได้บันทึกค้างอยู่ — ให้ยืนยันหรือยกเลิกก่อนคุยเรื่องอื่นต่อ */}
+        {pendingRevision && (
+          <div className="flex items-center gap-2 border-t border-line-soft bg-tu-gold-50 px-3.5 py-2.5">
+            <span className="flex flex-1 items-center gap-1.5 text-[11px] font-semibold text-tu-gold-700">
+              <Sparkles className="h-3.5 w-3.5 flex-shrink-0" />
+              มีผลแก้ไขที่ยังไม่ได้บันทึก
+            </span>
+            <button
+              type="button"
+              onClick={discardRevision}
+              className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold text-ink-500 transition hover:bg-paper-200 hover:text-ink-700"
+            >
+              <Undo2 className="h-3.5 w-3.5" />
+              ย้อนกลับ
+            </button>
+            <button
+              type="button"
+              onClick={confirmRevision}
+              className="flex items-center gap-1 rounded-lg bg-tu-red-500 px-3 py-1.5 text-[11px] font-semibold text-white transition hover:bg-tu-red-600"
+            >
+              <Check className="h-3.5 w-3.5" />
+              บันทึกการแก้ไข
+            </button>
+          </div>
+        )}
 
         <div className="flex flex-wrap gap-1.5 border-t border-line-soft bg-paper-100/60 px-3 py-2.5">
           {SUGGESTIONS.map((s) => (

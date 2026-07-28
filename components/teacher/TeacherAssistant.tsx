@@ -133,6 +133,8 @@ export default function TeacherAssistant() {
   const ctx = contextLabel(pathname);
   const weekKey = weekKeyFromPathname(pathname);
   const suggestions = suggestionsFor(pathname);
+  // ในหน้าสร้าง/แก้ควิซ ผู้ช่วยจะเป็น "ผู้ช่วยออกแบบข้อสอบ" (คนละตัวกับผู้ช่วยทั่วไป)
+  const assistantName = weekKey ? "ผู้ช่วยออกแบบข้อสอบ" : "ผู้ช่วยอาจารย์";
 
   const {
     topics,
@@ -296,7 +298,7 @@ export default function TeacherAssistant() {
           className="group fixed bottom-6 right-6 z-40 flex items-center gap-2 rounded-full bg-tu-red-500 py-3 pl-4 pr-5 text-sm font-semibold text-white shadow-lift transition hover:bg-tu-red-600 active:scale-95"
         >
           <Sparkles className="h-5 w-5 transition-transform group-hover:rotate-12" />
-          ผู้ช่วย AI
+          {assistantName}
         </button>
       )}
 
@@ -322,7 +324,7 @@ export default function TeacherAssistant() {
               <Sparkles className="h-5 w-5" />
             </span>
             <div className="min-w-0">
-              <p className="text-sm font-bold text-ink-900">ผู้ช่วยอาจารย์</p>
+              <p className="text-sm font-bold text-ink-900">{assistantName}</p>
               <p className="truncate text-[11px] text-ink-400">{ctx}</p>
             </div>
           </div>

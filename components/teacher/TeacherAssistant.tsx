@@ -155,14 +155,25 @@ export default function TeacherAssistant() {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
-  const [messages, setMessages] = useState<Msg[]>([
-    {
-      id: "welcome",
-      sender: "bot",
-      text: "สวัสดีอาจารย์! ผมเป็นผู้ช่วยอาจารย์ 🤖 ช่วยออกแบบคำถาม สรุปผลชั้นเรียน หรือแนะนำหัวข้อที่ควรเน้นได้เลย",
-    },
-  ]);
+  const [messages, setMessages] = useState<Msg[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    let welcome = "สวัสดีอาจารย์! ผมเป็นผู้ช่วยอาจารย์ 🤖 ต้องการให้ผมช่วยเหลือด้านใด สามารถแจ้งได้เลยครับ";
+    
+    if (pathname.startsWith("/quiz")) {
+      welcome = `สวัสดีอาจารย์! ผมเป็นผู้ช่วยออกแบบข้อสอบ 🤖 ช่วยปรับปรุงควิซของ ${weekKey || "สัปดาห์นี้"} เพิ่มโจทย์แยกตามระดับความยาก หรือปรับแต่งคำถามได้เลยครับ`;
+    }
+
+    setMessages([
+      {
+        id: "welcome",
+        sender: "bot",
+        text: welcome,
+      },
+    ]);
+    firstPromptRef.current = null;
+  }, [pathname, weekKey]);
 
   useEffect(() => {
     if (scrollRef.current) {

@@ -75,6 +75,7 @@ interface CourseContextValue {
     id?: string,
     /** รหัสวิชาที่อาจารย์กรอกเอง — ถ้ามีจะใช้แทนรหัสที่แกะได้จาก syllabus */
     courseCode?: string | null,
+    initialQuizzes?: Record<string, Quiz[]>,
   ) => string;
   getCourse: (id: string) => Course | undefined;
   /** เติมวิชาจากข้อมูลที่ backend คืนมา (GET /api/v1/courses/{id}) เข้า local store
@@ -100,6 +101,10 @@ interface CourseContextValue {
   setSyllabusExtraction: (extraction: SyllabusExtraction) => void;
   /** เพิ่ม CLO ใหม่ด้วยมือ (เผื่อ syllabus แกะไม่ครบ หรือวิชาไม่มี syllabus) */
   addClo: (code: string, description: string | null) => void;
+  /** แก้ CLO ตามลำดับ (index) — เปลี่ยนรหัส/คำอธิบาย */
+  updateClo: (index: number, code: string, description: string | null) => void;
+  /** ลบ CLO ตามลำดับ (index) */
+  deleteClo: (index: number) => void;
   totalWeeks: number;
   /** เพิ่มจำนวนสัปดาห์ทั้งหมดของวิชาอีก 1 สัปดาห์ */
   addWeek: () => void;
@@ -194,6 +199,7 @@ function emptyCourse(
   syllabusExtraction?: SyllabusExtraction | null,
   id?: string,
   courseCode?: string | null,
+  initialQuizzes?: Record<string, Quiz[]>,
 ): Course {
   return {
     id: id ?? makeId("course"),
@@ -209,9 +215,9 @@ function emptyCourse(
       DEFAULT_WEEK_COUNT,
       ...(syllabusExtraction?.items.map((i) => i.week_number ?? 0) ?? [0]),
     ),
-    topics: initialTopics ?? freshTopics(),
+    topics: initialTopics ?? [],
     weekConfig: {},
-    quizzes: {},
+    quizzes: initialQuizzes ?? {},
     submissions: [],
     createdAt: new Date().toISOString(),
   };
@@ -330,7 +336,7 @@ function migrate(
         : [],
       totalWeeks:
         typeof d.totalWeeks === "number" ? d.totalWeeks : DEFAULT_WEEK_COUNT,
-      topics: Array.isArray(d.topics) ? (d.topics as Topic[]) : freshTopics(),
+      topics: Array.isArray(d.topics) ? (d.topics as Topic[]) : [],
       weekConfig: (d.weekConfig as WeekConfigMap) ?? {},
       quizzes: (function migrateOldQuizzes() {
         const q = (d.quizzes || {}) as Record<string, any>;
@@ -429,6 +435,7 @@ export function CourseProvider({ children }: { children: ReactNode }) {
     syllabusExtraction?: SyllabusExtraction | null,
     id?: string,
     courseCode?: string | null,
+    initialQuizzes?: Record<string, Quiz[]>,
   ): string {
     const course = emptyCourse(
       subject,
@@ -438,6 +445,7 @@ export function CourseProvider({ children }: { children: ReactNode }) {
       syllabusExtraction,
       id,
       courseCode,
+      initialQuizzes,
     );
     setCourses((prev) => [...prev, course]);
     setActiveCourseId(course.id);
@@ -507,6 +515,20 @@ export function CourseProvider({ children }: { children: ReactNode }) {
     updateActive((c) => ({
       ...c,
       clos: [...c.clos, { code, description }],
+    }));
+  }
+
+  function updateClo(index: number, code: string, description: string | null) {
+    updateActive((c) => ({
+      ...c,
+      clos: c.clos.map((clo, i) => (i === index ? { code, description } : clo)),
+    }));
+  }
+
+  function deleteClo(index: number) {
+    updateActive((c) => ({
+      ...c,
+      clos: c.clos.filter((_, i) => i !== index),
     }));
   }
 
@@ -657,6 +679,8 @@ export function CourseProvider({ children }: { children: ReactNode }) {
         weeklyScheduleItems: activeCourse?.weeklyScheduleItems ?? [],
         setSyllabusExtraction,
         addClo,
+        updateClo,
+        deleteClo,
         totalWeeks: activeCourse?.totalWeeks ?? DEFAULT_WEEK_COUNT,
         addWeek,
         removeWeek,

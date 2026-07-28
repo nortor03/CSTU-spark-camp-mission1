@@ -85,7 +85,7 @@ export default function QuizEditor({
                 aria-pressed={showPreview}
               >
                 <span className="h-1.5 w-1.5 rounded-full bg-tu-red-500" />
-                {showPreview ? "ซ่อนตัวอย่าง" : "ดูตัวอย่าง (SurveyJS)"}
+                {showPreview ? "ซ่อนตัวอย่าง" : "ดูตัวอย่างควิซ"}
               </button>
             </div>
           </div>

@@ -115,3 +115,46 @@ export function blankQuestion(): QuizQuestion {
   };
 }
 
+/* ---------- ตัวสร้างคำถามจำลอง (ใช้เฉพาะโหมดพรีวิว/ฝึกซ้อม — ไม่ใช่ AI จริง) ---------- */
+
+function mockMcq(topic: string): QuizQuestion {
+  const choices: QuizChoice[] = [
+    { id: uid("c"), text: `นิยามหลักของ "${topic}"` },
+    { id: uid("c"), text: `แนวคิดที่ไม่เกี่ยวข้องกับ "${topic}"` },
+    { id: uid("c"), text: `ตัวอย่างการใช้งานที่ผิดของ "${topic}"` },
+    { id: uid("c"), text: `คำจำกัดความที่คลาดเคลื่อนของ "${topic}"` },
+  ];
+  return {
+    id: uid("q"),
+    type: "mcq",
+    question: `ข้อใดอธิบายแนวคิดเรื่อง "${topic}" ได้ถูกต้องที่สุด`,
+    choices,
+    answer: choices[0].id,
+    points: 1,
+    topic,
+  };
+}
+
+/**
+ * จำลองการ generate ควิซจากโจทย์ที่อาจารย์กรอก (ไม่ได้ต่อ AI จริง) — ใช้ในโหมดพรีวิว
+ * mock (mockCourseSeed) และโหมดฝึกซ้อมของนักเรียน (StudentQuiz's practice mode สร้าง
+ * ชุดคำถามจำลองใหม่ทุกรอบ ไม่แตะควิซจริงที่อาจารย์บันทึกไว้)
+ */
+export function generateMockQuiz(week: string, prompt: QuizPrompt): Quiz {
+  const topics = prompt.topics.length > 0 ? prompt.topics : ["หัวข้อการเรียน"];
+  const count = Math.max(1, Math.min(prompt.count || 1, 30));
+
+  const questions: QuizQuestion[] = Array.from({ length: count }, (_, i) =>
+    mockMcq(topics[i % topics.length]),
+  );
+
+  return {
+    id: uid("quiz"),
+    isActive: false,
+    revision: uid("rev"),
+    week,
+    title: `แบบทดสอบ ${week}`,
+    questions,
+  };
+}
+

@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  useCourse,
-  freshTopics,
-  topicsFromSyllabusSchedule,
-} from "@/lib/courseStore";
+import { useCourse, topicsFromSyllabusSchedule } from "@/lib/courseStore";
 import { extractSyllabus, type SyllabusExtraction } from "@/lib/syllabus";
+import {
+  buildMockCourseSeed,
+  USE_MOCK_COURSE_PREVIEW,
+} from "@/lib/mockCourseSeed";
 import { buildPlanPayload } from "@/lib/planPayload";
 import { createCourse } from "@/lib/coursesApi";
 import FileDropzone from "./FileDropzone";
@@ -31,7 +31,7 @@ function fileToDataUrl(file: File): Promise<string> {
  */
 export default function UploadForm({ mode }: { mode: "new" | "slides" }) {
   const router = useRouter();
-  const { addCourse, addTopics, subject: activeSubject } = useCourse();
+  const { addCourse, subject: activeSubject } = useCourse();
 
   const [subject, setSubject] = useState("");
   const [courseCode, setCourseCode] = useState("");
@@ -58,6 +58,10 @@ export default function UploadForm({ mode }: { mode: "new" | "slides" }) {
       setError("กรุณากรอกชื่อวิชา");
       return;
     }
+    if (isNew && !syllabus) {
+      setError("กรุณาแนบ course syllabus (PDF) — ใช้แยกหัวข้อและ CLO ของวิชา");
+      return;
+    }
     if (files.length === 0) {
       setError("กรุณาแนบไฟล์สไลด์ (PDF) อย่างน้อย 1 ไฟล์");
       return;
@@ -69,70 +73,101 @@ export default function UploadForm({ mode }: { mode: "new" | "slides" }) {
       // เก็บ syllabus เป็น data URL เพื่อให้ดาวน์โหลดได้ภายหลัง
       const syllabusData = syllabus ? await fileToDataUrl(syllabus) : null;
 
-      // ยิงไปแยก CLO/ตารางสอน/เกณฑ์ประเมินจาก syllabus ตอนกดสร้างวิชาเลย
-      let extraction: SyllabusExtraction | null = null;
-      if (syllabus) {
-        setExtracting(true);
-        setExtractError("");
+      if (USE_MOCK_COURSE_PREVIEW) {
+        // ───────── โหมดพรีวิว mock (ชั่วคราว — ระหว่างทำ UI/UX) ─────────
+        // สร้างวิชาพร้อมข้อมูลจำลอง เพื่อให้หน้าจัดหัวข้อ (/topics) และหน้ารายละเอียด
+        // วิชา (/course/[id]) มีเนื้อหาให้ดู/แก้ทันที — ตั้ง USE_MOCK_COURSE_PREVIEW=false
+        // ใน lib/mockCourseSeed.ts เมื่อหลังบ้านพร้อม เพื่อสลับไปใช้ path จริงด้านล่าง
+        const seed = buildMockCourseSeed(syllabus?.name ?? null);
+        // ใช้รหัสวิชาที่อาจารย์กรอก (ถ้ามี) แทนรหัสจำลอง
+        const finalCourseCode = courseCode.trim() || seed.extraction.course_code || null;
+        seed.extraction.course_code = finalCourseCode;
+
+        let backendCourseId: string | undefined;
         try {
-          extraction = await extractSyllabus(syllabus);
-        } catch {
-          setExtractError(
-            "แยกข้อมูลจาก syllabus ไม่สำเร็จ — สร้างวิชาต่อได้ แต่ยังไม่มี CLO",
+          const created = await createCourse(
+            buildPlanPayload(
+              finalCourseCode,
+              subject.trim(),
+              seed.extraction.clos,
+              seed.topics,
+            ),
           );
-        } finally {
-          setExtracting(false);
+          backendCourseId = created.course_id;
+        } catch (err) {
+          console.error("สร้างวิชาที่ backend ไม่สำเร็จ (best-effort ในโหมด mock)", err);
         }
-      }
 
-      // ถ้า syllabus แกะหัวข้อออกมาได้ ใช้ชุดนั้นแทนหัวข้อจำลอง — หัวข้อที่มีเลขสัปดาห์
-      // กำกับจะถูกจัดเข้าสัปดาห์ให้อัตโนมัติ ส่วนที่ไม่มีเลขสัปดาห์จะไปอยู่ในกองที่ยังไม่จัด
-      // ให้ลากจัดเอง (ไม่ได้ขึ้นกับ has_weekly_schedule เพราะแม้เอกสารจะไม่ได้จัดเป็นรายสัปดาห์
-      // ทั้งฉบับ ก็ยังอาจมีบางหัวข้อที่ระบุสัปดาห์ไว้ได้)
-      // หมายเหตุ: บางแถวมีแค่เลขสัปดาห์แต่ไม่มีชื่อหัวข้อ ถูกกรองทิ้งใน
-      // topicsFromSyllabusSchedule แล้ว — ถ้ากรองแล้วว่างเปล่า ให้ fallback ไปหัวข้อจำลอง
-      const syllabusTopics = extraction
-        ? topicsFromSyllabusSchedule(extraction, syllabus?.name ?? null)
-        : [];
-      const initialTopics =
-        syllabusTopics.length > 0 ? syllabusTopics : undefined;
-
-      // สร้างวิชาที่ backend ก่อน (POST /api/v1/courses) เพื่อให้ id ฝั่งเครื่องนี้
-      // ตรงกับ id ที่ backend ใช้ตั้งแต่ต้น — ส่งเฉพาะหัวข้อที่แกะได้จริงจาก syllabus
-      // (ไม่ส่งหัวข้อจำลอง/mock) หัวข้อที่ยังไม่ได้จัดสัปดาห์จริงจะถูก sync เข้า backend
-      // อีกทีตอนกด "ยืนยันและส่งข้อมูล" ในหน้าจัดหัวข้อ — ถ้า backend ล่ม/เข้าไม่ถึงตอนนี้
-      // ก็ยังสร้างวิชาในเครื่องนี้ต่อได้ตามปกติด้วย id ที่สร้างเอง แล้ว PUT ตอน sync
-      // (idempotent upsert) จะสร้างแถวที่ backend ให้เองตอนนั้นแทน
-      // รหัสวิชาที่อาจารย์กรอกเองมาก่อน — ถ้าไม่กรอกค่อย fallback ไปใช้ที่แกะได้จาก syllabus
-      const finalCourseCode = courseCode.trim() || extraction?.course_code || null;
-
-      let backendCourseId: string | undefined;
-      try {
-        const created = await createCourse(
-          buildPlanPayload(
-            finalCourseCode,
-            subject.trim(),
-            extraction?.clos ?? [],
-            syllabusTopics,
-          ),
+        addCourse(
+          subject.trim(),
+          syllabus?.name ?? null,
+          syllabusData,
+          seed.topics,
+          seed.extraction,
+          backendCourseId,
+          finalCourseCode,
+          seed.quizzes,
         );
-        backendCourseId = created.course_id;
-      } catch (err) {
-        console.error("สร้างวิชาที่ backend ไม่สำเร็จ (จะ sync ใหม่ตอนยืนยันข้อมูล)", err);
-      }
+      } else {
+        // ───────── โหมดจริง (หลังบ้านพร้อมแล้ว) ─────────
+        // แยก CLO/ตารางสอนจาก syllabus จริง — ถ้าแยกไม่ได้/ไม่มีข้อมูล หัวข้อจะว่าง
+        // และหน้าเว็บจะขึ้น "สถานะว่าง" ตามปกติ (ไม่มีข้อมูลจำลองมาแทน)
+        let extraction: SyllabusExtraction | null = null;
+        if (syllabus) {
+          setExtracting(true);
+          setExtractError("");
+          try {
+            extraction = await extractSyllabus(syllabus);
+          } catch {
+            setExtractError(
+              "แยกข้อมูลจาก syllabus ไม่สำเร็จ — สร้างวิชาต่อได้ แต่ยังไม่มี CLO",
+            );
+          } finally {
+            setExtracting(false);
+          }
+        }
 
-      addCourse(
-        subject.trim(),
-        syllabus?.name ?? null,
-        syllabusData,
-        initialTopics,
-        extraction,
-        backendCourseId,
-        finalCourseCode,
-      );
+        // หัวข้อของวิชามาจากการแยก syllabus จริงเท่านั้น (หัวข้อที่มีเลขสัปดาห์กำกับ
+        // จะถูกจัดเข้าสัปดาห์อัตโนมัติ ที่เหลือไปกองยังไม่จัด) — แยกไม่สำเร็จ = ไม่มีหัวข้อ
+        const initialTopics = extraction
+          ? topicsFromSyllabusSchedule(extraction, syllabus?.name ?? null)
+          : [];
+
+        // รหัสวิชาที่อาจารย์กรอกเองมีความสำคัญกว่าที่แกะได้จาก syllabus
+        const finalCourseCode =
+          courseCode.trim() || extraction?.course_code || null;
+        if (extraction) extraction.course_code = finalCourseCode;
+
+        // สร้างวิชาที่ backend ก่อน (POST) เพื่อให้ id ตรงกันตั้งแต่ต้น — ล้มเหลวก็ยัง
+        // สร้างในเครื่องต่อได้ แล้ว sync ใหม่ตอนกด "ยืนยันและส่งข้อมูล" ในหน้าจัดหัวข้อ
+        let backendCourseId: string | undefined;
+        try {
+          const created = await createCourse(
+            buildPlanPayload(
+              finalCourseCode,
+              subject.trim(),
+              extraction?.clos ?? [],
+              initialTopics,
+            ),
+          );
+          backendCourseId = created.course_id;
+        } catch (err) {
+          console.error("สร้างวิชาที่ backend ไม่สำเร็จ (จะ sync ใหม่ตอนยืนยันข้อมูล)", err);
+        }
+
+        addCourse(
+          subject.trim(),
+          syllabus?.name ?? null,
+          syllabusData,
+          initialTopics,
+          extraction,
+          backendCourseId,
+          finalCourseCode,
+        );
+      }
     } else {
-      // เพิ่มหัวข้อชุดใหม่ (จำลองผลวิเคราะห์สไลด์) เข้าวิชาที่กำลังเปิดอยู่
-      addTopics(freshTopics());
+      // อัปสไลด์เพิ่มเติม — ไม่สร้างหัวข้อใหม่
+      // (หัวข้อของวิชายึดตาม course syllabus ที่แนบไว้ตอนสร้างวิชา)
     }
 
     router.push("/topics");
@@ -152,40 +187,34 @@ export default function UploadForm({ mode }: { mode: "new" | "slides" }) {
     <form onSubmit={handleSubmit} className="space-y-4">
       {isNew ? (
         <>
-          <div className="grid gap-5 sm:grid-cols-2">
-            <div className="space-y-5">
-              <div>
-                <label className="label">ชื่อวิชา</label>
-                <input
-                  value={subject}
-                  onChange={(e) => setSubject(e.target.value)}
-                  placeholder="เช่น CN101 การเขียนโปรแกรม"
-                  className="field text-sm"
-                />
-              </div>
+          {/* รหัสวิชา + ชื่อวิชา + Course Syllabus อยู่แถวเดียวกัน (สไลด์อยู่แถวถัดไป) */}
+          <div className="grid items-start gap-4 sm:grid-cols-[130px_1.6fr_1fr]">
+            <div>
+              <label className="label">รหัสวิชา</label>
+              <input
+                value={courseCode}
+                onChange={(e) => setCourseCode(e.target.value)}
+                placeholder="เช่น CN101"
+                maxLength={14}
+                className="field text-sm"
+              />
+            </div>
 
-              <div>
-                <label className="label">
-                  รหัสวิชา{" "}
-                  <span className="font-normal text-ink-400">
-                    (ไม่บังคับ · ถ้าไม่กรอกจะใช้ที่แกะได้จาก syllabus แทน)
-                  </span>
-                </label>
-                <input
-                  value={courseCode}
-                  onChange={(e) => setCourseCode(e.target.value)}
-                  placeholder="เช่น คพ.232"
-                  className="field text-sm"
-                />
-              </div>
+            <div>
+              <label className="label">ชื่อวิชา</label>
+              <input
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                placeholder="เช่น การเขียนโปรแกรม"
+                className="field text-sm"
+              />
             </div>
 
             <div>
               <label className="label">
                 Course Syllabus{" "}
-                <span className="font-normal text-ink-400">
-                  (PDF · ไม่บังคับ)
-                </span>
+                <span className="font-normal text-ink-400">(PDF)</span>
+                <span className="text-tu-red-500"> *</span>
               </label>
               <SyllabusUpload
                 file={syllabus}
@@ -223,6 +252,10 @@ export default function UploadForm({ mode }: { mode: "new" | "slides" }) {
           <div>
             <label className="label">สไลด์ที่ต้องการเพิ่ม (PDF)</label>
             <FileDropzone files={files} onFilesChange={setFiles} />
+            <p className="mt-2 text-xs text-ink-400">
+              หมายเหตุ: หัวข้อของวิชายึดตาม course syllabus เดิม —
+              การเพิ่มสไลด์จะไม่สร้างหัวข้อใหม่
+            </p>
           </div>
         </>
       )}
@@ -244,7 +277,7 @@ export default function UploadForm({ mode }: { mode: "new" | "slides" }) {
               : "กำลังประมวลผล…"
             : isNew
               ? "สร้างรายวิชา"
-              : "จับหัวข้อจากสไลด์"}
+              : "เพิ่มสไลด์"}
         </button>
       </div>
     </form>

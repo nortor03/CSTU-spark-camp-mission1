@@ -186,6 +186,104 @@ export function buildStudentSummary(
   };
 }
 
+/* ---------- ฝั่งอาจารย์: สังเคราะห์ข้อสังเกตจาก Student Summary ---------- */
+
+/**
+ * หลักฐาน 1 ชิ้นของข้อสังเกตระดับชั้นเรียน — ระบุว่ามาจากนักศึกษาคนไหน
+ * และประโยค/ข้อความดั้งเดิมที่เป็นจุดตั้งต้น (ตัดตรงจาก StudentSummary ของคนนั้น)
+ */
+export interface InsightEvidence {
+  studentId: string;
+  studentName: string;
+  /** ข้อความดั้งเดิมที่เป็นที่มาของข้อสังเกต เช่น ตัวเลือกที่เลือกผิด vs คำตอบที่ถูก */
+  detail: string;
+}
+
+/** ข้อสังเกตระดับชั้นเรียน 1 ข้อ — สังเคราะห์จาก StudentSummary ของนักศึกษาหลายคนที่มีลักษณะคล้ายกัน */
+export interface ClassInsight {
+  id: string;
+  type?: string;
+  topic: string;
+  /** สรุปสั้น ๆ ระดับชั้นเรียน (สิ่งที่ AI "สังเกตเห็น") */
+  headline: string;
+  /** รายละเอียดเสริม เช่น ความเข้าใจคลาดเคลื่อนที่พบบ่อยที่สุดในหัวข้อนี้ */
+  description: string;
+  /** จำนวนนักศึกษาที่เป็นที่มาของข้อสังเกตนี้ */
+  studentCount: number;
+  /** หลักฐานรายคน — กดดูได้ว่าอ้างอิงจากใครบ้าง */
+  evidence: InsightEvidence[];
+}
+
+/**
+ * จำลองการทำงานของ AI (deterministic — ยังไม่ได้ต่อ LLM จริง):
+ * อ่าน misconceptions และ weak topics จาก buildStudentSummary() ของนักศึกษาทุกคน
+ * แล้วจัดกลุ่มตามหัวข้อที่มีลักษณะคล้ายกัน ให้กลายเป็น "ข้อสังเกตระดับชั้นเรียน"
+ * พร้อมแนบรายชื่อ + ข้อความดั้งเดิมของนักศึกษาที่เกี่ยวข้องไว้เป็น evidence
+ */
+export function synthesizeStudentSummaries(
+  quiz: Quiz,
+  submissions: Submission[],
+): ClassInsight[] {
+  interface Bucket {
+    topic: string;
+    students: Map<string, InsightEvidence>;
+    wrongTextTally: Map<string, number>;
+  }
+  const buckets = new Map<string, Bucket>();
+
+  for (const sub of submissions) {
+    const summary = buildStudentSummary(quiz, sub.answers);
+
+    // จุดตั้งต้นหลัก: ข้อที่นักศึกษาตอบผิด (misconception) — มีข้อความดั้งเดิมชัดเจนที่สุด
+    for (const m of summary.misconceptions) {
+      const bucket =
+        buckets.get(m.topic) ??
+        ({ topic: m.topic, students: new Map(), wrongTextTally: new Map() } as Bucket);
+
+      // 1 คนต่อ 1 evidence ต่อหัวข้อ (ใช้ misconception แรกของหัวข้อนั้นเป็นตัวแทน)
+      if (!bucket.students.has(sub.studentId)) {
+        bucket.students.set(sub.studentId, {
+          studentId: sub.studentId,
+          studentName: sub.studentName,
+          detail: `ข้อ “${m.question}” — เลือก “${m.chosenText}” แทนที่จะเป็น “${m.correctText}”`,
+        });
+      }
+      bucket.wrongTextTally.set(
+        m.chosenText,
+        (bucket.wrongTextTally.get(m.chosenText) ?? 0) + 1,
+      );
+      buckets.set(m.topic, bucket);
+    }
+  }
+
+  const insights: ClassInsight[] = Array.from(buckets.values())
+    .map((b) => {
+      const evidence = Array.from(b.students.values());
+      const topWrong = Array.from(b.wrongTextTally.entries()).sort(
+        (a, b2) => b2[1] - a[1],
+      )[0];
+
+      const headline = `นักศึกษา ${evidence.length} คนมีความเข้าใจคลาดเคลื่อนในหัวข้อ “${b.topic}”`;
+      const description = topWrong
+        ? `ส่วนใหญ่เข้าใจผิดไปทาง “${topWrong[0]}” (${topWrong[1]} คน) — น่าจะเป็นความเข้าใจคลาดเคลื่อนร่วมของห้อง ควรอธิบายจุดนี้ซ้ำในคาบถัดไป`
+        : `พบความเข้าใจคลาดเคลื่อนหลายรูปแบบในหัวข้อนี้ ลองดูหลักฐานรายคนประกอบ`;
+
+      return {
+        id: `insight-${b.topic}`,
+        topic: b.topic,
+        headline,
+        description,
+        studentCount: evidence.length,
+        evidence,
+      };
+    })
+    // เรียงตามจำนวนนักศึกษาที่ได้รับผลกระทบ — ข้อสังเกตที่ร่วมกันมากสุดขึ้นก่อน
+    .sort((a, b) => b.studentCount - a.studentCount)
+    .slice(0, 6);
+
+  return insights;
+}
+
 /* ---------- ฝั่งอาจารย์ (ภาพรวมทั้งชั้น) ---------- */
 
 /** ข้อที่นักเรียนตอบผิดเยอะ พร้อมตัวเลือกที่ผิดยอดนิยม */
@@ -217,6 +315,8 @@ export interface ClassReport {
   hardest: HardQuestion[];
   /** หัวข้อที่ควรทบทวนในคาบถัดไป */
   reviewPlan: string[];
+  /** ข้อสังเกตที่สังเคราะห์จากสรุปของนักเรียนแต่ละคน (แทนการสร้างจากควิซตรงๆ) */
+  insights: ClassInsight[];
 }
 
 function median(values: number[]): number {
@@ -325,6 +425,8 @@ export function buildClassReport(
     );
   }
 
+  const insights = synthesizeStudentSummaries(quiz, submissions);
+
   return {
     week: quiz.week,
     studentCount,
@@ -335,5 +437,6 @@ export function buildClassReport(
     topics,
     hardest,
     reviewPlan,
+    insights,
   };
 }

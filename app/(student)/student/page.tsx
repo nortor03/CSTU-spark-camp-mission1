@@ -1,10 +1,10 @@
 import { StudentShell } from "@/components/ui/Shells";
-import StudentQuizList from "@/components/student/StudentQuizList";
+import StudentCourseSelect from "@/components/student/StudentCourseSelect";
 
 export default function StudentHomePage() {
   return (
     <StudentShell>
-      <StudentQuizList />
+      <StudentCourseSelect />
     </StudentShell>
   );
 }

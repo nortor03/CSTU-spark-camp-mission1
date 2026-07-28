@@ -33,12 +33,15 @@ export default function AppShell({
   action,
   children,
   width = "max-w-4xl",
+  homeHref = "/",
 }: {
   nav?: NavItem[];
   /** ปุ่มมุมขวาบน เช่น ออกจากระบบ */
   action?: ReactNode;
   children: ReactNode;
   width?: string;
+  /** ปลายทางเมื่อกดโลโก้ — ต่างกันตามบทบาท (อาจารย์/นักเรียน) */
+  homeHref?: string;
 }) {
   const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -62,7 +65,7 @@ export default function AppShell({
                 <Menu className="w-6 h-6" strokeWidth={2} />
               </button>
             )}
-            <Link href="/" className="rounded-md">
+            <Link href={homeHref} className="rounded-md">
               <Brand size="sm" variant="light" />
             </Link>
           </div>

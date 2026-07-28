@@ -494,9 +494,6 @@ export function ResultView({
           <Link href="/student" className="btn-ghost">
             ← เลือกสัปดาห์อื่น
           </Link>
-          <button type="button" onClick={onRetry} className="btn-secondary">
-            ทำแบบทดสอบใหม่
-          </button>
         </div>
       )}
     </div>

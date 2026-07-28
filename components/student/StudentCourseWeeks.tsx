@@ -193,7 +193,7 @@ export default function StudentCourseWeeks({ courseId }: { courseId: string }) {
                     </Section>
 
                     {/* 2. เอกสารประกอบ (ดาวน์โหลด) */}
-                    <Section icon={<FileText className="h-4 w-4" />} title="เอกสารประกอบ" hex={hex}>
+                    <div>
                       {row.files.length === 0 ? (
                         <p className="text-[13px] text-ink-400">
                           ยังไม่มีเอกสารสำหรับสัปดาห์นี้
@@ -231,7 +231,7 @@ export default function StudentCourseWeeks({ courseId }: { courseId: string }) {
                           ))}
                         </ul>
                       )}
-                    </Section>
+                    </div>
 
                     {/* 3. แบบทดสอบ (เฉพาะเมื่ออาจารย์เปิดไว้) */}
                     {row.activeQuiz && (

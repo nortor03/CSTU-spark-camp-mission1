@@ -96,6 +96,10 @@ interface CourseContextValue {
   setSyllabusExtraction: (extraction: SyllabusExtraction) => void;
   /** เพิ่ม CLO ใหม่ด้วยมือ (เผื่อ syllabus แกะไม่ครบ หรือวิชาไม่มี syllabus) */
   addClo: (code: string, description: string | null) => void;
+  /** แก้ CLO ตามลำดับ (index) — เปลี่ยนรหัส/คำอธิบาย */
+  updateClo: (index: number, code: string, description: string | null) => void;
+  /** ลบ CLO ตามลำดับ (index) */
+  deleteClo: (index: number) => void;
   totalWeeks: number;
   /** เพิ่มจำนวนสัปดาห์ทั้งหมดของวิชาอีก 1 สัปดาห์ */
   addWeek: () => void;
@@ -478,6 +482,20 @@ export function CourseProvider({ children }: { children: ReactNode }) {
     }));
   }
 
+  function updateClo(index: number, code: string, description: string | null) {
+    updateActive((c) => ({
+      ...c,
+      clos: c.clos.map((clo, i) => (i === index ? { code, description } : clo)),
+    }));
+  }
+
+  function deleteClo(index: number) {
+    updateActive((c) => ({
+      ...c,
+      clos: c.clos.filter((_, i) => i !== index),
+    }));
+  }
+
   function addWeek() {
     updateActive((c) => ({ ...c, totalWeeks: c.totalWeeks + 1 }));
   }
@@ -598,6 +616,8 @@ export function CourseProvider({ children }: { children: ReactNode }) {
         weeklyScheduleItems: activeCourse?.weeklyScheduleItems ?? [],
         setSyllabusExtraction,
         addClo,
+        updateClo,
+        deleteClo,
         totalWeeks: activeCourse?.totalWeeks ?? DEFAULT_WEEK_COUNT,
         addWeek,
         removeWeek,

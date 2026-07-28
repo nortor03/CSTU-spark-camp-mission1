@@ -9,6 +9,7 @@ import { buildPlanPayload } from "@/lib/planPayload";
 import { fetchCourse, syncCourse } from "@/lib/coursesApi";
 import PageHeader from "@/components/ui/PageHeader";
 import Modal, { ModalHeader } from "@/components/ui/Modal";
+import EditCloModal, { type EditingClo } from "./EditCloModal";
 import { ChevronDown, Pencil, Trash2, FileText } from "lucide-react";
 import type { Topic } from "@/lib/types";
 import type { Quiz } from "@/lib/quiz";
@@ -34,6 +35,8 @@ export default function CourseDetail({ courseId }: { courseId: string }) {
     setTopics,
     toggleQuizActive,
     deleteQuiz,
+    updateClo,
+    deleteClo,
     importCourse,
     hydrated,
   } = useCourse();
@@ -46,6 +49,8 @@ export default function CourseDetail({ courseId }: { courseId: string }) {
   const [remoteLoading, setRemoteLoading] = useState(false);
   // สัปดาห์ที่กางรายการควิซอยู่ (accordion) — กางได้หลายสัปดาห์พร้อมกัน
   const [expandedWeeks, setExpandedWeeks] = useState<Set<string>>(new Set());
+  // CLO ที่กำลังแก้ไข (null = ปิด modal)
+  const [editingClo, setEditingClo] = useState<EditingClo | null>(null);
 
   function toggleWeek(week: string) {
     setExpandedWeeks((prev) => {
@@ -225,8 +230,8 @@ export default function CourseDetail({ courseId }: { courseId: string }) {
       </Link>
 
       <PageHeader
-        eyebrow="รายละเอียดรายวิชา"
-        title={course.subject}
+        eyebrow={course.subject}
+        title={course.courseCode ?? course.subject}
         action={
           <>
             <Link href="/upload" className="btn-secondary">
@@ -310,18 +315,45 @@ export default function CourseDetail({ courseId }: { courseId: string }) {
             </span>
           </div>
           <ul className="divide-y divide-line-soft">
-            {course.clos.map((clo) => (
-              <li key={clo.code} className="flex gap-3 px-4 py-3 sm:px-5">
+            {course.clos.map((clo, index) => (
+              <li
+                key={index}
+                className="group flex items-start gap-3 px-4 py-3 sm:px-5"
+              >
                 <span className="h-fit flex-shrink-0 rounded-full bg-tu-gold-50 px-2 py-0.5 text-[10px] font-bold text-tu-gold-700 ring-1 ring-tu-gold-200">
                   {clo.code}
                 </span>
-                <p className="text-xs leading-relaxed text-ink-600">
+                <p className="flex-1 text-xs leading-relaxed text-ink-600">
                   {clo.description ?? (
                     <span className="italic text-ink-400">
                       ไม่มีคำอธิบายในเอกสาร
                     </span>
                   )}
                 </p>
+                <div className="flex flex-shrink-0 items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setEditingClo({
+                        index,
+                        code: clo.code,
+                        description: clo.description,
+                      })
+                    }
+                    title="แก้ไข CLO"
+                    className="grid h-7 w-7 place-items-center rounded-lg border border-line bg-white text-ink-400 transition hover:border-line-strong hover:text-tu-red-600"
+                  >
+                    <Pencil className="h-[13px] w-[13px]" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => deleteClo(index)}
+                    title="ลบ CLO"
+                    className="grid h-7 w-7 place-items-center rounded-lg border border-line bg-white text-ink-400 transition hover:border-tu-red-200 hover:bg-tu-red-50/50 hover:text-tu-red-600"
+                  >
+                    <Trash2 className="h-[13px] w-[13px]" />
+                  </button>
+                </div>
               </li>
             ))}
           </ul>
@@ -604,6 +636,13 @@ export default function CourseDetail({ courseId }: { courseId: string }) {
             </>
           ))}
       </Modal>
+
+      {/* แก้ไข CLO (รหัส/คำอธิบาย) หรือลบทั้งข้อ */}
+      <EditCloModal
+        editing={editingClo}
+        onClose={() => setEditingClo(null)}
+        onSave={updateClo}
+      />
     </div>
   );
 }

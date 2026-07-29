@@ -595,6 +595,7 @@ export function ResultView({
 
               {!isModal && (
                 <Link
+                  replace
                   href={`/student/summary/${week.match(/\d+/)?.[0] ?? "1"}`}
                   className="btn-primary w-fit"
                 >

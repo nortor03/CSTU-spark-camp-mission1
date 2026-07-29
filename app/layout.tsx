@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Maitree } from "next/font/google";
 import "./globals.css";
 import { CourseProvider } from "@/lib/courseStore";
+import BackToCourseGuard from "@/components/BackToCourseGuard";
 
 /**
  * ฟอนต์เดียวทั้งแอป (เนื้อความ + หัวเรื่อง) — Maitree: serif ไทยมีหัว อบอุ่น อ่านสบาย
@@ -17,8 +18,8 @@ const appFont = Maitree({
 });
 
 export const metadata: Metadata = {
-  title: "TONLABKIT — ระบบจัดการเอกสารการสอน",
-  description: "อัปโหลดเอกสารการสอนและจัดกลุ่มหัวข้อรายสัปดาห์",
+  title: "kroonquiz — ระบบจัดหมวดหมู่และควิซ AI",
+  description: "ระบบจัดหมวดหมู่เอกสารและแบบทดสอบทบทวนความรู้ด้วย AI สำหรับนักศึกษา",
 };
 
 export default function RootLayout({
@@ -29,7 +30,10 @@ export default function RootLayout({
   return (
     <html lang="th" className={appFont.variable}>
       <body className="font-sans antialiased">
-        <CourseProvider>{children}</CourseProvider>
+        <CourseProvider>
+          <BackToCourseGuard />
+          {children}
+        </CourseProvider>
       </body>
     </html>
   );

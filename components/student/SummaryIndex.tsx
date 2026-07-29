@@ -32,7 +32,7 @@ export default function SummaryIndex() {
 
   function openSummary(courseId: string, s: Submission) {
     setActiveCourse(courseId);
-    router.push(`/student/summary/${weekNumber(s.week)}`);
+    router.replace(`/student/summary/${weekNumber(s.week)}`);
   }
 
   if (!hydrated) {

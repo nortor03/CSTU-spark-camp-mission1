@@ -195,21 +195,22 @@ export default function SubmissionsTable({
         <table className="w-full min-w-[520px] text-sm">
           <thead>
             <tr className="border-b-2 border-line text-left text-[11px] font-bold uppercase tracking-wider text-ink-500 bg-paper-50">
-              <th className="pb-3 pt-3 pl-3">ชื่อนักศึกษา</th>
+              <th className="whitespace-nowrap pb-3 pt-3 pl-3">ชื่อนักศึกษา</th>
               {isQuizAssigned !== false ? (
                 <>
+                  <th className="whitespace-nowrap pb-3 pt-3 text-center">คะแนนควิซ</th>
                   {weekCloCodes.map((code) => (
-                    <th key={code} className="pb-3 pt-3 text-center">
-                      {code}
+                    <th key={code} className="whitespace-nowrap pb-3 pt-3 text-center">
+                      {code} <span className="font-medium normal-case text-ink-300">(เต็ม 5)</span>
                     </th>
                   ))}
-                  <th className="pb-3 pt-3 text-center">ฝึกซ้อม</th>
-                  <th className="pb-3 pt-3 text-center pr-3">สรุปรายบุคคล</th>
+                  <th className="whitespace-nowrap pb-3 pt-3 text-center">ฝึกซ้อม</th>
+                  <th className="whitespace-nowrap pb-3 pt-3 text-center pr-3">สรุปรายบุคคล</th>
                 </>
               ) : (
                 <>
-                  <th className="pb-3 pt-3 text-center">สถานะ</th>
-                  <th className="pb-3 pt-3 text-right pr-3">บันทึกสรุป</th>
+                  <th className="whitespace-nowrap pb-3 pt-3 text-center">สถานะ</th>
+                  <th className="whitespace-nowrap pb-3 pt-3 text-right pr-3">บันทึกสรุป</th>
                 </>
               )}
             </tr>
@@ -223,13 +224,13 @@ export default function SubmissionsTable({
                 <tr
                   key={s.id}
                   onClick={() =>
-                    router.push(`/report/${courseId}/${weekNumber(week)}/${encodeURIComponent(s.studentId)}`)
+                    router.push(`/report/${courseId}/student/${wkStr}?student=${encodeURIComponent(s.studentId)}`)
                   }
                   className={`cursor-pointer transition-colors hover:bg-paper-100 ${
                     s.isCurrentUser ? "bg-tu-gold-50" : ""
                   }`}
                 >
-                  <td className="py-2.5 pl-3">
+                  <td className="whitespace-nowrap py-2.5 pl-3">
                     <div className="flex items-center gap-3">
                       <Avatar name={s.studentName} />
                       <span className="font-medium text-ink-800">
@@ -244,15 +245,22 @@ export default function SubmissionsTable({
                   </td>
                   {isQuizAssigned !== false ? (
                     <>
+                      <td
+                        className="whitespace-nowrap py-2.5 text-center font-bold tabular-nums text-ink-900"
+                      >
+                        {s.score}
+                        <span className="ml-0.5 text-xs font-semibold text-ink-300">/{s.total}</span>
+                      </td>
                       {weekCloCodes.map((code) => (
                         <td
                           key={code}
-                          className="py-2.5 text-center font-bold tabular-nums text-ink-900"
+                          className="whitespace-nowrap py-2.5 text-center font-bold tabular-nums text-ink-900"
                         >
                           {cloScore(s.percent, s.studentId, code)}
+                          <span className="ml-0.5 text-xs font-semibold text-ink-300">/5</span>
                         </td>
                       ))}
-                      <td className="py-3 text-center">
+                      <td className="whitespace-nowrap py-3 text-center">
                         {practiceCount(s.studentId) > 0 ? (
                           <span className="inline-flex items-center gap-1 rounded-full bg-paper-100 px-2.5 py-1 text-xs font-semibold text-ink-600 ring-1 ring-line">
                             <History className="h-3.5 w-3.5" />+
@@ -267,7 +275,7 @@ export default function SubmissionsTable({
                         onClick={(e) => e.stopPropagation()}
                       >
                         <Link
-                          href={`/student/summary/${wkStr}?student=${encodeURIComponent(s.studentId)}`}
+                          href={`/report/${courseId}/student/${wkStr}?student=${encodeURIComponent(s.studentId)}`}
                           title="ดูสรุปรายบุคคล"
                           aria-label="ดูสรุปรายบุคคล"
                           className="inline-flex text-tu-blue-600 transition-colors hover:text-tu-blue-700"

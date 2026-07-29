@@ -87,6 +87,9 @@ interface CourseContextValue {
   /** เติมควิซที่บันทึกไว้แล้วจาก backend (GET /api/v1/courses/{id}/quizzes) เข้าวิชานั้น
    * — ใช้คู่กับ importCourse ตอนเข้าหน้ารายละเอียดวิชาที่ยังไม่มีอยู่ในเครื่องนี้ */
   importQuizzes: (courseId: string, quizzes: Quiz[]) => void;
+  /** ลบวิชาออกจากเครื่องนี้ (local เท่านั้น) — ใช้ตอนหลังบ้านเข้าไม่ถึง
+   * แล้วหน้ารายวิชาต้อง fallback มาแสดง/จัดการวิชาที่เก็บในเครื่องแทน */
+  deleteCourse: (id: string) => void;
 
   /* ---- accessor ของ "วิชาที่ active" (คงชื่อเดิมเพื่อความเข้ากันได้) ---- */
   subject: string;
@@ -583,6 +586,11 @@ export function CourseProvider({ children }: { children: ReactNode }) {
     );
   }
 
+  function deleteCourse(id: string) {
+    setCourses((prev) => prev.filter((c) => c.id !== id));
+    setActiveCourseId((prev) => (prev === id ? null : prev));
+  }
+
   function importQuizzes(courseId: string, quizList: Quiz[]) {
     const grouped: Record<string, Quiz[]> = {};
     for (const q of quizList) {
@@ -674,8 +682,8 @@ export function CourseProvider({ children }: { children: ReactNode }) {
       if (index >= 0) {
         nextList[index] = quiz;
       } else {
-        // If it's a new quiz and it's the first one, make it active
-        const newQuiz = { ...quiz, isActive: existing.length === 0 ? true : quiz.isActive };
+        // New quiz defaults to inactive (closed) until manually activated
+        const newQuiz = { ...quiz, isActive: false };
         nextList.push(newQuiz);
       }
 
@@ -736,10 +744,7 @@ export function CourseProvider({ children }: { children: ReactNode }) {
     updateActive((c) => {
       const existing = c.quizzes[week] || [];
       let remaining = existing.filter((q) => q.id !== quizId);
-      // ถ้าลบตัวที่ active ไปแล้วยังเหลือควิซอื่น → ตั้งตัวแรกเป็น active แทน
-      if (remaining.length > 0 && !remaining.some((q) => q.isActive)) {
-        remaining = remaining.map((q, i) => ({ ...q, isActive: i === 0 }));
-      }
+      // เมื่อลบตัวที่ active ไปแล้ว ไม่ต้องเปิดตัวที่เหลืออัตโนมัติ (ให้อาจารย์เลือกเปิดเองภายหลัง)
       const nextQuizzes = { ...c.quizzes };
       if (remaining.length === 0) {
         delete nextQuizzes[week];
@@ -786,6 +791,7 @@ export function CourseProvider({ children }: { children: ReactNode }) {
         getCourse,
         importCourse,
         importQuizzes,
+        deleteCourse,
 
         subject: activeCourse?.subject ?? "",
         syllabusName: activeCourse?.syllabusName ?? null,

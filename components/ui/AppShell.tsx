@@ -2,11 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { type ReactNode, useState } from "react";
+import { type ReactNode } from "react";
 import Brand from "./Brand";
 import {
-  Menu,
-  X,
   BookOpen,
   LayoutGrid,
   Upload,
@@ -44,7 +42,6 @@ export default function AppShell({
   homeHref?: string;
 }) {
   const pathname = usePathname();
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const isActive = (item: NavItem) =>
     pathname === item.href ||
@@ -52,94 +49,82 @@ export default function AppShell({
 
   return (
     <div className="min-h-screen bg-transparent">
-      {/* ---------- แถบบน ---------- */}
-      <header className="sticky top-0 z-40 border-b border-tu-gold-500/60 bg-tu-red-500">
-        <div className="flex h-14 w-full items-center justify-between gap-4 px-4 sm:px-6 lg:px-12">
-          <div className="flex items-center gap-3">
-            {nav.length > 0 && (
-              <button
-                onClick={() => setIsMenuOpen(true)}
-                className="text-white hover:text-white/80 transition-colors p-1 -ml-1 rounded focus:outline-none focus:ring-2 focus:ring-white/50"
-                aria-label="Open menu"
-              >
-                <Menu className="w-6 h-6" strokeWidth={2} />
-              </button>
-            )}
-            <Link href={homeHref} className="rounded-md">
+      {/* ---------- แถบบน (Solid Red, Inline Nav - No Hamburger) ---------- */}
+      <header className="sticky top-0 z-40 bg-tu-red-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_1px_2px_rgba(0,0,0,0.06)]">
+        <div className="mx-auto flex h-16 w-full max-w-[1600px] items-center justify-between gap-4 px-4 sm:px-6 lg:px-12">
+          {/* Logo & Desktop Nav */}
+          <div className="flex min-w-0 items-center gap-6">
+            <Link href={homeHref} className="flex-shrink-0 rounded-xl transition-transform duration-200 hover:scale-[1.02] focus:outline-none">
               <Brand size="sm" variant="light" />
             </Link>
-          </div>
-          {action}
-        </div>
-      </header>
 
-      {/* ---------- เนื้อหา ---------- */}
-      <div className="flex w-full justify-center gap-8 px-4 py-12 sm:px-6 lg:px-12 lg:gap-16">
-        {/* เมนูแบบ Drawer */}
-        {nav.length > 0 && (
-          <>
-            {/* Backdrop */}
-            {isMenuOpen && (
-              <div 
-                className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm transition-opacity"
-                onClick={() => setIsMenuOpen(false)}
-              />
-            )}
-            
-            {/* Sidebar Drawer */}
-            <nav 
-              className={`fixed top-0 left-0 bottom-0 z-50 w-64 bg-paper-50 shadow-2xl transition-transform duration-300 ease-out flex flex-col ${
-                isMenuOpen ? "translate-x-0" : "-translate-x-full"
-              }`}
-            >
-              <div className="flex h-14 items-center px-4 border-b border-tu-gold-500/60 bg-tu-red-500">
-                <button
-                  onClick={() => setIsMenuOpen(false)}
-                  className="text-white hover:text-white/80 p-1 -ml-1 rounded transition-colors focus:outline-none focus:ring-2 focus:ring-white/50"
-                  aria-label="Close menu"
-                >
-                  <X className="w-6 h-6" strokeWidth={2} />
-                </button>
-                <div className="ml-3 mt-[1px]">
-                  <Brand size="sm" variant="light" />
-                </div>
-              </div>
-              <div className="p-4 overflow-y-auto space-y-1">
-                <p className="mb-2 px-3 text-[11px] font-bold leading-6 tracking-wide text-ink-400 uppercase">
-                  เมนูหลัก
-                </p>
+            {/* Desktop Navigation — segmented track + pill tabs */}
+            {nav.length > 0 && (
+              <nav className="hidden items-center gap-0.5 rounded-2xl bg-black/12 p-1 md:flex">
                 {nav.map((item) => {
                   const active = isActive(item);
                   return (
                     <Link
                       key={item.href}
                       href={item.href}
-                      onClick={() => setIsMenuOpen(false)}
-                      className={`relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-[15px] font-medium transition-all duration-200 ${
+                      className={`group relative flex items-center gap-2 rounded-xl px-4 py-2 text-[13.5px] font-bold transition-all duration-200 ${
                         active
-                          ? "bg-white text-tu-red-700 shadow-sm border border-tu-red-100/50"
-                          : "text-ink-600 hover:bg-paper-200 hover:text-ink-900"
+                          ? "bg-white text-tu-red-700 shadow-sm"
+                          : "text-white/75 hover:bg-white/10 hover:text-white"
                       }`}
                     >
-                      {active && (
-                        <span className="absolute inset-y-2 left-0 w-[4px] rounded-r-md bg-tu-red-500" />
-                      )}
                       <span
-                        className={`[&>svg]:h-5 [&>svg]:w-5 transition-colors ${
-                          active ? "text-tu-red-500" : "text-ink-400 group-hover:text-ink-600"
+                        className={`[&>svg]:h-4 [&>svg]:w-4 transition-colors duration-200 ${
+                          active ? "text-tu-red-500" : "text-white/60 group-hover:text-white"
                         }`}
                       >
                         {item.icon}
                       </span>
-                      {item.label}
+                      <span>{item.label}</span>
                     </Link>
                   );
                 })}
-              </div>
-            </nav>
-          </>
+              </nav>
+            )}
+          </div>
+
+          {/* Right Profile & SignOut */}
+          <div className="flex flex-shrink-0 items-center gap-4">
+            {action}
+          </div>
+        </div>
+
+        {/* Mobile Navigation — same segmented track, full width */}
+        {nav.length > 0 && (
+          <nav className="flex items-center gap-0.5 border-t border-white/10 px-3 py-2 md:hidden">
+            {nav.map((item) => {
+              const active = isActive(item);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all duration-200 ${
+                    active
+                      ? "bg-white text-tu-red-700 shadow-sm"
+                      : "text-white/65 hover:bg-white/10 hover:text-white"
+                  }`}
+                >
+                  <span className={`[&>svg]:h-3.5 [&>svg]:w-3.5 ${active ? "text-tu-red-500" : ""}`}>
+                    {item.icon}
+                  </span>
+                  <span>{item.label}</span>
+                </Link>
+              );
+            })}
+          </nav>
         )}
 
+        {/* เส้นทองหรูด้านล่างสุด — ลายเซ็นแบรนด์ */}
+        <div className="h-[3px] w-full bg-gradient-to-r from-tu-gold-500 via-tu-gold-400 to-tu-gold-500 shadow-[0_1px_10px_rgba(242,169,0,0.45)]" />
+      </header>
+
+      {/* ---------- เนื้อหา ---------- */}
+      <div className="flex w-full justify-center gap-8 px-4 py-12 sm:px-6 lg:px-12 lg:gap-16">
         <main className={`min-w-0 w-full animate-slide-up ${width}`}>
           {children}
         </main>

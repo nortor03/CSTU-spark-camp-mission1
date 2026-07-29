@@ -4,10 +4,10 @@ import Link from "next/link";
 import { useMemo } from "react";
 import { useCourse, type Course } from "@/lib/courseStore";
 import PageHeader from "@/components/ui/PageHeader";
-import { ChevronRight } from "lucide-react";
+import { CalendarDays, Users } from "lucide-react";
 
 /**
- * หน้ารายงานชั้นเรียน (ระดับบนสุด) — เลือกวิชาก่อน
+ * หน้ารายงานชั้นเรียน (ระดับบนสุด) — เลือกวิชาก่อน (การ์ดสไตล์เดียวกับหน้ารายวิชา)
  * เพราะอาจารย์หนึ่งคนสอนได้หลายวิชา
  */
 export default function ReportIndex() {
@@ -39,7 +39,7 @@ export default function ReportIndex() {
           </Link>
         </div>
       ) : (
-        <div className="mt-6 flex flex-col divide-y divide-line border-y border-line">
+        <div className="mt-8 grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 max-w-[1100px]">
           {courses.map((c) => (
             <ReportCourseCard key={c.id} course={c} />
           ))}
@@ -57,30 +57,59 @@ function ReportCourseCard({ course }: { course: Course }) {
       ).length,
     [course.quizzes],
   );
+  const studentCount = useMemo(() => {
+    const ids = new Set(course.submissions.map((s) => s.studentId));
+    return ids.size;
+  }, [course.submissions]);
 
   return (
-    <Link
-      href={`/report/${course.id}/1`}
-      className="group flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-5 transition-colors hover:bg-paper-50 -mx-4 px-4 sm:-mx-6 sm:px-6"
-    >
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-3">
-          <h2 className="truncate text-lg font-semibold text-ink-900 group-hover:text-tu-red-600 transition-colors">
-            {course.subject}
-          </h2>
-          <span className="rounded bg-paper-100 px-2 py-0.5 text-[11px] font-medium text-ink-500">
-            รายวิชา
+    <div className="group relative flex w-full max-w-[360px] flex-col justify-between rounded-2xl border border-line bg-white p-5 shadow-2xs transition-all duration-200 hover:-translate-y-0.5 hover:border-line-strong hover:shadow-sm">
+      <div className="space-y-4">
+        {/* แถวบนสุด: รหัสวิชา */}
+        <div className="text-xs">
+          <span className="font-bold text-ink-400 uppercase tracking-wider">
+            {course.courseCode || "วิชา"}
           </span>
         </div>
-        <p className="mt-1 text-sm text-ink-500">
-          {quizWeeks > 0
-            ? `${quizWeeks} สัปดาห์ที่มีแบบทดสอบ`
-            : "ยังไม่มีแบบทดสอบ"}
-        </p>
+
+        {/* ชื่อวิชา */}
+        <h3 className="text-base font-bold text-ink-900 leading-snug group-hover:text-tu-red-700 transition-colors">
+          {course.subject}
+        </h3>
+
+        {/* สถิติ 2 คอลัมน์ */}
+        <div className="grid grid-cols-2 gap-2.5 pt-1">
+          <div className="flex items-center gap-1.5 rounded-xl bg-paper-50 p-2">
+            <span className="grid h-6 w-6 flex-shrink-0 place-items-center rounded bg-tu-red-50 text-tu-red-600">
+              <CalendarDays className="h-3.5 w-3.5" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-[9px] font-bold text-ink-400 uppercase tracking-tight">มีแบบทดสอบ</p>
+              <p className="text-xs font-bold text-ink-800 whitespace-nowrap">{quizWeeks} สัปดาห์</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5 rounded-xl bg-paper-50 p-2">
+            <span className="grid h-6 w-6 flex-shrink-0 place-items-center rounded bg-amber-50 text-amber-600">
+              <Users className="h-3.5 w-3.5" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-[9px] font-bold text-ink-400 uppercase tracking-tight">นักศึกษาที่ส่งแล้ว</p>
+              <p className="text-xs font-bold text-ink-800 whitespace-nowrap">{studentCount} คน</p>
+            </div>
+          </div>
+        </div>
       </div>
-      <span className="hidden sm:block shrink-0 text-ink-300 transition-colors group-hover:text-tu-red-500">
-        <ChevronRight className="h-5 w-5" strokeWidth={2} />
-      </span>
-    </Link>
+
+      {/* ปุ่มดูรายงาน */}
+      <div className="mt-5">
+        <Link
+          href={`/report/${course.id}`}
+          className="w-full inline-flex h-11 items-center justify-center gap-1.5 rounded-xl bg-tu-red-600 px-4 text-sm font-bold text-white shadow-sm transition hover:bg-tu-red-700 active:scale-95"
+        >
+          <span>ดูรายงาน</span>
+        </Link>
+      </div>
+    </div>
   );
 }

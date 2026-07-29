@@ -1,6 +1,7 @@
 import type { Quiz } from "./quiz";
 import type { StudentAnswers } from "./feedback";
 import type { Submission } from "./analytics";
+import type { PracticeAttempt } from "./practiceHistory";
 
 /* ==========================================================================
    เพื่อนร่วมชั้นจำลอง — ใช้ให้หน้ารายงานของอาจารย์มีข้อมูลพอจะเห็นภาพรวม
@@ -120,4 +121,65 @@ export function generateMockSubmissions(quiz: Quiz): Submission[] {
       ).toISOString(),
     };
   });
+}
+
+/**
+ * ประวัติฝึกซ้อมจำลองของเพื่อนร่วมชั้น (deterministic จาก quiz.revision + รหัสนักศึกษา)
+ * ใช้เฉพาะตอนอาจารย์เปิดดูนักศึกษาที่ไม่มีประวัติฝึกซ้อมจริงเก็บอยู่ในเครื่องนี้ — คนละชุดกับ
+ * ผลทางการ (generateMockSubmissions) แต่แนวคิดเดียวกัน: ยังไม่มีระบบหลายผู้ใช้จริง
+ * บางคนจะไม่มีรอบฝึกซ้อมเลย (0 รอบ) เหมือนสถานการณ์จริงที่ไม่ใช่ทุกคนจะฝึกเพิ่ม
+ */
+export function generateMockPracticeAttempts(quiz: Quiz, studentId: string): PracticeAttempt[] {
+  const rng = makeRng(hashSeed(`${quiz.revision || quiz.week}-${studentId}-practice`));
+  const roundCount = Math.floor(rng() * 4); // 0–3 รอบ
+  if (roundCount === 0) return [];
+
+  const topics = Array.from(
+    new Set(quiz.questions.map((q) => q.topic ?? "ไม่ระบุหัวข้อ")),
+  );
+  const topicEase = new Map<string, number>();
+  topics.forEach((t) => topicEase.set(t, 0.35 + rng() * 0.6));
+
+  const baseAbility = 0.45 + rng() * 0.4;
+  const attempts: PracticeAttempt[] = [];
+
+  for (let r = 0; r < roundCount; r++) {
+    // ฝึกยิ่งหลายรอบ ยิ่งเก่งขึ้นทีละนิด (สะท้อนว่าฝึกซ้อมแล้วดีขึ้นจริง)
+    const ability = Math.min(0.97, baseAbility + r * 0.08);
+    const answers: StudentAnswers = {};
+    let score = 0;
+
+    for (const q of quiz.questions) {
+      const ease = topicEase.get(q.topic ?? "ไม่ระบุหัวข้อ") ?? 0.7;
+      const pCorrect = Math.min(0.97, ability * ease + 0.1);
+
+      if (rng() < pCorrect) {
+        answers[q.id] = q.answer;
+        score += 1;
+      } else {
+        const wrong = q.choices.filter((c) => c.id !== q.answer);
+        if (wrong.length === 0) {
+          answers[q.id] = q.answer;
+          score += 1;
+        } else {
+          const idx = rng() < 0.65 ? 0 : Math.floor(rng() * wrong.length);
+          answers[q.id] = wrong[Math.min(idx, wrong.length - 1)].id;
+        }
+      }
+    }
+
+    const total = quiz.questions.length;
+    attempts.push({
+      id: `mock-practice-${quiz.revision}-${studentId}-${r}`,
+      // รอบเก่าสุดอยู่ไกลสุด ไล่เข้ามาใกล้ปัจจุบัน
+      at: new Date(Date.now() - (roundCount - r) * 3 * 24 * 60 * 60 * 1000).toISOString(),
+      score,
+      total,
+      percent: total > 0 ? Math.round((score / total) * 100) : 0,
+      quiz,
+      answers,
+    });
+  }
+
+  return attempts;
 }

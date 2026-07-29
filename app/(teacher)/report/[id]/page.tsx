@@ -1,5 +1,5 @@
 import { TeacherShell } from "@/components/ui/Shells";
-import ReportWeekList from "@/components/teacher/report/ReportWeekList";
+import ClassOverallReport from "@/components/teacher/report/ClassOverallReport";
 
 export default function ReportCoursePage({
   params,
@@ -8,7 +8,7 @@ export default function ReportCoursePage({
 }) {
   return (
     <TeacherShell>
-      <ReportWeekList courseId={params.id} />
+      <ClassOverallReport courseId={params.id} />
     </TeacherShell>
   );
 }

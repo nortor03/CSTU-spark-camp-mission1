@@ -10,6 +10,8 @@ import AppShell, {
 import StudentAssistant from "@/components/student/StudentAssistant";
 import TeacherAssistant from "@/components/teacher/TeacherAssistant";
 
+import { LogOut, User } from "lucide-react";
+
 // เมนูซ้ายเหลือแค่ 2 หัวข้อหลัก — "จัดหัวข้อ" และ "อัปโหลดเอกสาร"
 // ย้ายไปเข้าถึงจากภายในหน้ารายละเอียดของแต่ละวิชาแทน
 const TEACHER_NAV: NavItem[] = [
@@ -36,16 +38,28 @@ const STUDENT_NAV: NavItem[] = [
 
 /** ปุ่มออกจากระบบบนแถบแดง */
 function SignOut({ href, role }: { href: string; role: string }) {
+  const isTeacher = role === "อาจารย์";
   return (
-    <div className="flex items-center gap-3">
-      <span className="hidden text-xs font-medium text-white/70 sm:block">
-        {role}
-      </span>
+    <div className="flex items-center gap-2 rounded-2xl bg-black/12 p-1">
+      {/* Role Badge */}
+      <div className="hidden items-center gap-2 rounded-xl px-3 py-1.5 sm:flex">
+        <div className={`flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-lg ${
+          isTeacher ? "bg-tu-gold-500 text-tu-red-700" : "bg-white text-tu-red-600"
+        }`}>
+          <User className="h-3.5 w-3.5" strokeWidth={2.5} />
+        </div>
+        <span className="text-xs font-bold tracking-wide text-white/85">
+          {role}
+        </span>
+      </div>
+
+      {/* Logout Button */}
       <Link
         href={href}
-        className="rounded-lg border border-white/25 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-white/10"
+        className="group flex items-center gap-1.5 rounded-xl bg-white/10 px-3.5 py-2 text-xs font-bold text-white transition-all duration-200 hover:bg-white hover:text-tu-red-700 active:scale-95"
       >
-        ออกจากระบบ
+        <span>ออกจากระบบ</span>
+        <LogOut className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5" strokeWidth={2.5} />
       </Link>
     </div>
   );

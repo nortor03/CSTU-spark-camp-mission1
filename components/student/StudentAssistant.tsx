@@ -79,7 +79,7 @@ export default function StudentAssistant() {
     }, 900);
   }
 
-  if (pathname.includes("/student/quiz/")) {
+  if (pathname === "/student" || pathname.includes("/student/quiz/")) {
     return null;
   }
 

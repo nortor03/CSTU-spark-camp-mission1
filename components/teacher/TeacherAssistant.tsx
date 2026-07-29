@@ -130,6 +130,9 @@ function mockReply(text: string): string {
 
 export default function TeacherAssistant() {
   const pathname = usePathname();
+  if (pathname === "/course" || pathname === "/report") {
+    return null;
+  }
   const ctx = contextLabel(pathname);
   const weekKey = weekKeyFromPathname(pathname);
   const suggestions = suggestionsFor(pathname);

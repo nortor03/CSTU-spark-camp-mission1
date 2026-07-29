@@ -23,6 +23,7 @@ import {
   fetchPracticeQuizzes,
   fetchPracticeQuiz,
   fetchPracticeQuizSubmissions,
+  generateTargetedPracticeQuiz,
 } from "@/lib/practiceQuizApi";
 import {
   analyzeSubmissionFeedback,
@@ -639,6 +640,13 @@ export default function StudentSummary({
   // unique ทั้งระบบ) เจอจริง: practice-a03017af7c74 มี q1-q5 ชนกับ q1-q7 ของ
   // ควิซจริงต้นทางเป๊ะ ถ้ากรองด้วย questionId เฉย ๆ จะได้ evidence ผิดรอบ
   const [activePracticeRound, setActivePracticeRound] = useState<number | null>(null);
+  // submissionId ของ "ข้อสอบจริง" ที่หน้านี้กำลังแสดงผล — ดึงมาจาก backend ตอน
+  // trigger feedback อยู่แล้ว (ด้านล่าง) เก็บไว้ใช้ต่อตอนกด "สร้างข้อสอบฝึกซ้อมด้วย
+  // AI" ด้วย เพราะ endpoint generate ต้องใช้ submissionId ของข้อสอบจริงเสมอ
+  // (ไม่ใช่ submissionId ของรอบฝึกซ้อม แม้กำลังดูรอบฝึกซ้อมอยู่ก็ตาม)
+  const [officialSubmissionId, setOfficialSubmissionId] = useState<string | null>(null);
+  const [generatingPractice, setGeneratingPractice] = useState(false);
+  const [practiceGenError, setPracticeGenError] = useState("");
   // id ของแบบฝึกหัดเจาะจุดอ่อนที่กำลังดูอยู่ (null = รอบข้อสอบจริง หรือฝึกซ้อมแบบสุ่ม)
   // แยกเป็น useMemo ต่างหาก ไม่ให้ effect ด้านล่างพึ่ง attempts ทั้งอาเรย์ตรงๆ —
   // เดิม effect ผูกกับ attempts ตรงๆ ทำให้ทุกครั้งที่ attempts โหลดเสร็จ (async
@@ -694,6 +702,7 @@ export default function StudentSummary({
       if (!cancelled) setActivePracticeRound(null);
       const subs = await fetchStudentSubmissions(quiz.id, studentId);
       if (subs.length === 0) throw new Error("ยังไม่มี submission จริง");
+      if (!cancelled) setOfficialSubmissionId(subs[0].submissionId);
       return analyzeSubmissionFeedback(subs[0].submissionId, quiz.id);
     })()
       .then((result) => {
@@ -745,6 +754,15 @@ export default function StudentSummary({
 
   const officialSummary =
     officialMine && quiz ? buildStudentSummary(quiz, officialMine.answers) : null;
+
+  // ข้อที่ตอบผิดของ "ข้อสอบจริง" โดยเฉพาะ — ใช้ตอนกด "สร้างข้อสอบฝึกซ้อมด้วย AI"
+  // ต้องอิงจากข้อสอบจริงเสมอ ไม่ใช่รอบที่กำลังดูอยู่ (เผื่อสลับไปดูแท็บฝึกซ้อมอยู่)
+  const officialWrongQuestionIds =
+    officialMine && quiz
+      ? quiz.questions
+          .filter((q) => officialMine.answers[q.id] !== q.answer)
+          .map((q) => q.id)
+      : [];
 
   const mine =
     activeRound === "official" ? officialMine : attempts.find((a) => a.id === activeRound);
@@ -798,6 +816,31 @@ export default function StudentSummary({
   const filteredQuestions = questionReview.filter((q) =>
     questionFilter === "all" ? true : questionFilter === "correct" ? q.isCorrect : !q.isCorrect,
   );
+
+  /**
+   * ปุ่ม "สร้างข้อสอบฝึกซ้อมด้วย AI" — เดิมลิงก์ไปโหมดฝึกซ้อมสุ่ม (?practice=1)
+   * ซึ่งไม่ใช่ของ AI จริง (เจนในเครื่อง ไม่ผูกกับข้อที่พลาดจริง) แก้ให้เรียก AI
+   * สร้างแบบฝึกหัดเจาะจุดที่พลาดจริง (เหมือนปุ่มในหน้าผลลัพธ์ทันทีหลังส่งข้อสอบใน
+   * StudentQuiz.tsx) แล้วพากลับไปทำรอบที่สร้างเสร็จทันที
+   */
+  async function handleGeneratePractice() {
+    if (!officialSubmissionId || officialWrongQuestionIds.length === 0) return;
+    setGeneratingPractice(true);
+    setPracticeGenError("");
+    try {
+      const { quiz: newQuiz } = await generateTargetedPracticeQuiz({
+        submissionId: officialSubmissionId,
+        wrongQuestionIds: officialWrongQuestionIds,
+        week,
+      });
+      router.push(`/student/quiz/${weekNumber(week)}?practiceQuizId=${newQuiz.id}`);
+    } catch (err) {
+      setPracticeGenError(
+        err instanceof Error ? err.message : "สร้างแบบฝึกหัดไม่สำเร็จ ลองใหม่อีกครั้ง",
+      );
+      setGeneratingPractice(false);
+    }
+  }
 
   // hooks ต้องเรียกด้วยลำดับเดิมทุกครั้ง — วางก่อน early return ทุกจุด
   const officialScoreShown = useCountUp(officialSummary?.score ?? 0);
@@ -1082,17 +1125,29 @@ export default function StudentSummary({
               </div>
             )}
 
-            {/* 3) เลือกครบแล้วค่อยสร้างข้อสอบฝึกซ้อม = เฉพาะมุมมองนักศึกษาเจ้าของ (ไม่โชว์ให้อาจารย์) */}
-            {!isTeacherView && (
+            {/* 3) สร้างข้อสอบฝึกซ้อมด้วย AI จากข้อที่พลาดในข้อสอบจริง — เฉพาะมุมมอง
+                นักศึกษาเจ้าของ (ไม่โชว์ให้อาจารย์) และเฉพาะตอนดูรอบข้อสอบจริงที่มี
+                ข้อผิดอย่างน้อย 1 ข้อ (เดิมปุ่มนี้ลิงก์ไปโหมดฝึกซ้อมสุ่มในเครื่อง
+                (?practice=1) ซึ่งไม่ใช่ของ AI จริงตามที่ label บอก แก้ให้เรียก
+                generateTargetedPracticeQuiz จริงแล้ว — เหมือนปุ่มในหน้าผลลัพธ์
+                ทันทีหลังส่งข้อสอบใน StudentQuiz.tsx) */}
+            {!isTeacherView && activeRound === "official" && officialWrongQuestionIds.length > 0 && (
               <div className="flex flex-col items-end gap-1">
-                <Link
-                  href={`/student/quiz/${week.match(/\d+/)?.[0] ?? ""}?practice=1`}
-                  className="group flex items-center gap-2 rounded-xl border border-tu-gold-200 bg-gradient-to-r from-tu-gold-50 to-amber-50 px-4 py-2 text-sm font-bold text-tu-gold-700 shadow-sm transition-all hover:from-tu-gold-100 hover:to-amber-100 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-tu-gold-500/15"
+                <button
+                  type="button"
+                  onClick={handleGeneratePractice}
+                  disabled={generatingPractice || !officialSubmissionId}
+                  className="group flex items-center gap-2 rounded-xl border border-tu-gold-200 bg-gradient-to-r from-tu-gold-50 to-amber-50 px-4 py-2 text-sm font-bold text-tu-gold-700 shadow-sm transition-all hover:from-tu-gold-100 hover:to-amber-100 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-tu-gold-500/15 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <Sparkles className="h-4 w-4 transition-transform duration-300 group-hover:rotate-12" />
-                  <span>สร้างข้อสอบฝึกซ้อมด้วย AI</span>
-                  <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
-                </Link>
+                  <span>{generatingPractice ? "กำลังสร้าง…" : "สร้างข้อสอบฝึกซ้อมด้วย AI"}</span>
+                  {!generatingPractice && (
+                    <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
+                  )}
+                </button>
+                {practiceGenError && (
+                  <p className="text-[11px] text-tu-red-600">{practiceGenError}</p>
+                )}
                 {/* จำนวนจริงจาก backend (GET .../practice-quizzes) — นับทุกเครื่อง/ทุก browser
                     ที่นักเรียนคนนี้เคยสร้าง ไม่ใช่แค่ในเครื่องนี้เหมือน attempts ด้านบน */}
                 {realPracticeCount !== null && realPracticeCount > 0 && (

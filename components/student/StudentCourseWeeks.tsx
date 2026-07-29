@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useCourse } from "@/lib/courseStore";
 import { weekNumber, resolveHex } from "@/lib/weeks";
 import PageHeader from "@/components/ui/PageHeader";
+import AiLoading from "@/components/ui/AiLoading";
 import { SkeletonListRows } from "@/components/ui/Skeleton";
 import {
   ChevronDown,
@@ -161,6 +162,14 @@ export default function StudentCourseWeeks({ courseId }: { courseId: string }) {
 
   return (
     <div>
+      {generatingWeek !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-paper-50/95 backdrop-blur-sm">
+          <AiLoading
+            title="กำลังสร้างแบบฝึกหัดเจาะจุดที่พลาด"
+            subtitle="AI กำลังออกโจทย์จากข้อที่คุณตอบผิดในข้อสอบจริง"
+          />
+        </div>
+      )}
       <Link
         href="/student"
         className="mb-3 inline-flex items-center gap-1 text-xs font-semibold text-ink-500 transition hover:text-tu-red-600"

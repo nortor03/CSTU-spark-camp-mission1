@@ -32,6 +32,7 @@ import {
   type FeedbackResult,
 } from "@/lib/feedbackApi";
 import MasteryBar, { MasteryLegend } from "@/components/ui/MasteryBar";
+import AiLoading from "@/components/ui/AiLoading";
 import {
   ChevronDown,
   Check,
@@ -888,6 +889,14 @@ export default function StudentSummary({
   if (!mine || !summary) {
     return (
       <div className="relative space-y-10">
+        {generatingPractice && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-paper-50/95 backdrop-blur-sm">
+            <AiLoading
+              title="กำลังสร้างแบบฝึกหัดเจาะจุดที่พลาด"
+              subtitle="AI กำลังออกโจทย์จากข้อที่คุณตอบผิดในข้อสอบจริง"
+            />
+          </div>
+        )}
         <div className="text-sm font-medium text-ink-400">
           <Link href="/student" className="transition-colors hover:text-tu-red-600">
             รายวิชาเรียน
@@ -1012,6 +1021,14 @@ export default function StudentSummary({
 
   return (
     <div className="relative space-y-10">
+      {generatingPractice && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-paper-50/95 backdrop-blur-sm">
+          <AiLoading
+            title="กำลังสร้างแบบฝึกหัดเจาะจุดที่พลาด"
+            subtitle="AI กำลังออกโจทย์จากข้อที่คุณตอบผิดในข้อสอบจริง"
+          />
+        </div>
+      )}
 
       {/* ─── Breadcrumb ─── */}
       <div className="text-sm font-medium text-ink-400">

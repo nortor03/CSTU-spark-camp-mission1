@@ -20,7 +20,6 @@ import {
   type SubmitQuizResult,
 } from "@/lib/quizGradingApi";
 import {
-  generateTargetedPracticeQuiz,
   fetchPracticeQuiz,
   submitPracticeQuizAnswers,
   fetchPracticeQuizSubmissions,
@@ -36,7 +35,6 @@ import {
   Meh,
   Frown,
   BookOpen,
-  Target,
 } from "lucide-react";
 
 type Phase = "loading" | "empty" | "doing" | "submitting" | "result";
@@ -73,15 +71,11 @@ export default function StudentQuiz({ week }: { week: string }) {
   // เหมือนโหมดฝึกซ้อมทั่วไป เพราะเป็นชุดที่สร้างมาให้นักเรียนคนนี้ฝึกเองเท่านั้น
   // ไม่ใช่แบบทดสอบทางการ จึงไม่ต้องส่งไป backend ตรวจแบบ official quiz
   const [isTargetedPractice, setIsTargetedPractice] = useState(false);
-  const [practiceAttemptNumber, setPracticeAttemptNumber] = useState<
-    number | null
-  >(null);
-  const [practiceGenerating, setPracticeGenerating] = useState(false);
-  const [practiceGenError, setPracticeGenError] = useState("");
+  // เลขรอบฝึกหัดเจาะจุดอ่อน — ตอนนี้มีทางเดียวที่มาถึงหน้านี้คือเปิดจากรายการเดิม
+  // (practiceQuizId) ซึ่งยังไม่ได้ส่งเลขรอบมาด้วย เลยค้างเป็น null เสมอ (แสดง
+  // แค่ badge "ฝึกเจาะจุดที่พลาด" เฉยๆ ไม่มีเลขรอบต่อท้าย)
+  const [practiceAttemptNumber] = useState<number | null>(null);
   const inPracticeMode = practice || isTargetedPractice;
-  // id ของ submission ที่กำลังโชว์ผลอยู่ — ใช้เป็นตัวชี้ให้ backend ดึงข้อมูลข้อที่ผิด
-  // ไปสร้างแบบฝึกหัดเจาะจุดอ่อนต่อ (ไม่ต้องส่งเนื้อหาข้อซ้ำไปให้ backend อีก)
-  const [submissionId, setSubmissionId] = useState<string | null>(null);
 
   // ชุดฝึกซ้อม (mock) — เจนจากหัวข้อของควิซจริงถ้ามี ไม่งั้นใช้ค่าเริ่มต้น
   const makePracticeQuiz = useCallback((): Quiz => {
@@ -104,7 +98,6 @@ export default function StudentQuiz({ week }: { week: string }) {
   function applyGradedResult(sq: OfficialQuiz, submission: SubmitQuizResult) {
     const gradedResult = buildGradedResult(sq.questions, submission.questions);
     setResult(gradedResult);
-    setSubmissionId(submission.submissionId);
 
     const correctById = new Map(
       submission.questions.map((g) => [g.questionId, g.correctId]),
@@ -394,47 +387,12 @@ export default function StudentQuiz({ week }: { week: string }) {
    * backend ดึงข้อที่ผิด/เฉลย/หัวข้อ/CLO ไปสร้างแบบฝึกหัดเจาะจุดอ่อนเอง แล้วเข้าสู่
    * โหมดฝึกซ้อมด้วยชุดที่ได้ (ตรวจในเครื่อง ไม่ใช่ official submission)
    */
-  async function startTargetedPractice() {
-    if (!result || !submissionId) return;
-    const wrongQuestionIds = result.questions
-      .filter((q) => !q.isCorrect)
-      .map((q) => q.question.id);
-    if (wrongQuestionIds.length === 0) return;
-
-    setPracticeGenError("");
-    setPracticeGenerating(true);
-    try {
-      const { quiz: generated, attemptNumber } = await generateTargetedPracticeQuiz({
-        submissionId,
-        wrongQuestionIds,
-        week,
-      });
-      setQuiz(generated);
-      setIsTargetedPractice(true);
-      setPracticeAttemptNumber(attemptNumber);
-      setResult(null);
-      setSummary(null);
-      setPhase("doing");
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    } catch (err) {
-      setPracticeGenError(
-        err instanceof Error ? err.message : "สร้างแบบฝึกหัดไม่สำเร็จ",
-      );
-    } finally {
-      setPracticeGenerating(false);
-    }
-  }
-
-  if (phase === "loading" || phase === "submitting" || practiceGenerating) {
+  if (phase === "loading" || phase === "submitting") {
     return (
       <div className="flex flex-col items-center justify-center gap-3 py-24">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-line border-t-tu-red-500" />
         <p className="text-sm text-ink-400">
-          {practiceGenerating
-            ? "กำลังสร้างแบบฝึกหัดเจาะจุดที่พลาด…"
-            : phase === "submitting"
-              ? "กำลังส่งคำตอบไปตรวจ…"
-              : "กำลังโหลด…"}
+          {phase === "submitting" ? "กำลังส่งคำตอบไปตรวจ…" : "กำลังโหลด…"}
         </p>
       </div>
     );
@@ -467,10 +425,6 @@ export default function StudentQuiz({ week }: { week: string }) {
         summary={summary}
         onRetry={retry}
         practice={inPracticeMode}
-        onStartTargetedPractice={
-          !practice && submissionId ? startTargetedPractice : undefined
-        }
-        practiceGenError={practiceGenError}
         courseId={activeCourseId}
         studentId={studentId}
         summaryRoundId={isTargetedPractice && quiz ? quiz.id : undefined}
@@ -585,8 +539,6 @@ export function ResultView({
   onRetry,
   practice = false,
   isModal = false,
-  onStartTargetedPractice,
-  practiceGenError = "",
   courseId = null,
   studentId = null,
   summaryRoundId,
@@ -597,9 +549,6 @@ export function ResultView({
   onRetry: () => void;
   practice?: boolean;
   isModal?: boolean;
-  /** กดเพื่อขอให้ AI สร้างแบบฝึกหัดเจาะจุดที่พลาดของรอบนี้โดยเฉพาะ */
-  onStartTargetedPractice?: () => void;
-  practiceGenError?: string;
   /** ใช้บังคับกรอกบันทึกสรุปก่อนดูผลวิเคราะห์ AI — เฉพาะรอบข้อสอบจริงเท่านั้น */
   courseId?: string | null;
   studentId?: string | null;
@@ -746,19 +695,6 @@ export function ResultView({
                 </Link>
               )}
 
-              {!isModal && onStartTargetedPractice && wrongIds.length > 0 && (
-                <button
-                  type="button"
-                  onClick={onStartTargetedPractice}
-                  className="btn-secondary inline-flex w-fit items-center gap-1.5"
-                >
-                  <Target className="h-3.5 w-3.5" />
-                  สร้างแบบฝึกหัดเจาะจุดที่พลาด
-                </button>
-              )}
-              {practiceGenError && (
-                <p className="text-xs text-tu-red-600">{practiceGenError}</p>
-              )}
             </div>
           </div>
         </div>

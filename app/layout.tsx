@@ -18,8 +18,8 @@ const appFont = Maitree({
 });
 
 export const metadata: Metadata = {
-  title: "TONLABKIT — ระบบจัดการเอกสารการสอน",
-  description: "อัปโหลดเอกสารการสอนและจัดกลุ่มหัวข้อรายสัปดาห์",
+  title: "kroonquiz — ระบบจัดหมวดหมู่และควิซ AI",
+  description: "ระบบจัดหมวดหมู่เอกสารและแบบทดสอบทบทวนความรู้ด้วย AI สำหรับนักศึกษา",
 };
 
 export default function RootLayout({

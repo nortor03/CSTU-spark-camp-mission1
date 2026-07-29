@@ -106,7 +106,7 @@ export default function UnifiedLoginForm() {
           />
           <div>
             <h1 className="text-balance font-semibold text-3xl text-ink-900">
-              เข้าสู่ระบบ Tonlabkit
+              เข้าสู่ระบบ KroonQuiz
             </h1>
             <p className="mt-1.5 text-xs text-ink-500">
               ยินดีต้อนรับ! กรุณาเข้าสู่ระบบด้วยบัญชีของคุณ

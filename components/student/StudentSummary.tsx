@@ -379,13 +379,24 @@ function RoundPicker({
 /* ═══════════════════════════════════════════════════════════
    Main Component
    ═══════════════════════════════════════════════════════════ */
-export default function StudentSummary({ week }: { week: string }) {
+export default function StudentSummary({
+  week,
+  courseId: courseIdProp,
+}: {
+  week: string;
+  /** ระบุตรง ๆ เมื่อเรียกจากฝั่งอาจารย์ (/report/[id]/student/[week]) — ไม่พึ่ง activeCourseId ของนักศึกษาเจ้าของเครื่อง */
+  courseId?: string;
+}) {
   const router = useRouter();
-  const { getQuiz, getCourse, submissions, studentId, activeCourseId, hydrated } =
+  const { getQuiz, getCourse, submissions, studentId, activeCourseId, hydrated, setActiveCourse } =
     useCourse();
 
+  useEffect(() => {
+    if (courseIdProp) setActiveCourse(courseIdProp);
+  }, [courseIdProp, setActiveCourse]);
+
   const quiz = getQuiz(week);
-  const course = getCourse(activeCourseId ?? "");
+  const course = getCourse(courseIdProp ?? activeCourseId ?? "");
   const wk = weekNumber(week);
 
   // อาจารย์เปิดดูสรุปของนักศึกษาคนหนึ่ง (จากตารางในหน้ารายงาน) — ส่ง ?student=<id> มา
@@ -516,25 +527,48 @@ export default function StudentSummary({ week }: { week: string }) {
 
       {/* ─── Breadcrumb ─── */}
       <div className="text-sm font-medium text-ink-400">
-        <Link href="/student" className="transition-colors hover:text-tu-red-600">
-          รายวิชาเรียน
-        </Link>
-        {course && (
+        {isTeacherView ? (
           <>
-            <span className="mx-2 text-ink-300">/</span>
-            <Link
-              href={`/student/course/${course.id}`}
-              className="transition-colors hover:text-tu-red-600"
-            >
-              {course.subject}
+            <Link href="/report" className="transition-colors hover:text-tu-red-600">
+              รายงานชั้นเรียน
             </Link>
+            {course && (
+              <>
+                <span className="mx-2 text-ink-300">/</span>
+                <Link
+                  href={`/report/${course.id}`}
+                  className="transition-colors hover:text-tu-red-600"
+                >
+                  {course.subject}
+                </Link>
+              </>
+            )}
             <span className="mx-2 text-ink-300">/</span>
-            <Link
-              href={`/student/summary/course/${course.id}`}
-              className="transition-colors hover:text-tu-red-600"
-            >
-              วิเคราะห์ผลการเรียนรู้
+            <span className="text-ink-700">สรุปรายบุคคล</span>
+          </>
+        ) : (
+          <>
+            <Link href="/student" className="transition-colors hover:text-tu-red-600">
+              รายวิชาเรียน
             </Link>
+            {course && (
+              <>
+                <span className="mx-2 text-ink-300">/</span>
+                <Link
+                  href={`/student/course/${course.id}`}
+                  className="transition-colors hover:text-tu-red-600"
+                >
+                  {course.subject}
+                </Link>
+                <span className="mx-2 text-ink-300">/</span>
+                <Link
+                  href={`/student/summary/course/${course.id}`}
+                  className="transition-colors hover:text-tu-red-600"
+                >
+                  วิเคราะห์ผลการเรียนรู้
+                </Link>
+              </>
+            )}
           </>
         )}
       </div>

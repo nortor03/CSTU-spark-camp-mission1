@@ -473,6 +473,7 @@ export default function StudentQuiz({ week }: { week: string }) {
         practiceGenError={practiceGenError}
         courseId={activeCourseId}
         studentId={studentId}
+        summaryRoundId={isTargetedPractice && quiz ? quiz.id : undefined}
       />
     );
   }
@@ -588,6 +589,7 @@ export function ResultView({
   practiceGenError = "",
   courseId = null,
   studentId = null,
+  summaryRoundId,
 }: {
   week: string;
   result: QuizResult;
@@ -601,6 +603,11 @@ export function ResultView({
   /** ใช้บังคับกรอกบันทึกสรุปก่อนดูผลวิเคราะห์ AI — เฉพาะรอบข้อสอบจริงเท่านั้น */
   courseId?: string | null;
   studentId?: string | null;
+  /** id ของแบบฝึกหัดเจาะจุดอ่อนที่ backend สร้างให้ (ขึ้นต้น "practice-") — มีค่า
+   * เฉพาะตอนเป็นรอบฝึกซ้อมเจาะจุดอ่อนจริง ใช้พาไปหน้าสรุปของรอบนี้เป๊ะๆ แทนที่จะ
+   * ไปหน้าสรุปของ "ข้อสอบจริง" เฉยๆ (ค่าว่าง = ข้อสอบจริง หรือฝึกซ้อมสุ่มที่ไม่มี
+   * ผลวิเคราะห์ AI ให้ดู) */
+  summaryRoundId?: string;
 }) {
   const percent = Math.round((result.score / result.total) * 100);
   // บังคับกรอกบันทึกสรุปก่อนไปหน้าวิเคราะห์ AI — เฉพาะข้อสอบจริง (ไม่ใช่ฝึกซ้อม)
@@ -728,7 +735,11 @@ export function ResultView({
               {!isModal && (practice || hasNote) && (
                 <Link
                   replace
-                  href={`/student/summary/${week.match(/\d+/)?.[0] ?? "1"}`}
+                  href={
+                    summaryRoundId
+                      ? `/student/summary/${week.match(/\d+/)?.[0] ?? "1"}?round=${summaryRoundId}&lock=1`
+                      : `/student/summary/${week.match(/\d+/)?.[0] ?? "1"}`
+                  }
                   className="btn-primary w-fit"
                 >
                   ดูสรุปจุดแข็ง / จุดอ่อน →

@@ -433,8 +433,8 @@ export default function StudentOverallSummary({ courseId }: { courseId: string }
                 replace
                 href={
                   weekResults.length > 0
-                    ? `/student/summary/${weekResults[weekResults.length - 1].wkNum}`
-                    : "/student/summary"
+                    ? `/student/summary/${weekResults[0].wkNum}`
+                    : "/student/summary/1"
                 }
                 className="rounded-lg px-4 py-2 text-sm font-bold text-ink-500 transition hover:text-ink-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-tu-red-300"
               >

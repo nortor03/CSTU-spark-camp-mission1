@@ -849,18 +849,6 @@ export default function StudentSummary({
     }
   }
 
-  // hooks ต้องเรียกด้วยลำดับเดิมทุกครั้ง — วางก่อน early return ทุกจุด
-  const officialScoreShown = useCountUp(officialSummary?.score ?? 0);
-  // นับ CLO ที่ "เข้าใจดี/ควรทบทวน" จากคะแนน AI จริง (feedback.findings[].score
-  // เต็ม 5) แทนการนับหัวข้อจากคำตอบถูก/ผิดในเครื่องแบบเดิม — เกณฑ์เทียบเท่าเดิม
-  // (≥80% ~ 4/5, <50% ~ ต่ำกว่า 2.5/5 คือ ≤2)
-  const cloStrongShown = useCountUp(
-    feedback?.findings.filter((f) => f.score >= 4).length ?? 0,
-  );
-  const cloWeakShown = useCountUp(
-    feedback?.findings.filter((f) => f.score <= 2).length ?? 0,
-  );
-
   if (!hydrated) {
     return <SkeletonStatHero />;
   }
@@ -1166,40 +1154,6 @@ export default function StudentSummary({
           </div>
         </div>
 
-        {/* ─── KPI inline stats ─── */}
-        <Reveal delay={40}>
-          <div className="mt-7 flex flex-wrap items-end gap-x-10 gap-y-4 border-b border-line-soft pb-7">
-            <div className="group">
-              <p className="text-[11px] font-semibold uppercase tracking-widest text-ink-400">
-                คะแนนสอบจริง
-              </p>
-              <p className="mt-1 text-3xl font-extrabold tabular-nums text-ink-900">
-                {officialScoreShown}
-                <span className="ml-1 text-base font-semibold text-ink-300">
-                  / {officialSummary.total} ข้อ
-                </span>
-              </p>
-            </div>
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-widest text-ink-400">
-                CLO เข้าใจดี (≥4/5)
-              </p>
-              <p className="mt-1 text-3xl font-extrabold tabular-nums text-[#047857]">
-                {cloStrongShown}
-                <span className="ml-1 text-base font-semibold text-ink-300">CLO</span>
-              </p>
-            </div>
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-widest text-ink-400">
-                CLO ควรทบทวน (&le;2/5)
-              </p>
-              <p className="mt-1 text-3xl font-extrabold tabular-nums text-tu-red-600">
-                {cloWeakShown}
-                <span className="ml-1 text-base font-semibold text-ink-300">CLO</span>
-              </p>
-            </div>
-          </div>
-        </Reveal>
       </div>
 
       {/* ─── Hero: Score Ring + Skill Radar ─── */}

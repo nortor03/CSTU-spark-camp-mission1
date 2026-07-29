@@ -9,12 +9,22 @@ import {
   buildStudentSummary,
   levelOf,
   LEVEL_META,
+  UNKNOWN_TOPIC,
   type MasteryLevel,
   type Submission,
   type StudentSummary as StudentSummaryData,
 } from "@/lib/analytics";
+import type { QuizQuestion } from "@/lib/quiz";
 import { weekNumber } from "@/lib/weeks";
 import { getPracticeHistory, type PracticeAttempt } from "@/lib/practiceHistory";
+import { fetchStudentSubmissions } from "@/lib/quizGradingApi";
+import { fetchPracticeQuizzes, fetchPracticeQuiz } from "@/lib/practiceQuizApi";
+import {
+  analyzeSubmissionFeedback,
+  loadPracticeFeedback,
+  triggerFeedbackAnalysis,
+  type FeedbackResult,
+} from "@/lib/feedbackApi";
 import MasteryBar, { MasteryLegend } from "@/components/ui/MasteryBar";
 import {
   ChevronDown,
@@ -29,9 +39,9 @@ import {
   CheckCircle2,
   Zap,
   ArrowRight,
+  AlertTriangle,
 } from "lucide-react";
 import ImprovementChart from "./ImprovementChart";
-import CloRadar, { buildCloMastery } from "./CloRadar";
 
 /* ─── Design tokens ─── */
 const LEVEL_CHIP: Record<MasteryLevel, string> = {
@@ -376,6 +386,100 @@ function RoundPicker({
   );
 }
 
+/** แถบคะแนน 1 CLO — ประเมินโดย AI (เต็ม 5) ใช้ชุดสี/ไอคอนสถานะเดียวกับ MasteryBar
+ * (strong/medium/weak) เพื่อให้อ่านสอดคล้องกับส่วน "ความเข้าใจรายหัวข้อ" ด้านล่าง
+ * ไม่ใช้ MasteryBar ตรง ๆ เพราะข้อความ "ถูก X จาก Y ข้อ" ของมันสื่อว่านับข้อ ทั้งที่
+ * คะแนนนี้เป็นคะแนนประเมินภาพรวมจาก AI ไม่ใช่จำนวนข้อที่ตอบถูก */
+function CloScoreBar({
+  code,
+  description,
+  score,
+}: {
+  code: string;
+  description: string | null;
+  score: number;
+}) {
+  const clamped = Math.max(0, Math.min(5, score));
+  const percent = Math.round((clamped / 5) * 100);
+  const meta = LEVEL_META[levelOf(percent)];
+
+  return (
+    <div className="py-2.5">
+      <p className="mb-1 text-sm font-medium leading-snug text-ink-800">
+        <span className="font-bold text-ink-900">{code}</span>
+        {description ? ` — ${description}` : ""}
+      </p>
+      <div className="mb-1.5 flex items-baseline justify-end gap-2 text-xs">
+        <span className="tabular-nums font-bold text-ink-800">{percent}%</span>
+      </div>
+      <div className="flex items-center gap-3">
+        <div
+          className="h-1.5 flex-1 overflow-hidden rounded-full bg-paper-200"
+          role="img"
+          aria-label={`${code}: ${clamped} จาก 5 คะแนน (${percent}%) ประเมินโดย AI`}
+        >
+          <div
+            className="bar-grow h-full rounded-full"
+            style={{ width: `${percent}%`, backgroundColor: meta.hex }}
+          />
+        </div>
+        <span className="flex-shrink-0 text-[11px] tabular-nums text-ink-400">
+          {clamped}/5
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/** โชว์ผลวิเคราะห์ "AI สรุปข้อสังเกต" ของรอบข้อสอบจริง — จุดแข็ง/จุดอ่อนจาก backend
+ * จริง (lib/feedbackApi.ts) แทนที่ logic ท้องถิ่นเดิมที่ปั้นจาก topic mastery ตรงๆ */
+function AiFeedbackPanel({
+  status,
+  feedback,
+}: {
+  status: "idle" | "loading" | "error";
+  feedback: FeedbackResult | null;
+}) {
+  if (status === "loading") {
+    return (
+      <div className="flex items-center gap-3 rounded-xl border border-dashed border-line bg-paper-50/60 px-4 py-5">
+        <div className="h-4 w-4 flex-shrink-0 animate-spin rounded-full border-2 border-line border-t-tu-gold-500" />
+        <p className="text-sm text-ink-500">กำลังวิเคราะห์ผลด้วย AI…</p>
+      </div>
+    );
+  }
+
+  if (status === "error" || !feedback) {
+    return (
+      <div className="flex items-start gap-3 rounded-xl border-l-[3px] border-ink-300 bg-paper-50/60 py-2.5 pl-4 pr-3">
+        <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-ink-400" />
+        <p className="text-sm leading-relaxed text-ink-500">
+          ยังไม่มีผลวิเคราะห์ AI สำหรับรอบนี้ ลองรีเฟรชหน้าอีกครั้ง
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-xl border-l-[3px] border-emerald-500 bg-emerald-50/40 py-2.5 pl-4 pr-3">
+        <p className="mb-1 flex items-center gap-1.5 text-xs font-bold text-[#047857]">
+          <TrendingUp className="h-3.5 w-3.5" />
+          จุดแข็งของคุณ
+        </p>
+        <p className="text-sm leading-relaxed text-ink-600">{feedback.strengths}</p>
+      </div>
+      <div className="rounded-xl border-l-[3px] border-tu-red-500 bg-tu-red-50/40 py-2.5 pl-4 pr-3">
+        <p className="mb-1 flex items-center gap-1.5 text-xs font-bold text-tu-red-600">
+          <Target className="h-3.5 w-3.5" />
+          จุดที่ควรโฟกัส
+        </p>
+        <p className="text-sm leading-relaxed text-ink-600">{feedback.weaknesses}</p>
+      </div>
+    </div>
+  );
+}
+
 /* ═══════════════════════════════════════════════════════════
    Main Component
    ═══════════════════════════════════════════════════════════ */
@@ -405,6 +509,100 @@ export default function StudentSummary({ week }: { week: string }) {
     }
     setAttempts(getPracticeHistory(studentId, activeCourseId, week));
   }, [isTeacherView, hydrated, studentId, activeCourseId, week]);
+
+  // จำนวนแบบฝึกหัดเจาะจุดอ่อนที่ AI สร้างให้จริง — ดึงจาก backend ตรงๆ
+  // (GET /api/v1/quizzes/{quiz_id}/practice-quizzes) ไม่ใช่นับจาก localStorage
+  // (attempts ด้านบน) เพราะ localStorage เห็นแค่เครื่องนี้เครื่องเดียว ถ้านักเรียน
+  // เคยฝึกจากเครื่อง/browser อื่นมาก่อน จำนวนจริงจะมากกว่าที่นับได้ในเครื่องนี้
+  const [realPracticeCount, setRealPracticeCount] = useState<number | null>(null);
+  useEffect(() => {
+    if (isTeacherView || !hydrated || !quiz || !studentId) {
+      setRealPracticeCount(null);
+      return;
+    }
+    let cancelled = false;
+    fetchPracticeQuizzes(quiz.id, studentId)
+      .then((list) => {
+        if (!cancelled) setRealPracticeCount(list.length);
+      })
+      .catch((err) => {
+        console.warn("โหลดจำนวนแบบฝึกหัดที่เคยสร้างไม่สำเร็จ", err);
+        if (!cancelled) setRealPracticeCount(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isTeacherView, hydrated, quiz, studentId]);
+
+  // "AI สรุปข้อสังเกต" — วิเคราะห์จาก backend จริง (ดู lib/feedbackApi.ts)
+  // ใช้ได้ 2 กรณี เพราะต้องมี submissionId จริงจาก backend เท่านั้น:
+  //   1) รอบข้อสอบจริง (official) ของเจ้าของบัญชีเอง
+  //   2) รอบฝึกซ้อมที่เป็น "แบบฝึกหัดเจาะจุดอ่อน" ที่ backend สร้างให้ (id ขึ้นต้น
+  //      "practice-" เสมอ — ดู lib/practiceQuizApi.ts) ใช้ feedback ก้อนเดิมจาก
+  //      submission ทางการ ไม่วิเคราะห์ใหม่
+  // รอบฝึกซ้อมแบบสุ่มทั่วไป (เจนในเครื่องด้วย uid("quiz") ไม่เคยส่ง backend เลย)
+  // กับมุมมองอาจารย์ (ไม่มี submission จริงของนักศึกษาคนนั้นให้ตรวจ) ไม่มี
+  // submissionId ให้วิเคราะห์ — "unavailable" แปลว่าไม่ต้องพยายามเรียก backend เลย
+  // ให้ตกกลับไปใช้พาแนล local เดิม
+  const [feedback, setFeedback] = useState<FeedbackResult | null>(null);
+  const [feedbackStatus, setFeedbackStatus] = useState<
+    "idle" | "loading" | "error" | "unavailable"
+  >("loading");
+  useEffect(() => {
+    if (isTeacherView || !hydrated || !quiz || !studentId) {
+      setFeedback(null);
+      setFeedbackStatus("unavailable");
+      return;
+    }
+
+    const activeAttemptQuiz =
+      activeRound === "official"
+        ? null
+        : (attempts.find((a) => a.id === activeRound)?.quiz ?? null);
+    const targetedPracticeQuizId = activeAttemptQuiz?.id.startsWith("practice-")
+      ? activeAttemptQuiz.id
+      : null;
+
+    if (activeRound !== "official" && !targetedPracticeQuizId) {
+      setFeedback(null);
+      setFeedbackStatus("unavailable");
+      return;
+    }
+
+    let cancelled = false;
+    setFeedback(null);
+    setFeedbackStatus("loading");
+
+    (async () => {
+      if (targetedPracticeQuizId) {
+        // ใช้ submissionId ของ "รอบฝึกซ้อมนี้โดยเฉพาะ" ไม่ใช่ submission ล่าสุด
+        // ของนักเรียน — แต่ละรอบฝึกซ้อมอาจ generate มาจากคนละ submission กันได้
+        // (เช่นนักเรียนส่งข้อสอบจริงซ้ำหลายครั้ง) เดาแบบเหมารวมว่าใช้ submission
+        // ล่าสุดเสมอเคยทำให้ยิง feedback ผิดตัว ได้ 404 มาก่อน (ยืนยันกับทีม
+        // backend แล้วว่าไม่ใช่บั๊กฝั่งเขา — ดู lib/practiceQuizApi.ts)
+        const { submissionId } = await fetchPracticeQuiz(targetedPracticeQuizId);
+        if (!submissionId) throw new Error("แบบฝึกหัดนี้ไม่มี submission ต้นทาง");
+        const { feedbackId } = await triggerFeedbackAnalysis(submissionId);
+        return loadPracticeFeedback(quiz.id, targetedPracticeQuizId, feedbackId);
+      }
+      const subs = await fetchStudentSubmissions(quiz.id, studentId);
+      if (subs.length === 0) throw new Error("ยังไม่มี submission จริง");
+      return analyzeSubmissionFeedback(subs[0].submissionId, quiz.id);
+    })()
+      .then((result) => {
+        if (cancelled) return;
+        setFeedback(result);
+        setFeedbackStatus("idle");
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.warn("วิเคราะห์ feedback ไม่สำเร็จ", err);
+        setFeedbackStatus("error");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isTeacherView, hydrated, quiz, studentId, activeRound, attempts]);
 
   // แต่ละรอบฝึกซ้อมมีชุดคำถามของตัวเอง — ตรวจด้วยควิซของรอบนั้น ไม่ใช่ควิซทางการ
   const attemptResults = useMemo(
@@ -452,6 +650,35 @@ export default function StudentSummary({ week }: { week: string }) {
   // ควิซที่ใช้คู่กับคำตอบของรอบที่กำลังดู (ทางการ = ควิซทางการ, ฝึกซ้อม = ควิซของรอบนั้นเอง)
   const activeQuiz =
     activeRound === "official" ? quiz : attemptResults.find((a) => a.attempt.id === activeRound)?.attempt.quiz;
+
+  // ทบทวนคำตอบครบทุกข้อ (ไม่ใช่แค่ข้อที่ตอบผิดแบบเดิม) — แนบคำอธิบายจาก AI ต่อข้อ
+  // ถ้ามี (จาก feedback.findings[].evidence ที่ kind === "quiz" จับคู่ด้วย questionId)
+  const questionReview = useMemo(() => {
+    if (!activeQuiz || !mine) return [];
+    const aiCommentByQuestion = new Map(
+      (feedback?.findings ?? [])
+        .flatMap((f) => f.evidence)
+        .filter((e) => e.kind === "quiz" && e.questionId)
+        .map((e) => [e.questionId as string, e.comment]),
+    );
+    return activeQuiz.questions.map((q: QuizQuestion) => {
+      const chosenId = mine.answers[q.id] ?? null;
+      const isCorrect = chosenId === q.answer;
+      return {
+        id: q.id,
+        topic: q.topic?.trim() || UNKNOWN_TOPIC,
+        question: q.question,
+        isCorrect,
+        chosenText: q.choices.find((c) => c.id === chosenId)?.text ?? "(ไม่ได้ตอบ)",
+        correctText: q.choices.find((c) => c.id === q.answer)?.text ?? "(ไม่ได้ตอบ)",
+        aiComment: aiCommentByQuestion.get(q.id) ?? null,
+      };
+    });
+  }, [activeQuiz, mine, feedback]);
+  const [questionFilter, setQuestionFilter] = useState<"all" | "correct" | "wrong">("all");
+  const filteredQuestions = questionReview.filter((q) =>
+    questionFilter === "all" ? true : questionFilter === "correct" ? q.isCorrect : !q.isCorrect,
+  );
 
   // hooks ต้องเรียกด้วยลำดับเดิมทุกครั้ง — วางก่อน early return ทุกจุด
   const officialScoreShown = useCountUp(officialSummary?.score ?? 0);
@@ -628,14 +855,23 @@ export default function StudentSummary({ week }: { week: string }) {
 
             {/* 3) เลือกครบแล้วค่อยสร้างข้อสอบฝึกซ้อม = เฉพาะมุมมองนักศึกษาเจ้าของ (ไม่โชว์ให้อาจารย์) */}
             {!isTeacherView && (
-              <Link
-                href={`/student/quiz/${week.match(/\d+/)?.[0] ?? ""}?practice=1`}
-                className="group flex items-center gap-2 rounded-xl border border-tu-gold-200 bg-gradient-to-r from-tu-gold-50 to-amber-50 px-4 py-2 text-sm font-bold text-tu-gold-700 shadow-sm transition-all hover:from-tu-gold-100 hover:to-amber-100 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-tu-gold-500/15"
-              >
-                <Sparkles className="h-4 w-4 transition-transform duration-300 group-hover:rotate-12" />
-                <span>สร้างข้อสอบฝึกซ้อมด้วย AI</span>
-                <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
-              </Link>
+              <div className="flex flex-col items-end gap-1">
+                <Link
+                  href={`/student/quiz/${week.match(/\d+/)?.[0] ?? ""}?practice=1`}
+                  className="group flex items-center gap-2 rounded-xl border border-tu-gold-200 bg-gradient-to-r from-tu-gold-50 to-amber-50 px-4 py-2 text-sm font-bold text-tu-gold-700 shadow-sm transition-all hover:from-tu-gold-100 hover:to-amber-100 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-tu-gold-500/15"
+                >
+                  <Sparkles className="h-4 w-4 transition-transform duration-300 group-hover:rotate-12" />
+                  <span>สร้างข้อสอบฝึกซ้อมด้วย AI</span>
+                  <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
+                </Link>
+                {/* จำนวนจริงจาก backend (GET .../practice-quizzes) — นับทุกเครื่อง/ทุก browser
+                    ที่นักเรียนคนนี้เคยสร้าง ไม่ใช่แค่ในเครื่องนี้เหมือน attempts ด้านบน */}
+                {realPracticeCount !== null && realPracticeCount > 0 && (
+                  <p className="text-[11px] text-ink-400">
+                    เคยสร้างแบบฝึกหัดเจาะจุดอ่อนแล้ว {realPracticeCount} ชุด (ข้อมูลจริงจากระบบ)
+                  </p>
+                )}
+              </div>
             )}
           </div>
         </div>
@@ -707,48 +943,40 @@ export default function StudentSummary({ week }: { week: string }) {
             </span>
           </div>
 
-          {/* Right: CLO Radar (รายหัวข้อดูได้ที่ส่วน "ความเข้าใจรายหัวข้อ" ด้านล่างแทน) */}
+          {/* Right: ผลลัพธ์การเรียนรู้ราย CLO — ประเมินโดย AI (findings[].score จาก backend เต็ม 5) */}
           <div className="flex-1 md:w-3/5">
-            {(() => {
-              const cloData = course?.clos?.length && activeQuiz && mine
-                ? buildCloMastery([activeQuiz], [mine.answers], course.clos)
-                : [];
-              return (
-                <div>
-                  <div className="mb-2">
-                    <h3 className="display text-lg">ผลลัพธ์การเรียนรู้ (CLO)</h3>
-                    <p className="mt-0.5 text-xs text-ink-500">
-                      {activeRound === "official"
-                        ? "วัดจากคะแนนสอบจริงจากอาจารย์"
-                        : "วัดจากคะแนนการฝึกซ้อมด้วยตนเอง"}
-                    </p>
-                  </div>
-                  {cloData.length === 0 ? (
-                    <div className="flex min-h-[220px] flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-line bg-paper-50/60 px-6 py-10 text-center">
-                      <p className="max-w-[26ch] text-xs leading-relaxed text-ink-400">
-                        ข้อสอบวิชานี้ยังไม่ได้ระบุ CLO ที่เกี่ยวข้อง — เมื่ออาจารย์ผูก CLO กับคำถามแล้ว กราฟจะแสดงที่นี่
-                      </p>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="flex items-center justify-center">
-                        <CloRadar clos={cloData} />
-                      </div>
-                      {/* Legend */}
-                      <div className="mt-3 divide-y divide-line-soft rounded-xl border border-line-soft bg-paper-50/60 px-4 py-2">
-                        {cloData.map((c) => (
-                          <div key={c.code} className="flex items-center justify-between gap-3 py-1.5">
-                            <span className="text-[11px] font-bold text-ink-600">{c.code}</span>
-                            <span className="min-w-0 flex-1 truncate text-[11px] text-ink-400">{c.description}</span>
-                            <span className="flex-shrink-0 text-[11px] font-bold tabular-nums text-ink-800">{c.percent}%</span>
-                          </div>
-                        ))}
-                      </div>
-                    </>
-                  )}
+            <div>
+              <div className="mb-2">
+                <h3 className="display text-lg">ผลลัพธ์การเรียนรู้ (CLO)</h3>
+                <p className="mt-0.5 text-xs text-ink-500">ประเมินโดย AI จากคำตอบจริงของคุณ — เต็ม 5 คะแนนต่อ CLO</p>
+              </div>
+
+              {feedbackStatus === "loading" ? (
+                <div className="flex min-h-[160px] items-center justify-center gap-3 rounded-2xl border border-dashed border-line bg-paper-50/60">
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-line border-t-tu-gold-500" />
+                  <p className="text-xs text-ink-400">กำลังวิเคราะห์ผล CLO ด้วย AI…</p>
                 </div>
-              );
-            })()}
+              ) : !feedback || feedback.findings.length === 0 ? (
+                <div className="flex min-h-[160px] flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-line bg-paper-50/60 px-6 py-10 text-center">
+                  <p className="max-w-[26ch] text-xs leading-relaxed text-ink-400">
+                    {feedbackStatus === "unavailable"
+                      ? "ผลวิเคราะห์ CLO ใช้ได้เฉพาะรอบข้อสอบจริง หรือแบบฝึกหัดเจาะจุดอ่อนที่ AI สร้างให้เท่านั้น"
+                      : "ยังไม่มีผลวิเคราะห์ CLO สำหรับรอบนี้"}
+                  </p>
+                </div>
+              ) : (
+                <div className="divide-y divide-line-soft">
+                  {feedback.findings.map((f) => (
+                    <CloScoreBar
+                      key={f.cloCode}
+                      code={f.cloCode}
+                      description={course?.clos?.find((c) => c.code === f.cloCode)?.description ?? null}
+                      score={f.score}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </section>
       </Reveal>
@@ -800,6 +1028,9 @@ export default function StudentSummary({ week }: { week: string }) {
               </div>
               <hr className="rule-gold mb-5" />
 
+              {feedbackStatus !== "unavailable" ? (
+                <AiFeedbackPanel status={feedbackStatus} feedback={feedback} />
+              ) : (
               <div className="space-y-4">
                 {hasWeak ? (
                   <div className="rounded-xl border-l-[3px] border-tu-red-500 bg-tu-red-50/40 py-2.5 pl-4 pr-3 transition-colors hover:bg-tu-red-50/70">
@@ -871,66 +1102,120 @@ export default function StudentSummary({ week }: { week: string }) {
                     </div>
                   ))}
               </div>
+              )}
             </section>
           </Reveal>
         </div>
       </div>
 
-      {/* ─── จุดที่ตอบผิด ─── */}
-      {summary.misconceptions.length > 0 && (
+      {/* ─── ทบทวนคำตอบรายข้อ ─── */}
+      {questionReview.length > 0 && (
         <Reveal>
           <div className="border-t border-line-soft pt-10">
-            <div className="mb-2.5 flex items-center justify-between">
+            <div className="mb-2.5 flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h2 className="display text-lg">จุดที่ตอบผิดในรอบนี้</h2>
-                <p className="mt-1 text-sm text-ink-500">เทียบคำตอบที่คุณเลือกกับคำตอบที่ถูก</p>
+                <h2 className="display text-lg">ทบทวนคำตอบรายข้อ</h2>
+                <p className="mt-1 text-sm text-ink-500">
+                  เทียบคำตอบที่คุณเลือกกับคำตอบที่ถูก พร้อมคำอธิบายจาก AI (ถ้ามี)
+                </p>
               </div>
-              <span className="rounded-full bg-tu-red-50 px-3 py-1 text-xs font-bold tabular-nums text-tu-red-600 ring-1 ring-tu-red-100">
-                ผิด {summary.misconceptions.length} ข้อ
-              </span>
+
+              <div className="inline-flex items-center gap-1 rounded-xl bg-paper-100 p-1">
+                {(
+                  [
+                    { key: "all", label: `ทั้งหมด (${questionReview.length})` },
+                    {
+                      key: "correct",
+                      label: `ถูก (${questionReview.filter((q) => q.isCorrect).length})`,
+                    },
+                    {
+                      key: "wrong",
+                      label: `ผิด (${questionReview.filter((q) => !q.isCorrect).length})`,
+                    },
+                  ] as const
+                ).map((f) => (
+                  <button
+                    key={f.key}
+                    type="button"
+                    onClick={() => setQuestionFilter(f.key)}
+                    className={`rounded-lg px-3.5 py-1.5 text-xs font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-tu-red-300 ${
+                      questionFilter === f.key
+                        ? "bg-white text-tu-red-700 shadow-sm"
+                        : "text-ink-500 hover:text-ink-700"
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
             </div>
             <hr className="rule-gold mb-6" />
 
-            <div className="space-y-2">
-              {summary.misconceptions.map((m, i) => (
-                <div
-                  key={i}
-                  className="rounded-xl px-4 py-4 transition-colors hover:bg-paper-100/50 sm:px-5"
-                >
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-tu-gold-600">
-                    {m.topic}
-                  </span>
-                  <p className="mt-2 text-[15px] font-semibold leading-relaxed text-ink-900">
-                    <span className="mr-1.5 font-black text-ink-300">{i + 1}.</span>
-                    {m.question}
-                  </p>
-                  <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:gap-10">
-                    <div className="flex-1">
-                      <p className="mb-1 text-[11px] font-bold uppercase tracking-wider text-ink-400">
-                        คุณตอบ
-                      </p>
-                      <p className="flex items-start gap-2 text-sm font-medium text-tu-red-600">
-                        <span className="mt-0.5 inline-flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-tu-red-50 text-[10px] font-bold ring-1 ring-tu-red-100">
-                          ✕
-                        </span>
-                        {m.chosenText}
-                      </p>
+            {filteredQuestions.length === 0 ? (
+              <p className="py-6 text-center text-sm text-ink-400">ไม่มีข้อที่ตรงกับตัวกรองนี้</p>
+            ) : (
+              <div className="space-y-2">
+                {filteredQuestions.map((q, i) => (
+                  <div
+                    key={q.id}
+                    className="rounded-xl px-4 py-4 transition-colors hover:bg-paper-100/50 sm:px-5"
+                  >
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-tu-gold-600">
+                      {q.topic}
+                    </span>
+                    <p className="mt-2 text-[15px] font-semibold leading-relaxed text-ink-900">
+                      <span className="mr-1.5 font-black text-ink-300">{i + 1}.</span>
+                      {q.question}
+                    </p>
+                    <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:gap-10">
+                      <div className="flex-1">
+                        <p className="mb-1 text-[11px] font-bold uppercase tracking-wider text-ink-400">
+                          คุณตอบ
+                        </p>
+                        <p
+                          className={`flex items-start gap-2 text-sm font-medium ${
+                            q.isCorrect ? "text-[#047857]" : "text-tu-red-600"
+                          }`}
+                        >
+                          <span
+                            className={`mt-0.5 inline-flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full text-[10px] font-bold ring-1 ${
+                              q.isCorrect
+                                ? "bg-emerald-50 ring-emerald-200"
+                                : "bg-tu-red-50 ring-tu-red-100"
+                            }`}
+                          >
+                            {q.isCorrect ? "✓" : "✕"}
+                          </span>
+                          {q.chosenText}
+                        </p>
+                      </div>
+                      {!q.isCorrect && (
+                        <div className="flex-1">
+                          <p className="mb-1 text-[11px] font-bold uppercase tracking-wider text-ink-400">
+                            คำตอบที่ถูก
+                          </p>
+                          <p className="flex items-start gap-2 text-sm font-medium text-[#047857]">
+                            <span className="mt-0.5 inline-flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-emerald-50 text-[10px] font-bold ring-1 ring-emerald-200">
+                              ✓
+                            </span>
+                            {q.correctText}
+                          </p>
+                        </div>
+                      )}
                     </div>
-                    <div className="flex-1">
-                      <p className="mb-1 text-[11px] font-bold uppercase tracking-wider text-ink-400">
-                        คำตอบที่ถูก
-                      </p>
-                      <p className="flex items-start gap-2 text-sm font-medium text-[#047857]">
-                        <span className="mt-0.5 inline-flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-emerald-50 text-[10px] font-bold ring-1 ring-emerald-200">
-                          ✓
-                        </span>
-                        {m.correctText}
-                      </p>
-                    </div>
+
+                    {q.aiComment && (
+                      <div className="mt-3 rounded-lg border-l-[3px] border-tu-gold-400 bg-tu-gold-50/40 py-2 pl-3 pr-2.5">
+                        <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-tu-gold-700">
+                          AI อธิบายเพิ่มเติม
+                        </p>
+                        <p className="text-xs leading-relaxed text-ink-600">{q.aiComment}</p>
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </Reveal>
       )}

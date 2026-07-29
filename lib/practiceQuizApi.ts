@@ -47,6 +47,64 @@ import { waitForQuizGenerate } from "./aiQuiz";
        (status: "completed" → quiz มีเนื้อหาเต็ม (มี answer), "pending"/"failed" →
        quiz เป็น null) ใช้ตอนนักเรียนกดเปิดแบบฝึกหัดเก่าจากรายการมาทำ/ทบทวนซ้ำ
      practice_quiz_id ไม่มีจริง → 404 PRACTICE_QUIZ_NOT_FOUND
+
+   ==========================================================================
+   *** punch list ที่ยังต้องทำเพิ่ม (เจอระหว่างต่อ lib/feedbackApi.ts เข้ากับ
+   หน้า StudentSummary.tsx) — เรียงตามความสำคัญ ***
+   ==========================================================================
+
+   1) [ปิดแล้ว — ไม่ใช่บั๊ก] practice-quiz feedback endpoint คืน 404 ให้ practice
+      quiz บางตัว — ทีม backend ตรวจแล้วว่าไม่ใช่บั๊ก: นักเรียนคนนี้ส่งข้อสอบจริง
+      2 ครั้ง (2 submission) แต่ละ practice quiz จำ source submission ของตัวเอง
+      ถูกต้องอยู่แล้ว แต่ frontend เคยเดา submissionId ผิด (ใช้ submission ล่าสุด
+      ของนักเรียนแบบเหมารวมทุกรอบ แทนที่จะใช้ submission ที่ practice quiz รอบนั้น
+      อ้างอิงจริง) แก้แล้วในข้อ 4 ด้านล่าง — ดู StudentSummary.tsx
+
+   2) [ของใหม่] ยังไม่มีทางบันทึกคำตอบ/คะแนนของ "รอบฝึกซ้อม" เข้า backend เลย —
+      ตอนนี้ตรวจในเครื่องล้วนๆ (gradeQuiz ใน lib/feedback.ts) แล้วเก็บใน
+      localStorage เท่านั้น (lib/practiceHistory.ts) เครื่อง/browser อื่นเห็นไม่ได้
+      เลย ขอ endpoint ใหม่ (ยึด pattern เดียวกับ POST /quizzes/{id}/submissions
+      ของแบบทดสอบจริง เพื่อความสม่ำเสมอของ API):
+
+        POST /api/v1/practice-quizzes/{practice_quiz_id}/submissions
+          body: { studentId: string, answers: Record<questionId, choiceId|null> }
+          → backend มีเฉลยอยู่แล้วตอน generate ตรวจ+บันทึกเองได้เลย
+          → 200 { submissionId, score, total, percent, questions: [...], submittedAt }
+            (shape เดียวกับ SubmitQuizResult ใน lib/quizGradingApi.ts)
+
+        GET /api/v1/practice-quizzes/{practice_quiz_id}/submissions/{student_id}
+          → 200 SubmitQuizResult[] เรียงล่าสุดก่อน — เอาไว้เช็คว่าเคยทำรอบนี้
+          ไปแล้วหรือยัง/ได้คะแนนอะไร (เหมือน pattern ของ quiz submissions)
+
+   3) [ของใหม่ ต่อยอดจากข้อ 2 — ตัดสินใจ spec แล้ว รอ backend implement]
+      evidence[] ใน feedback ตอนนี้ผูกกับคำถามของ "ควิซจริง" ต้นทางเท่านั้น
+      (questionId เป็น q1-q7 เสมอ, practiceRound เป็น null ทุกรายการ แม้เปิดผ่าน
+      endpoint ของ practice quiz ก็ตาม) — ไม่เคยประเมินคำถามที่ AI สร้างใหม่ให้
+      แต่ละรอบฝึกซ้อมเลย ทำให้หน้าเว็บ (ทบทวนคำตอบรายข้อ) แนบคำอธิบายจาก AI ต่อ
+      คำถามของรอบฝึกซ้อมไม่ได้เพราะไม่มีข้อมูลให้ match
+
+      spec ที่ตกลงกันแล้ว: หลังนักเรียนส่งคำตอบรอบฝึกซ้อมผ่าน endpoint ข้อ 2
+      backend วิเคราะห์คำถามชุดนั้นแล้ว "merge evidence ใหม่เข้า finding เดิม"
+      (ไม่สร้าง feedback/finding ก้อนใหม่ ใช้ feedbackId เดิมเสมอ) โดย:
+        - evidence ที่มาจากรอบฝึกซ้อม ต้องมี questionId ตรงกับคำถามของ practice
+          quiz รอบนั้นจริง ๆ (คนละชุดกับ q1-q7 เดิม ไม่ชนกัน) และ practiceRound
+          เป็นเลขรอบ (ไม่ใช่ null)
+        - finding.score (คะแนน CLO เต็ม 5) ยังคง "ผูกกับ submission ทางการ
+          เท่านั้น ไม่ขยับตามผลฝึกซ้อม" — คะแนน CLO ของนักเรียนต้องมีค่าเดียวที่
+          ชัดเจน ไม่งงว่าอันไหนคือของจริง
+      เหตุผลที่เลือก merge ไม่แยก finding ใหม่ต่อรอบ: ฝั่ง frontend ดูทีละรอบอยู่
+      แล้ว (เลือกผ่าน RoundPicker) กรอง evidence ด้วย questionId ตรง ๆ อยู่แล้ว
+      ไม่ต้องสนใจว่ามาจาก practiceRound ไหน เพราะ questionId แต่ละรอบไม่ชนกันเอง
+
+   4) [ปิดแล้ว — deploy แล้ว ยืนยันกับข้อมูลจริงแล้ว] PracticeQuizSummary และ
+      GET /practice-quizzes/{id} มี field submissionId แล้ว (ยืนยันด้วย curl
+      จริง: practice-a03017af7c74 → submissionId "submission-429909e7ecc3" ซึ่ง
+      เป็นคนละตัวกับ submission ที่เคย trigger feedback ไว้ก่อนหน้า — ตรงกับที่
+      backend อธิบายไว้ในข้อ 1 พอดี) แก้ฝั่ง frontend แล้วให้ใช้ submissionId
+      ของ practice quiz นั้นโดยตรง แทนการเดาจาก submission ล่าสุดของนักเรียน
+      (ดู lib/practiceQuizApi.ts: PracticeQuizSummary.submissionId,
+      fetchPracticeQuiz().submissionId และ StudentSummary.tsx จุดที่เรียก
+      loadPracticeFeedback)
    ========================================================================== */
 
 const QUIZ_API_URL = (
@@ -113,6 +171,10 @@ export async function generateTargetedPracticeQuiz(params: {
 /** แถวสรุป 1 แบบฝึกหัดที่นักเรียนคนนี้เคยสร้างไว้จากควิซจริงชุดนี้ (ทำแล้วหรือยังก็ตาม) */
 export interface PracticeQuizSummary {
   id: string;
+  /** submission ทางการที่เป็นต้นกำเนิดของแบบฝึกหัดรอบนี้ — ใช้หา feedbackId ที่
+   * ถูกต้องของรอบนี้โดยเฉพาะ (คนละ submission กันได้ถ้านักเรียนเคยส่งข้อสอบจริง
+   * มากกว่า 1 ครั้ง อย่าใช้ submission ล่าสุดของนักเรียนแบบเหมารวมเด็ดขาด) */
+  submissionId: string | null;
   attemptNumber: number;
   status: "pending" | "completed" | "failed";
   title: string;
@@ -137,9 +199,12 @@ export async function fetchPracticeQuizzes(
 }
 
 /** ดึงเนื้อหาเต็มของแบบฝึกหัดที่เคยสร้างไว้ (กดจากรายการมาทำ/ทบทวนซ้ำ) */
-export async function fetchPracticeQuiz(
-  practiceQuizId: string,
-): Promise<{ status: "pending" | "completed" | "failed"; quiz: Quiz | null }> {
+export async function fetchPracticeQuiz(practiceQuizId: string): Promise<{
+  status: "pending" | "completed" | "failed";
+  quiz: Quiz | null;
+  /** submission ทางการต้นกำเนิด — ดู PracticeQuizSummary.submissionId */
+  submissionId: string | null;
+}> {
   const res = await fetch(
     `${QUIZ_API_URL}/api/v1/practice-quizzes/${encodeURIComponent(practiceQuizId)}`,
   );

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Maitree } from "next/font/google";
 import "./globals.css";
 import { CourseProvider } from "@/lib/courseStore";
+import BackToCourseGuard from "@/components/BackToCourseGuard";
 
 /**
  * ฟอนต์เดียวทั้งแอป (เนื้อความ + หัวเรื่อง) — Maitree: serif ไทยมีหัว อบอุ่น อ่านสบาย
@@ -29,7 +30,10 @@ export default function RootLayout({
   return (
     <html lang="th" className={appFont.variable}>
       <body className="font-sans antialiased">
-        <CourseProvider>{children}</CourseProvider>
+        <CourseProvider>
+          <BackToCourseGuard />
+          {children}
+        </CourseProvider>
       </body>
     </html>
   );

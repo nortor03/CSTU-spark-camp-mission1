@@ -403,6 +403,10 @@ export default function StudentSummary({ week }: { week: string }) {
     }
   }, [roundParam]);
 
+  // การกด back ของ browser ให้กลับไปหน้า course ถูกจัดการรวมศูนย์ที่ BackToCourseGuard
+  // (app/layout.tsx) แทน — เพราะ popstate listener ที่ผูกไว้ในหน้านี้เองจะถูกถอด (unmount)
+  // ระหว่างที่ Next.js กำลังจัดการ popstate event เดียวกันอยู่พอดี ทำให้ไม่ทำงาน
+
   // ประวัติการฝึกซ้อมจริง (เก็บแยกใน localStorage ต่อสัปดาห์ — ไม่ใช่ผลทางการ)
   // มุมมองอาจารย์ = ใช้ประวัติจริงถ้ามี (เช่นทดสอบเป็นตัวเอง) ไม่งั้น fallback เป็นประวัติฝึกซ้อมจำลอง
   // ของนักศึกษาคนนั้น (เพื่อนร่วมชั้นในระบบนี้เป็นข้อมูลจำลองทั้งหมดอยู่แล้ว ไม่มี backend หลายผู้ใช้จริง)
@@ -583,7 +587,7 @@ export default function StudentSummary({ week }: { week: string }) {
                   <WeekDropdown
                     currentWeek={week}
                     weeks={weeksAvailable}
-                    onSelect={(w) => router.push(`/student/summary/${weekNumber(w)}`)}
+                    onSelect={(w) => router.replace(`/student/summary/${weekNumber(w)}`)}
                   />
                 )}
               </div>

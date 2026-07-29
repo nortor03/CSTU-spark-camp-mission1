@@ -171,6 +171,10 @@ export default function StudentOverallSummary({ courseId }: { courseId: string }
 
   const course = getCourse(courseId);
 
+  // การกด back ของ browser ให้กลับไปหน้า course ถูกจัดการรวมศูนย์ที่ BackToCourseGuard
+  // (app/layout.tsx) แทน — เพราะ popstate listener ที่ผูกไว้ในหน้านี้เองจะถูกถอด (unmount)
+  // ระหว่างที่ Next.js กำลังจัดการ popstate event เดียวกันอยู่พอดี ทำให้ไม่ทำงาน
+
   /* --- สร้าง weekResults จากผลข้อสอบจากอาจารย์ (official only) --- */
   const weekResults = useMemo<WeekResult[]>(() => {
     if (!course) return [];
@@ -394,6 +398,7 @@ export default function StudentOverallSummary({ courseId }: { courseId: string }
                 ภาพรวม
               </button>
               <Link
+                replace
                 href={
                   weekResults.length > 0
                     ? `/student/summary/${weekResults[weekResults.length - 1].wkNum}`

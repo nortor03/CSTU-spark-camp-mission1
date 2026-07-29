@@ -357,6 +357,7 @@ function PracticeQuizzesList({
           const mockList: PracticeQuizSummary[] = [
             {
               id: `practice-mock-1-${quizId}`,
+              submissionId: null,
               attemptNumber: 1,
               status: "completed",
               title: "แบบฝึกหัดทบทวน รอบที่ 1",
@@ -365,6 +366,7 @@ function PracticeQuizzesList({
             },
             {
               id: `practice-mock-2-${quizId}`,
+              submissionId: null,
               attemptNumber: 2,
               status: "completed",
               title: "แบบฝึกหัดทบทวน รอบที่ 2",

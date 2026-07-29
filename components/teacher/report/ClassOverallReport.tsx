@@ -19,7 +19,7 @@ import StudentOverallTable, {
   type StudentAggRow,
 } from "@/components/teacher/report/class-report/StudentOverallTable";
 import { getPracticeHistory } from "@/lib/practiceHistory";
-import { ChevronDown, Sparkles } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import type { Quiz } from "@/lib/quiz";
 import type { StudentAnswers } from "@/lib/feedback";
 
@@ -357,31 +357,54 @@ export default function ClassOverallReport({ courseId }: { courseId: string }) {
       {/* ---------- จุดที่ควรโฟกัสทั้งชั้นเรียน ---------- */}
       {insight && (
         <div>
-          <div className="mb-3 flex items-center gap-2">
-            <h2 className="display text-lg">จุดที่ควรโฟกัสทั้งชั้นเรียน</h2>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-tu-gold-50 px-3 py-1 text-[10px] font-bold text-tu-gold-700 ring-1 ring-tu-gold-200">
-              <Sparkles className="h-3 w-3" />AI Insights
-            </span>
-          </div>
-          <div className="rounded-2xl bg-tu-gold-50/70 px-5 py-4 text-sm leading-relaxed text-ink-700">
-            {insight.hasContrast ? (
-              <>
-                ทั้งชั้นเรียนเข้าใจเรื่อง{" "}
-                <span className="font-bold text-[#047857]">&ldquo;{insight.strongest.topic}&rdquo;</span> ได้ดีมาก (
-                {insight.strongest.percent}%) แต่หัวข้อ{" "}
-                <span className="font-bold text-tu-red-600">&ldquo;{insight.weakest.topic}&rdquo;</span>{" "}
-                ยังเป็นจุดอ่อนของห้อง ({insight.weakest.percent}%)
-                {insight.worstClo && ` โดยเฉพาะ ${insight.worstClo.code} ที่คะแนนเฉลี่ยต่ำสุด`}
-                {" "}— แนะนำให้ทบทวนก่อนเข้าสัปดาห์ถัดไป
-              </>
-            ) : (
-              <>
-                ทั้งชั้นเรียนทำได้ดีสม่ำเสมอในหัวข้อ{" "}
-                <span className="font-bold text-[#047857]">&ldquo;{insight.strongest.topic}&rdquo;</span> (
-                {insight.strongest.percent}%) — ยังไม่พบหัวข้อที่เป็นจุดอ่อนชัดเจนของห้อง
-              </>
-            )}
-          </div>
+          <h2 className="display text-lg">จุดที่ควรโฟกัสทั้งชั้นเรียน</h2>
+          {insight.hasContrast ? (
+            <div className="mt-4 grid grid-cols-1 divide-y divide-ink-100 sm:grid-cols-3 sm:divide-y-0 sm:divide-x sm:divide-ink-100">
+              <div className="py-4 first:pt-0 sm:py-0 sm:pr-6">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-400">จุดเด่นของชั้นเรียน</p>
+                <h3 className="mt-2 text-sm font-bold text-ink-900 leading-snug">{insight.strongest.topic}</h3>
+                <p className="mt-2 text-2xl font-extrabold tabular-nums text-emerald-700">
+                  {insight.strongest.percent}
+                  <span className="ml-1 text-xs font-semibold text-ink-400">% อัตราการผ่านเกณฑ์</span>
+                </p>
+              </div>
+
+              <div className="py-4 sm:py-0 sm:px-6">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-400">จุดที่ควรเร่งทบทวน</p>
+                <h3 className="mt-2 text-sm font-bold text-ink-900 leading-snug">{insight.weakest.topic}</h3>
+                <p className="mt-2 text-2xl font-extrabold tabular-nums text-tu-red-600">
+                  {insight.weakest.percent}
+                  <span className="ml-1 text-xs font-semibold text-ink-400">% อัตราการผ่านเกณฑ์</span>
+                </p>
+              </div>
+
+              <div className="py-4 last:pb-0 sm:py-0 sm:pl-6">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-400">แนวทางการปฏิบัติถัดไป</p>
+                <p className="mt-2 text-sm text-ink-700 leading-relaxed">
+                  แนะนำให้เตรียมโจทย์เสริมความเข้าใจหัวข้อ &ldquo;{insight.weakest.topic}&rdquo; เพิ่มเติมก่อนเริ่มสัปดาห์ถัดไป
+                  {insight.worstClo && ` (เน้นเนื้อหาตามเป้าหมายของ ${insight.worstClo.code})`}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="mt-4 grid grid-cols-1 divide-y divide-ink-100 sm:grid-cols-2 sm:divide-y-0 sm:divide-x sm:divide-ink-100">
+              <div className="py-4 first:pt-0 sm:py-0 sm:pr-6">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-400">สถานะภาพรวมชั้นเรียน</p>
+                <h3 className="mt-2 text-sm font-bold text-ink-900 leading-snug">{insight.strongest.topic}</h3>
+                <p className="mt-2 text-2xl font-extrabold tabular-nums text-emerald-700">
+                  {insight.strongest.percent}
+                  <span className="ml-1 text-xs font-semibold text-ink-400">% อัตราการผ่านเกณฑ์</span>
+                </p>
+              </div>
+
+              <div className="py-4 last:pb-0 sm:py-0 sm:pl-6">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-400">แผนการปฏิบัติถัดไป</p>
+                <p className="mt-2 text-sm text-ink-700 leading-relaxed">
+                  ประสิทธิภาพการเรียนรู้สอดคล้องตามเกณฑ์มาตรฐาน แนะนำดำเนินการสอนเนื้อหาปกติในสัปดาห์ถัดไปได้ทันที
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

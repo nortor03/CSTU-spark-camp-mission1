@@ -700,7 +700,15 @@ export default function StudentSummary({
         return loadPracticeFeedback(quiz.id, targetedPracticeQuizId, feedbackId);
       }
       if (!cancelled) setActivePracticeRound(null);
-      const subs = await fetchStudentSubmissions(quiz.id, studentId);
+      // เพิ่งส่งข้อสอบเสร็จแล้วกดมาดูผลทันทีอาจไวเกินไป — backend ยัง index
+      // submission ล่าสุดไม่ทัน ทำให้ query ครั้งแรกได้ [] ว่างเปล่ากลับมาทั้งที่
+      // เพิ่งส่งจริง ลอง retry สั้นๆ ก่อนฟันธงว่าไม่มี submission จริง (กันเคส
+      // "ต้อง refresh เองถึงจะขึ้น" ที่เจอจริงตอนกดจากหน้าผลลัพธ์ทันทีหลังส่ง)
+      let subs = await fetchStudentSubmissions(quiz.id, studentId);
+      for (let i = 0; subs.length === 0 && i < 4 && !cancelled; i++) {
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        subs = await fetchStudentSubmissions(quiz.id, studentId);
+      }
       if (subs.length === 0) throw new Error("ยังไม่มี submission จริง");
       if (!cancelled) setOfficialSubmissionId(subs[0].submissionId);
       return analyzeSubmissionFeedback(subs[0].submissionId, quiz.id);

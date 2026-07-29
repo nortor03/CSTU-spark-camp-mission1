@@ -17,6 +17,8 @@ import {
   CheckCircle2,
   Target,
   TrendingUp,
+  Sparkles,
+  ArrowRight,
 } from "lucide-react";
 import type { Quiz } from "@/lib/quiz";
 import type { Submission } from "@/lib/analytics";
@@ -272,6 +274,19 @@ export default function StudentCourseWeeks({ courseId }: { courseId: string }) {
                             studentId={studentId}
                             courseId={courseId}
                           />
+                        )}
+
+                        {row.mySubmission && (
+                          <div className="mt-3 flex justify-start">
+                            <Link
+                              href={`/student/quiz/${wk}?practice=1`}
+                              className="group inline-flex items-center gap-2 rounded-xl border border-tu-gold-200 bg-gradient-to-r from-tu-gold-50 to-amber-50 px-4 py-2 text-xs font-bold text-tu-gold-700 shadow-sm transition-all hover:from-tu-gold-100 hover:to-amber-100 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-tu-gold-500/15"
+                            >
+                              <Sparkles className="h-3.5 w-3.5 text-tu-gold-600 transition-transform duration-300 group-hover:rotate-12" />
+                              <span>สร้างข้อสอบฝึกซ้อมด้วย AI</span>
+                              <ArrowRight className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5" />
+                            </Link>
+                          </div>
                         )}
                       </Section>
                     )}

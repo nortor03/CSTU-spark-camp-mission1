@@ -4,8 +4,9 @@ import Link from "next/link";
 import { useEffect, useMemo, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useCourse } from "@/lib/courseStore";
-import { buildClassReport, LEVEL_META, type Submission } from "@/lib/analytics";
+import { buildClassReport, LEVEL_META, levelOf, type Submission } from "@/lib/analytics";
 import { generateMockSubmissions } from "@/lib/mockClass";
+import { buildCloMastery } from "@/components/student/CloRadar";
 import { weekNumber } from "@/lib/weeks";
 import PageHeader from "@/components/ui/PageHeader";
 import MasteryBar, { MasteryLegend } from "@/components/ui/MasteryBar";
@@ -67,6 +68,55 @@ export default function ClassReport({
     };
   }, [quiz, allSubmissions, week]);
 
+  // ผลลัพธ์การเรียนรู้ (CLO) ของทั้งห้อง — คำนวณจาก CLO จริงของวิชา (course.clos)
+  // + คำตอบจริงของทุกคนที่ส่ง เหมือนวิธีที่ใช้ในหน้าสรุปภาพรวมฝั่งนักเรียน
+  const cloMastery = useMemo(() => {
+    if (!quiz || !course?.clos?.length || allSubmissions.length === 0) return [];
+    return buildCloMastery(
+      allSubmissions.map(() => quiz),
+      allSubmissions.map((s) => s.answers),
+      course.clos,
+    );
+  }, [quiz, course, allSubmissions]);
+
+  // แบ่ง 3 กลุ่มระดับความสำเร็จของห้อง ตามเกณฑ์เดียวกับฝั่งนักเรียน (levelOf)
+  const classClusters = useMemo(() => {
+    const total = allSubmissions.length;
+    if (total === 0) {
+      return [
+        { key: "1", label: "ทำได้ดีเยี่ยม", percent: 0, desc: "ยังไม่มีข้อมูลผลสอบ" },
+        { key: "2", label: "ตามเกณฑ์", percent: 0, desc: "ยังไม่มีข้อมูลผลสอบ" },
+        { key: "3", label: "ต้องการความช่วยเหลือ", percent: 0, desc: "ยังไม่มีข้อมูลผลสอบ" },
+      ];
+    }
+    const strong = allSubmissions.filter((s) => levelOf(s.percent) === "strong").length;
+    const weak = allSubmissions.filter((s) => levelOf(s.percent) === "weak").length;
+    const medium = total - strong - weak;
+    const sortedClo = [...cloMastery].sort((a, b) => b.percent - a.percent);
+    const bestClo = sortedClo[0];
+    const worstClo = sortedClo[sortedClo.length - 1];
+    return [
+      {
+        key: "1",
+        label: "ทำได้ดีเยี่ยม",
+        percent: Math.round((strong / total) * 100),
+        desc: bestClo ? `มีความเข้าใจอย่างดีใน ${bestClo.code}` : "มีความเข้าใจอย่างดีในหลายหัวข้อ",
+      },
+      {
+        key: "2",
+        label: "ตามเกณฑ์",
+        percent: Math.round((medium / total) * 100),
+        desc: "ผลการเรียนรู้ผ่านเกณฑ์อย่างสม่ำเสมอ",
+      },
+      {
+        key: "3",
+        label: "ต้องการความช่วยเหลือ",
+        percent: Math.round((weak / total) * 100),
+        desc: worstClo ? `ยังมีจุดอ่อนใน ${worstClo.code}` : "ยังมีจุดอ่อนในบางหัวข้อ",
+      },
+    ];
+  }, [allSubmissions, cloMastery]);
+
   if (!hydrated) {
     return (
       <div className="grid place-items-center py-24 text-sm text-ink-400">
@@ -93,28 +143,46 @@ export default function ClassReport({
             <span className="text-ink-700">{course.subject}</span>
           </div>
           <h1 className="display text-3xl font-bold tracking-tight text-ink-900 sm:text-[32px]">
-            ภาพรวมนักศึกษา
+            รายงานรายสัปดาห์
           </h1>
           <p className="mt-1.5 text-base font-medium text-ink-500">
             การวิเคราะห์{report.week}: สรุปผลและข้อมูลเชิงลึก
           </p>
         </div>
 
-        <WeekDropdown
-          currentWeek={weekNumber(week)}
-          weeks={Array.from(
-            new Set(
-              [
-                ...Object.keys(course.quizzes),
-                ...(course.topics.map((t) => t.weekAssigned).filter(Boolean) as string[]),
-                week,
-              ].map(weekNumber),
-            ),
-          )
-            .filter(Boolean)
-            .sort((a, b) => Number(a) - Number(b))}
-          onSelect={(w) => router.push(`/report/${courseId}/${w}`)}
-        />
+        <div className="flex flex-col items-end gap-2.5">
+          <div className="inline-flex flex-shrink-0 items-center gap-1 self-start rounded-xl bg-paper-100 p-1">
+            <Link
+              href={`/report/${courseId}`}
+              replace
+              className="rounded-lg px-4 py-2 text-sm font-bold text-ink-500 transition hover:text-ink-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-tu-red-300"
+            >
+              ภาพรวม
+            </Link>
+            <button
+              type="button"
+              className="rounded-lg bg-white px-4 py-2 text-sm font-bold text-tu-red-700 shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-tu-red-300"
+            >
+              รายสัปดาห์
+            </button>
+          </div>
+
+          <WeekDropdown
+            currentWeek={weekNumber(week)}
+            weeks={Array.from(
+              new Set(
+                [
+                  ...Object.keys(course.quizzes),
+                  ...(course.topics.map((t) => t.weekAssigned).filter(Boolean) as string[]),
+                  week,
+                ].map(weekNumber),
+              ),
+            )
+              .filter(Boolean)
+              .sort((a, b) => Number(a) - Number(b))}
+            onSelect={(w) => router.replace(`/report/${courseId}/${w}`)}
+          />
+        </div>
       </div>
 
       {/* ---------- ตัวเลขสำคัญ ---------- */}
@@ -177,17 +245,11 @@ export default function ClassReport({
         <SkillClusters
           isQuizAssigned={!!quiz}
           cloData={{
-            radarAxes: [
-              { topic: "CLO 1: พื้นฐาน", percent: 85 },
-              { topic: "CLO 2: ปฏิบัติ", percent: 70 },
-              { topic: "CLO 3: วิเคราะห์", percent: 45 },
-              { topic: "CLO 4: จริยธรรม", percent: 75 }
-            ],
-            clusters: [
-              { key: "1", label: "ทำได้ดีเยี่ยม", percent: 18, desc: "มีความเข้าใจอย่างดีใน CLO 1 และ 2" },
-              { key: "2", label: "ตามเกณฑ์", percent: 64, desc: "ผลการเรียนรู้ผ่านเกณฑ์อย่างสม่ำเสมอ" },
-              { key: "3", label: "ต้องการความช่วยเหลือ", percent: 18, desc: "ยังมีจุดอ่อนใน CLO 3: วิเคราะห์" }
-            ]
+            radarAxes: cloMastery.map((c) => ({
+              topic: `${c.code}: ${c.description}`,
+              percent: c.percent,
+            })),
+            clusters: classClusters,
           }}
           secondaryData={
             !!quiz
@@ -280,17 +342,23 @@ function WeekDropdown({
   }, []);
 
   return (
-    <div className="relative self-start" ref={ref}>
+    <div className="relative self-end" ref={ref}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-3 rounded-full border border-line bg-white pl-5 pr-4 py-2.5 shadow-sm transition hover:border-line-strong focus:outline-none focus:ring-2 focus:ring-tu-red-500/20"
+        aria-expanded={isOpen}
+        className="flex min-w-[150px] items-center justify-between gap-2 rounded-xl border border-line bg-white py-2 pl-3.5 pr-2.5 text-sm shadow-sm transition-all hover:border-line-strong hover:shadow-md active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-tu-red-500/15"
       >
-        <span className="text-base font-bold text-ink-900">สัปดาห์ที่ {currentWeek}</span>
-        <ChevronDown className="h-4 w-4 text-ink-500" strokeWidth={2.5} />
+        <div className="flex items-center gap-2">
+          <CalendarDays className="h-4 w-4 flex-shrink-0 text-tu-red-500" />
+          <span className="truncate font-bold text-ink-900">สัปดาห์ที่ {currentWeek}</span>
+        </div>
+        <ChevronDown
+          className={`h-4 w-4 flex-shrink-0 text-ink-400 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+        />
       </button>
 
       {isOpen && (
-        <div className="absolute top-full left-0 z-50 mt-2 w-56 rounded-xl border border-line bg-white p-1.5 shadow-lg animate-in fade-in zoom-in-95 duration-100">
+        <div className="absolute top-full left-0 z-50 mt-2 w-52 origin-top-left animate-scale-in rounded-xl border border-line bg-white p-1.5 shadow-xl">
           {weeks.map((w) => {
             const isSelected = w === currentWeek;
             return (
@@ -300,13 +368,13 @@ function WeekDropdown({
                   onSelect(w);
                   setIsOpen(false);
                 }}
-                className={`flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                className={`flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-sm font-medium transition-all ${
                   isSelected
-                    ? "bg-tu-red-50 text-tu-red-600"
+                    ? "bg-tu-red-50 text-tu-red-600 shadow-sm"
                     : "text-ink-600 hover:bg-paper-50 hover:text-ink-900"
                 }`}
               >
-                <div className="flex items-center gap-2.5">
+                <div className="flex items-center gap-2">
                   <CalendarDays className={`h-4 w-4 ${isSelected ? "text-tu-red-500" : "text-ink-400"}`} />
                   <span>สัปดาห์ที่ {w}</span>
                 </div>

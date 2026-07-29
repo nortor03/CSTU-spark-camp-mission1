@@ -27,6 +27,7 @@ import {
 } from "@/lib/practiceQuizApi";
 import StudentSkillRadar from "./StudentSkillRadar";
 import SurveyQuizForm from "./SurveyQuizForm";
+import { WeekSummaryNote } from "./StudentCourseWeeks";
 import { savePracticeAttempt } from "@/lib/practiceHistory";
 import {
   ChevronDown,
@@ -470,6 +471,8 @@ export default function StudentQuiz({ week }: { week: string }) {
           !practice && submissionId ? startTargetedPractice : undefined
         }
         practiceGenError={practiceGenError}
+        courseId={activeCourseId}
+        studentId={studentId}
       />
     );
   }
@@ -583,6 +586,8 @@ export function ResultView({
   isModal = false,
   onStartTargetedPractice,
   practiceGenError = "",
+  courseId = null,
+  studentId = null,
 }: {
   week: string;
   result: QuizResult;
@@ -593,8 +598,17 @@ export function ResultView({
   /** กดเพื่อขอให้ AI สร้างแบบฝึกหัดเจาะจุดที่พลาดของรอบนี้โดยเฉพาะ */
   onStartTargetedPractice?: () => void;
   practiceGenError?: string;
+  /** ใช้บังคับกรอกบันทึกสรุปก่อนดูผลวิเคราะห์ AI — เฉพาะรอบข้อสอบจริงเท่านั้น */
+  courseId?: string | null;
+  studentId?: string | null;
 }) {
   const percent = Math.round((result.score / result.total) * 100);
+  // บังคับกรอกบันทึกสรุปก่อนไปหน้าวิเคราะห์ AI — เฉพาะข้อสอบจริง (ไม่ใช่ฝึกซ้อม)
+  // เพราะ AI ใช้บันทึกนี้เป็น evidence ประกอบ (kind "note") ตอนวิเคราะห์ด้วย ถ้า
+  // ยังไม่มีบันทึกตอน trigger วิเคราะห์ ส่วนนั้นจะขาดหายไปเลย — โหมดฝึกซ้อมหรือ
+  // ไม่รู้ courseId (เช่น ยังไม่ตั้ง active course) ไม่ต้องบังคับ (hasNote เริ่ม
+  // เป็น true เลยเพื่อไม่ไปกั้นอะไร)
+  const [hasNote, setHasNote] = useState(practice || !courseId);
 
   // สถานะของ "ทบทวนรายข้อ" — ตัวกรอง + accordion (เปิดข้อที่ตอบผิดไว้ให้ก่อน)
   const wrongIds = result.questions
@@ -694,7 +708,24 @@ export function ResultView({
 
             <div className="mt-5 flex flex-col justify-center sm:justify-start gap-3">
 
-              {!isModal && (
+              {/* บังคับกรอกบันทึกสรุปก่อนไปดูผลวิเคราะห์ AI — เฉพาะข้อสอบจริง
+                  (AI ใช้บันทึกนี้เป็นส่วนหนึ่งของ evidence ตอนวิเคราะห์ด้วย) */}
+              {!isModal && !practice && !hasNote && courseId && (
+                <div className="w-full max-w-md rounded-xl border border-tu-gold-200 bg-tu-gold-50/40 p-4 text-left">
+                  <p className="mb-2 text-xs font-bold text-tu-gold-700">
+                    กรอกบันทึกสรุป / สิ่งที่ยังไม่เข้าใจก่อน ถึงจะดูผลวิเคราะห์ AI ได้
+                  </p>
+                  <WeekSummaryNote
+                    storageKey={`tonlabkit:note:${studentId ?? "anon"}:${courseId}:${week}`}
+                    courseId={courseId}
+                    week={week}
+                    studentId={studentId}
+                    onSavedChange={setHasNote}
+                  />
+                </div>
+              )}
+
+              {!isModal && (practice || hasNote) && (
                 <Link
                   replace
                   href={`/student/summary/${week.match(/\d+/)?.[0] ?? "1"}`}

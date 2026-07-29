@@ -561,16 +561,19 @@ function Section({
  * sync ขึ้น backend แบบ best-effort (ดู lib/notesApi.ts) — ถ้า backend มีของเดิม
  * อยู่แล้ว (เช่น เปิดจากเครื่องอื่น) จะดึงมาใช้แทนของในเครื่องนี้
  */
-function WeekSummaryNote({
+export function WeekSummaryNote({
   storageKey,
   courseId,
   week,
   studentId,
+  onSavedChange,
 }: {
   storageKey: string;
   courseId: string;
   week: string;
   studentId: string | null;
+  /** แจ้งพาเรนต์ทุกครั้งที่รู้ว่ามีบันทึกแล้วหรือยัง (โหลดเสร็จครั้งแรก/หลังกดส่ง) */
+  onSavedChange?: (hasNote: boolean) => void;
 }) {
   const [saved, setSaved] = useState<string | null>(null);
   const [text, setText] = useState("");
@@ -588,6 +591,7 @@ function WeekSummaryNote({
     setText(v ?? "");
     setEditing(!v);
     setLoaded(true);
+    onSavedChange?.(!!v);
 
     // best-effort ดึงจาก backend — ถ้ามีบันทึกไว้อยู่แล้ว (เช่น จากเครื่องอื่น)
     // ใช้ค่านั้นแทน ถ้า backend ล่ม/เข้าไม่ถึง/ยังไม่เคยบันทึกก็ใช้ค่าในเครื่องต่อปกติ
@@ -598,6 +602,7 @@ function WeekSummaryNote({
           setSaved(note.text);
           setText(note.text);
           setEditing(false);
+          onSavedChange?.(true);
           try {
             localStorage.setItem(storageKey, note.text);
           } catch {
@@ -617,7 +622,7 @@ function WeekSummaryNote({
       .catch((err) => {
         console.error("โหลดบันทึกจาก backend ไม่สำเร็จ (ใช้ค่าในเครื่องต่อไปได้ปกติ)", err);
       });
-  }, [storageKey, courseId, week, studentId]);
+  }, [storageKey, courseId, week, studentId, onSavedChange]);
 
   function submit() {
     const t = text.trim();
@@ -629,6 +634,7 @@ function WeekSummaryNote({
     }
     setSaved(t);
     setEditing(false);
+    onSavedChange?.(true);
 
     if (studentId) {
       saveWeekNote(courseId, week, studentId, t).catch((err) => {

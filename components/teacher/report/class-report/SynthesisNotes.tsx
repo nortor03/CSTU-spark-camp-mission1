@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, Users } from "lucide-react";
 import type { ClassInsight } from "@/lib/analytics";
 
 /**
@@ -19,56 +18,41 @@ export default function SynthesisNotes({
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   return (
-    <section className="card flex flex-col overflow-hidden p-5 sm:p-6 shadow-sm">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="display text-xl sm:text-2xl font-bold tracking-tight text-ink-900">สรุป feedback</h2>
-        <span className="rounded-full bg-tu-blue-100 px-3 py-1 text-xs font-bold text-tu-blue-700 bg-blue-50 text-blue-600">
-          AI Insights
-        </span>
-      </div>
+    <section className="flex flex-col">
+      <h2 className="display text-lg">สรุป feedback</h2>
 
-      <div className="flex-1 space-y-5">
-        {/* Critical Friction Point */}
-        <div className="rounded-r-lg border-l-4 border-tu-red-500 bg-tu-red-50 p-4 relative">
-          <p className="mb-2 text-xs font-bold text-tu-red-600">
-            จุดที่สับสนมากที่สุด (Critical Friction Point)
+      <div className="mt-4 flex-1 space-y-5">
+        {/* จุดที่สับสนมากที่สุด */}
+        <div className="border-l-2 border-tu-red-300 pl-4">
+          <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-tu-red-600">
+            จุดที่สับสนมากที่สุด
           </p>
-          <p className="text-[15px] leading-relaxed text-ink-800">
+          <p className="text-sm leading-relaxed text-ink-700">
             {frictionInsight.description}
-            <span className="font-semibold ml-1">
+            <span className="font-semibold text-ink-900 ml-1">
               พบจากนักศึกษา {frictionInsight.studentCount} คน
             </span>
           </p>
         </div>
 
-        {/* Other Insights as Bullet Points */}
-        <ul className="space-y-4 px-2">
-          {otherInsights.map((insight, i) => {
-            const colors = [
-              "bg-emerald-500",
-              "bg-tu-gold-600",
-              "bg-blue-500",
-              "bg-purple-500",
-            ];
-            const dotColor = colors[i % colors.length];
-            
-            return (
-              <li key={insight.id} className="flex items-start gap-3">
-                <span className={`mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full ${dotColor}`} aria-hidden />
-                <p className="text-sm leading-relaxed text-ink-700">
-                  {insight.description}
-                </p>
-              </li>
-            );
-          })}
+        {/* ข้อสังเกตอื่น ๆ */}
+        <ul className="space-y-3">
+          {otherInsights.map((insight) => (
+            <li key={insight.id} className="flex items-start gap-2.5">
+              <span className="mt-2 h-1 w-1 flex-shrink-0 rounded-full bg-ink-300" aria-hidden />
+              <p className="text-sm leading-relaxed text-ink-700">
+                {insight.description}
+              </p>
+            </li>
+          ))}
         </ul>
       </div>
 
-      <div className="mt-6 pt-4">
+      <div className="mt-5">
         <button
           type="button"
           onClick={() => setIsModalOpen(true)}
-          className="w-full rounded-lg border border-line-soft bg-white py-2.5 text-sm font-bold text-ink-700 shadow-sm transition-colors hover:bg-paper-50"
+          className="text-sm font-semibold text-ink-500 underline decoration-line-strong underline-offset-4 transition-colors hover:text-ink-800"
         >
           ดูสรุปทั้งหมด {insights.reduce((acc, i) => acc + i.studentCount, 0)} รายการ
         </button>

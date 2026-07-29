@@ -646,6 +646,25 @@ export default function StudentSummary({
   const [officialSubmissionId, setOfficialSubmissionId] = useState<string | null>(null);
   const [generatingPractice, setGeneratingPractice] = useState(false);
   const [practiceGenError, setPracticeGenError] = useState("");
+
+  // ดึง submissionId ของข้อสอบจริงแยกต่างหาก ไม่พึ่ง effect วิเคราะห์ feedback
+  // ด้านล่าง เพราะ effect นั้นข้ามการดึงไปเลยถ้ากำลังดูแท็บ "ฝึกด้วยตนเอง" ที่ยัง
+  // ไม่มีรอบฝึกซ้อมเลยสักรอบ (ไปเข้า branch "unavailable" ก่อนถึงจุดดึง) — ปุ่ม
+  // "เริ่มทำแบบฝึกซ้อมด้วย AI" ในหน้า empty state ของแท็บนั้นก็ต้องใช้ค่านี้ด้วย
+  useEffect(() => {
+    if (isTeacherView || !hydrated || !quiz || !studentId) return;
+    let cancelled = false;
+    fetchStudentSubmissions(quiz.id, studentId)
+      .then((subs) => {
+        if (!cancelled && subs.length > 0) setOfficialSubmissionId(subs[0].submissionId);
+      })
+      .catch(() => {
+        /* ไม่ critical — แค่ทำให้ปุ่มสร้างฝึกซ้อมใช้ไม่ได้ชั่วคราว */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isTeacherView, hydrated, quiz, studentId]);
   // id ของแบบฝึกหัดเจาะจุดอ่อนที่กำลังดูอยู่ (null = รอบข้อสอบจริง หรือฝึกซ้อมแบบสุ่ม)
   // แยกเป็น useMemo ต่างหาก ไม่ให้ effect ด้านล่างพึ่ง attempts ทั้งอาเรย์ตรงๆ —
   // เดิม effect ผูกกับ attempts ตรงๆ ทำให้ทุกครั้งที่ attempts โหลดเสร็จ (async
@@ -709,7 +728,6 @@ export default function StudentSummary({
         subs = await fetchStudentSubmissions(quiz.id, studentId);
       }
       if (subs.length === 0) throw new Error("ยังไม่มี submission จริง");
-      if (!cancelled) setOfficialSubmissionId(subs[0].submissionId);
       return analyzeSubmissionFeedback(subs[0].submissionId, quiz.id);
     })()
       .then((result) => {
@@ -946,16 +964,42 @@ export default function StudentSummary({
             <Target className="h-6 w-6" />
           </div>
           <h2 className="display mt-4 text-xl">ยังไม่มีผลการฝึกซ้อมของสัปดาห์นี้</h2>
-          <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-ink-500">
-            คุณยังไม่ได้ทำแบบฝึกซ้อมด้วยตนเองในสัปดาห์นี้ สามารถกดปุ่มด้านล่างเพื่อเริ่มทำแบบฝึกซ้อมจำลองได้ทันที
-          </p>
-          <Link
-            href={`/student/quiz/${week.match(/\d+/)?.[0] ?? "1"}?practice=1`}
-            className="btn-primary mt-6 inline-flex items-center gap-2"
-          >
-            <Sparkles className="h-4 w-4" />
-            เริ่มทำแบบฝึกซ้อมด้วย AI
-          </Link>
+          {!officialMine ? (
+            <>
+              <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-ink-500">
+                ต้องทำข้อสอบจริงของสัปดาห์นี้ก่อน ถึงจะให้ AI สร้างแบบฝึกหัดเจาะจุดที่พลาดให้ได้
+              </p>
+              <Link
+                href={`/student/quiz/${week.match(/\d+/)?.[0] ?? "1"}`}
+                className="btn-primary mt-6 inline-flex items-center gap-2"
+              >
+                ไปทำข้อสอบจริง →
+              </Link>
+            </>
+          ) : officialWrongQuestionIds.length === 0 ? (
+            <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-ink-500">
+              คุณตอบข้อสอบจริงถูกทุกข้อแล้ว ไม่มีข้อที่ต้องฝึกเพิ่มในสัปดาห์นี้
+            </p>
+          ) : (
+            <>
+              <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-ink-500">
+                คุณยังไม่ได้ทำแบบฝึกซ้อมด้วยตนเองในสัปดาห์นี้ สามารถกดปุ่มด้านล่างให้ AI
+                สร้างแบบฝึกหัดเจาะจุดที่พลาดจากข้อสอบจริงของคุณได้ทันที
+              </p>
+              <button
+                type="button"
+                onClick={handleGeneratePractice}
+                disabled={generatingPractice || !officialSubmissionId}
+                className="btn-primary mt-6 inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <Sparkles className="h-4 w-4" />
+                {generatingPractice ? "กำลังสร้าง…" : "เริ่มทำแบบฝึกซ้อมด้วย AI"}
+              </button>
+              {practiceGenError && (
+                <p className="mt-2 text-xs text-tu-red-600">{practiceGenError}</p>
+              )}
+            </>
+          )}
         </div>
       </div>
     );

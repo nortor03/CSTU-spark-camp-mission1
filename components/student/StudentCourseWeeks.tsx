@@ -235,10 +235,7 @@ export default function StudentCourseWeeks({ courseId }: { courseId: string }) {
                     {/* 3. แบบทดสอบ (เฉพาะเมื่ออาจารย์เปิดไว้) */}
                     {row.activeQuiz && (
                       <Section icon={<ClipboardList className="h-4 w-4" />} title="แบบทดสอบ" hex={hex}>
-                        <div
-                          className="flex items-center justify-between gap-3 rounded-xl border border-line bg-white px-4 py-3.5"
-                          style={{ borderLeft: `3px solid ${hex}` }}
-                        >
+                        <div className="flex items-center justify-between gap-3 rounded-xl border border-line bg-white px-4 py-3.5">
                           <div className="min-w-0">
                             <p className="truncate text-sm font-semibold text-ink-800">
                               {row.activeQuiz.title}

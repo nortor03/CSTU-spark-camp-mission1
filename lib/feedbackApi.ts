@@ -32,6 +32,11 @@ import type { QuizSource } from "./quiz";
      → ใช้ทั้ง poll (หลัง trigger) และเปิดดูซ้ำ (นักเรียนกลับมาเปิดหน้าผลลัพธ์
      แบบทดสอบจริงอีกครั้ง) — response เดียวกันทั้งสองกรณี ดู FeedbackStatus
      404 FEEDBACK_NOT_FOUND — feedback_id ไม่มีจริง หรือไม่ตรงกับ quiz_id นี้
+     เพิ่ม field ใหม่ preparationSuggestions (ดู PreparationSuggestion) — เฉพาะ
+     รอบข้อสอบจริงเท่านั้น (backend แนบ next_week_number ไปกับ request วิเคราะห์
+     ทุกครั้งที่เป็น official submission โดยอัตโนมัติ ฝั่ง frontend ไม่ต้องทำอะไร)
+     อาจว่างเปล่าได้ถ้า AI ไม่ได้ส่งมา หรือสัปดาห์นี้เป็นสัปดาห์สุดท้ายของวิชา —
+     รอบฝึกซ้อมยังไม่มี field นี้ (ถ้าอยากได้ต้องขอ backend เพิ่มแยกต่างหาก)
 
    GET /api/v1/quizzes/{quiz_id}/practice-quizzes/{practice_quiz_id}/feedback/{feedback_id}
      → ใช้ตอนนักเรียนเปิดหน้าผลลัพธ์ของ "แบบฝึกหัดเจาะจุดอ่อน" — คืนผลวิเคราะห์
@@ -85,6 +90,21 @@ export interface FeedbackFinding {
   evidence: FeedbackEvidence[];
 }
 
+/** เอกสารอ้างอิงของคำแนะนำเตรียมตัวสัปดาห์หน้า — ต่างจาก QuizSource ตรงมี quote ยกมาด้วย */
+export interface PreparationSuggestionSource {
+  documentId: string;
+  filename: string;
+  sourceLocation: string;
+  quote: string;
+}
+
+/** คำแนะนำเตรียมตัวสัปดาห์หน้า 1 รายการต่อ CLO — เฉพาะรอบข้อสอบจริงเท่านั้น (ดูคอมเมนต์ด้านบน) */
+export interface PreparationSuggestion {
+  cloCode: string;
+  suggestion: string;
+  sources: PreparationSuggestionSource[];
+}
+
 /** ผลวิเคราะห์ภาพรวมหลังตรวจแบบทดสอบ 1 ครั้ง */
 export interface FeedbackResult {
   id: string;
@@ -94,6 +114,13 @@ export interface FeedbackResult {
   /** ข้อความสรุปจุดอ่อน (ความยาวเป็นย่อหน้า ไม่ใช่ list) */
   weaknesses: string;
   findings: FeedbackFinding[];
+  /**
+   * คำแนะนำเตรียมตัวสัปดาห์หน้า — มีเฉพาะรอบข้อสอบจริง (official submission)
+   * เท่านั้น รอบฝึกซ้อมยังไม่มี field นี้ อาจว่างเปล่าได้ถ้า AI ไม่ได้ส่งมา หรือ
+   * สัปดาห์นี้เป็นสัปดาห์สุดท้ายของวิชา — undefined ไว้เผื่อ response เก่าก่อนหน้า
+   * backend เพิ่ม field นี้เข้ามา
+   */
+  preparationSuggestions?: PreparationSuggestion[];
   createdAt: string;
 }
 

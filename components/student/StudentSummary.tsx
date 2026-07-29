@@ -1206,6 +1206,49 @@ export default function StudentSummary({
         </div>
       </div>
 
+      {/* ─── คำแนะนำเตรียมตัวสัปดาห์หน้า — เฉพาะรอบข้อสอบจริงเท่านั้น (backend
+           ยังไม่รองรับ field นี้สำหรับรอบฝึกซ้อม) ───────────────────────── */}
+      {activeRound === "official" &&
+        feedback?.preparationSuggestions &&
+        feedback.preparationSuggestions.length > 0 && (
+          <Reveal>
+            <div className="border-t border-line-soft pt-10">
+              <h2 className="display flex items-center gap-2 text-lg">
+                <ArrowRight className="h-4 w-4 text-tu-gold-600" />
+                คำแนะนำเตรียมตัวสัปดาห์หน้า
+              </h2>
+              <p className="mt-1 text-sm text-ink-500">AI แนะนำจากผลการเรียนรู้ของคุณในสัปดาห์นี้</p>
+              <hr className="rule-gold mb-5 mt-2.5" />
+              <div className="space-y-4">
+                {feedback.preparationSuggestions.map((s, i) => (
+                  <div
+                    key={`${s.cloCode}-${i}`}
+                    className="rounded-xl border-l-[3px] border-tu-gold-400 bg-tu-gold-50/40 py-3 pl-4 pr-3.5"
+                  >
+                    <p className="text-[10px] font-bold uppercase tracking-wide text-tu-gold-700">
+                      {s.cloCode}
+                    </p>
+                    <p className="mt-1 text-sm leading-relaxed text-ink-700">{s.suggestion}</p>
+                    {s.sources.length > 0 && (
+                      <div className="mt-2.5 flex items-start gap-2 rounded-xl border border-line-soft bg-paper-50 px-4 py-2.5">
+                        <BookOpen className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-ink-400" />
+                        <p className="text-xs leading-relaxed text-ink-600">
+                          <span className="font-semibold text-ink-500">อ้างอิงจาก: </span>
+                          {s.sources
+                            .map((src) =>
+                              src.sourceLocation ? `${src.filename} (${src.sourceLocation})` : src.filename,
+                            )
+                            .join(", ")}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Reveal>
+        )}
+
       {/* ─── ทบทวนคำตอบรายข้อ ─── */}
       {questionReview.length > 0 && (
         <Reveal>

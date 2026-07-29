@@ -902,36 +902,10 @@ export default function StudentSummary({
           </div>
 
           <div className="flex flex-col items-end gap-2.5">
-            {/* สลับภาพรวม/รายสัปดาห์ — เหมือนหน้าภาพรวมทั้งวิชา (เฉพาะมุมมองนักศึกษาเจ้าของ) */}
-            {!isTeacherView && !isLocked && course && (
-              <div className="inline-flex items-center gap-1 rounded-xl bg-paper-100 p-1">
-                <Link
-                  href={`/student/summary/course/${course.id}`}
-                  className="rounded-lg px-4 py-2 text-sm font-bold text-ink-500 transition hover:text-ink-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-tu-red-300"
-                >
-                  ภาพรวม
-                </Link>
-                <button
-                  type="button"
-                  className="rounded-lg bg-white px-4 py-2 text-sm font-bold text-tu-red-700 shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-tu-red-300"
-                >
-                  รายสัปดาห์
-                </button>
-              </div>
-            )}
-
-            {/* 1) เลือกสัปดาห์ก่อน — มุมมองอาจารย์ไม่ต้องมี บอกไว้ที่ eyebrow ด้านบนแล้ว */}
-            {!isTeacherView && !isLocked && (
-              <div className="flex flex-wrap items-center justify-end gap-2">
-                {weeksAvailable.length > 0 && (
-                  <WeekDropdown
-                    currentWeek={week}
-                    weeks={weeksAvailable}
-                    onSelect={(w) => router.replace(`/student/summary/${weekNumber(w)}`)}
-                  />
-                )}
-              </div>
-            )}
+            {/* ป้ายระบุสัปดาห์แบบฟิกซ์คงที่ ตามที่กำหนด */}
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-tu-red-50 px-3.5 py-1.5 text-xs font-bold text-tu-red-700 ring-1 ring-tu-red-200">
+              สัปดาห์ที่ {wk}
+            </span>
 
             {/* 2) จากนั้นค่อยเลือกแหล่งข้อมูลของสัปดาห์นี้ — โชว์เฉพาะเมื่อมีทั้งสองแหล่ง (ทั้งมุมมองนักศึกษาและอาจารย์) */}
             {attemptResults.length > 0 && !isLocked && (

@@ -542,7 +542,7 @@ export default function StudentSummary({ week }: { week: string }) {
             <p className="eyebrow">
               {activeRound === "official"
                 ? (isTeacherView ? "รายงานรายบุคคล" : "Learning Analytics")
-                : "ผลการฝึกซ้อมด้วยตนเอง"} · สัปดาห์ที่ {wk}
+                : `ผลการฝึกซ้อมด้วยตนเอง (รอบที่ ${selectedIndexLabel(attemptResults, activeRound)})`} · สัปดาห์ที่ {wk}
             </p>
             <h1
               className={`display mt-1.5 text-2xl sm:text-3xl md:text-[34px] ${
@@ -550,8 +550,8 @@ export default function StudentSummary({ week }: { week: string }) {
               }`}
             >
               {isTeacherView
-                ? `${activeRound === "official" ? "วิเคราะห์ผลการเรียนรู้" : "รายงานการฝึกซ้อม"}ของ ${officialMine.studentName}`
-                : `${activeRound === "official" ? "วิเคราะห์ผลการเรียนรู้" : "รายงานการฝึกซ้อม"}ของคุณ`}
+                ? `${activeRound === "official" ? "วิเคราะห์ผลการเรียนรู้" : `รายงานการฝึกซ้อม (รอบที่ ${selectedIndexLabel(attemptResults, activeRound)})`}ของ ${officialMine.studentName}`
+                : `${activeRound === "official" ? "วิเคราะห์ผลการเรียนรู้" : `รายงานการฝึกซ้อม (รอบที่ ${selectedIndexLabel(attemptResults, activeRound)})`}ของคุณ`}
             </h1>
             <hr className="rule-gold my-3" />
             <p className="max-w-lg text-sm leading-relaxed text-ink-500">{summary.headline}</p>

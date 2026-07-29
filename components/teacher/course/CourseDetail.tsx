@@ -574,142 +574,64 @@ export default function CourseDetail({ courseId }: { courseId: string }) {
                 {/* รายการควิซที่กางออกมา — เยื้องให้ตรงกับหัวข้อ */}
                 {open && hasQuizzes && (
                   <div className="ml-0 animate-slide-up pb-7 sm:ml-[76px]">
-                    <div className="relative overflow-hidden rounded-2xl border border-line-soft bg-white shadow-card">
-                      {/* แสงอุ่นสีประจำสัปดาห์ + สันซ้าย */}
-                      <div
-                        aria-hidden
-                        className="pointer-events-none absolute inset-0"
-                        style={{
-                          background: `radial-gradient(260px 140px at 0% 0%, ${hex}14, transparent 72%)`,
-                        }}
-                      />
-                      <div
-                        aria-hidden
-                        className="pointer-events-none absolute inset-y-0 left-0 w-1"
-                        style={{ backgroundColor: hex }}
-                      />
-
-                      {/* หัวแผง */}
-                      <div className="relative flex items-center justify-between gap-3 border-b border-line-soft px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className="h-1.5 w-1.5 rounded-full animate-pulse"
-                            style={{ backgroundColor: hex }}
-                          />
-                          <h4 className="text-[11px] font-bold uppercase tracking-widest text-ink-400">
-                            ชุดแบบทดสอบประจำสัปดาห์
-                          </h4>
-                        </div>
-                        <span className="flex-shrink-0 rounded-full bg-paper-100 px-2.5 py-1 text-[11px] font-bold tabular-nums text-ink-500 ring-1 ring-line-soft">
-                          {row.quizzes.length} ชุด
-                        </span>
-                      </div>
-
-                      {/* รายการควิซ */}
-                      <div className="relative space-y-2 p-2.5">
-                        {row.quizzes.map((q, i) => {
-                          const active = q.id === selectedId;
-                          const isCommitted = q.isActive;
-                          return (
-                            <div
-                              key={q.id}
-                              className={`group/row relative flex items-center gap-3 rounded-xl border border-line p-3.5 transition-all duration-200 animate-quiz-row ${
-                                active
-                                  ? "border-line-strong/70"
-                                  : "hover:border-line-strong hover:bg-paper-100/50 hover:shadow-sm"
-                              }`}
-                              style={{
-                                animationDelay: `${i * 55}ms`,
-                                borderLeftWidth: active ? "4px" : "3px",
-                                borderLeftColor: hex,
-                                ...(active
-                                  ? {
-                                      background: `linear-gradient(90deg, ${hex}17, ${hex}05 60%, transparent)`,
-                                      boxShadow: `inset 0 0 0 1px ${hex}33, 0 0 16px -8px ${hex}80`,
-                                    }
-                                  : {}),
-                              }}
-                            >
-                              {/* ปุ่มเลือกชุด */}
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  pickActive(row.week, q.id, committedActiveId)
-                                }
-                                title={active ? "ชุดที่เลือก" : "เลือกชุดนี้"}
-                                aria-pressed={active}
-                                className={`relative grid h-6 w-6 flex-shrink-0 place-items-center rounded-full border-2 bg-white transition-transform duration-200 group-hover/row:scale-110 ${
-                                  active ? "border-transparent" : "border-line-strong"
-                                }`}
-                                style={
-                                  active
-                                    ? { backgroundColor: hex, borderColor: hex }
-                                    : undefined
-                                }
+                    <div className="space-y-3">
+                      {row.quizzes.map((q, i) => {
+                        const active = q.id === selectedId;
+                        const isCommitted = q.isActive;
+                        return (
+                          <div
+                            key={q.id}
+                            className="flex items-center justify-between gap-4 rounded-2xl border border-gray-200 border-l-[4px] bg-white p-4 transition-all duration-200 shadow-2xs"
+                            style={{
+                              backgroundColor: active ? `${hex}0c` : "white",
+                              borderLeftColor: active ? hex : "#d1d5db",
+                            }}
+                          >
+                            {/* ซ้าย: ข้อมูลควิซ */}
+                            <div className="min-w-0 flex-1">
+                              <span
+                                className="block truncate text-sm font-bold transition-colors"
+                                style={{ color: active ? hex : "#111827" }}
                               >
-                                {active ? (
-                                  <>
-                                    <Check className="h-3.5 w-3.5 text-white" strokeWidth={3.5} />
-                                    <span
-                                      aria-hidden
-                                      className="absolute inset-0 rounded-full"
-                                      style={{ boxShadow: `0 0 0 4px ${hex}22` }}
-                                    />
-                                  </>
-                                ) : (
-                                  <span className="h-1.5 w-1.5 rounded-full bg-transparent transition-colors group-hover/row:bg-ink-300" />
-                                )}
-                              </button>
+                                {q.title}
+                              </span>
+                              <span className="mt-1 block text-xs font-semibold text-ink-400">
+                                {q.questions.length} ข้อ
+                              </span>
+                            </div>
 
-                              {/* ข้อมูลควิซ */}
-                              <div className="min-w-0 flex-1">
+                            {/* ขวา: Badge และปุ่มจัดการ + Toggle Switch */}
+                            <div className="flex items-center gap-4 flex-shrink-0">
+                              {/* Badges */}
+                              {isCommitted && (
                                 <span
-                                  className={`block truncate text-sm font-bold transition-colors ${
-                                    active ? "" : "text-ink-900 group-hover/row:text-tu-red-700"
-                                  }`}
-                                  style={active ? { color: soft.color } : undefined}
+                                  className="rounded-lg px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider shadow-3xs"
+                                  style={{
+                                    color: hex,
+                                    backgroundColor: `${hex}14`,
+                                  }}
                                 >
-                                  {q.title}
+                                  เลือกอยู่
                                 </span>
-                                <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                                  <span className="inline-flex items-center gap-1 rounded-md bg-paper-100 px-1.5 py-0.5 text-[10px] font-bold text-ink-500">
-                                    <ClipboardList className="h-3 w-3 text-ink-400" />
-                                    {q.questions.length} ข้อ
-                                  </span>
+                              )}
 
-                                  {isCommitted && (
-                                    <span
-                                      className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide"
-                                      style={{ color: soft.color }}
-                                    >
-                                      <span className="relative flex h-1.5 w-1.5">
-                                        <span
-                                          className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-60"
-                                          style={{ backgroundColor: hex }}
-                                        />
-                                        <span
-                                          className="relative inline-flex h-1.5 w-1.5 rounded-full"
-                                          style={{ backgroundColor: hex }}
-                                        />
-                                      </span>
-                                      เลือกอยู่
-                                    </span>
-                                  )}
+                              {active && !isCommitted && (
+                                <span className="rounded-lg bg-tu-gold-50 px-2.5 py-1 text-[10px] font-bold text-tu-gold-700 ring-1 ring-tu-gold-200/50">
+                                  ยังไม่บันทึกเปิด
+                                </span>
+                              )}
+                              {!active && isCommitted && (
+                                <span className="rounded-lg bg-tu-red-50 px-2.5 py-1 text-[10px] font-bold text-tu-red-700 ring-1 ring-tu-red-200/50">
+                                  ยังไม่บันทึกปิด
+                                </span>
+                              )}
 
-                                  {active && !isCommitted && (
-                                    <span className="rounded bg-tu-gold-50 px-1.5 py-0.5 text-[10px] font-bold text-tu-gold-700 ring-1 ring-tu-gold-200/60">
-                                      ยังไม่บันทึก
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-
-                              {/* ปุ่มจัดการ — เผยบนพื้นขาวเมื่อชี้แถว */}
-                              <div className="flex flex-shrink-0 items-center gap-1 rounded-lg px-1 py-1 opacity-0 transition-all duration-200 group-hover/row:bg-white/80 group-hover/row:opacity-100 group-hover/row:shadow-sm">
+                              {/* Action Buttons */}
+                              <div className="flex items-center gap-1.5">
                                 <Link
                                   href={`/quiz/${wk}?quiz=${q.id}`}
                                   title="แก้ไขควิซ"
-                                  className="grid h-8 w-8 place-items-center rounded-lg text-ink-400 transition hover:bg-paper-200 hover:text-tu-red-600 active:scale-90"
+                                  className="grid h-8 w-8 place-items-center rounded-xl border border-gray-200 bg-white text-ink-400 transition hover:border-line-strong hover:text-tu-red-600 hover:shadow-2xs active:scale-90"
                                 >
                                   <Pencil className="h-3.5 w-3.5" />
                                 </Link>
@@ -717,50 +639,72 @@ export default function CourseDetail({ courseId }: { courseId: string }) {
                                   type="button"
                                   onClick={() => handleDelete(row.week, q)}
                                   title="ลบ"
-                                  className="grid h-8 w-8 place-items-center rounded-lg text-ink-300 transition hover:bg-tu-red-50 hover:text-tu-red-600 active:scale-90"
+                                  className="grid h-8 w-8 place-items-center rounded-xl border border-gray-200 bg-white text-ink-300 transition hover:border-line-strong hover:text-tu-red-600 hover:shadow-2xs active:scale-90"
                                 >
                                   <Trash2 className="h-3.5 w-3.5" />
                                 </button>
                               </div>
-                            </div>
-                          );
-                        })}
 
-                        {/* สร้างควิซเพิ่ม */}
+                              {/* Toggle Switch (ขวาสุด) */}
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  pickActive(row.week, q.id, committedActiveId)
+                                }
+                                title={active ? "ปิดแบบทดสอบนี้" : "เปิดแบบทดสอบนี้"}
+                                aria-pressed={active}
+                                className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-emerald-500/15 ${
+                                  active ? "bg-emerald-500" : "bg-paper-300"
+                                }`}
+                              >
+                                <span
+                                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                                    active ? "translate-x-5" : "translate-x-0"
+                                  }`}
+                                />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                      {/* สร้างควิซเพิ่ม */}
+                      <div className="mt-3.5 pl-1 flex justify-start">
                         <Link
                           href={`/quiz/${wk}?new=1`}
-                          className="group/add flex items-center justify-center gap-2 rounded-xl border border-dashed border-line-strong py-3 text-xs font-bold text-ink-500 transition-all duration-200 hover:border-tu-red-300 hover:bg-tu-red-50/40 hover:text-tu-red-600"
+                          className="group/create inline-flex items-center gap-1.5 text-xs font-bold transition-colors"
+                          style={{ color: hex }}
                         >
-                          <span className="grid h-5 w-5 place-items-center rounded-full bg-paper-100 text-tu-red-500 transition-all duration-300 group-hover/add:rotate-90 group-hover/add:bg-white group-hover/add:shadow-sm">
-                            <Plus className="h-3 w-3" strokeWidth={3} />
+                          <span className="inline-block text-sm font-semibold transition-transform duration-200 group-hover/create:rotate-90 group-hover/create:scale-110">
+                            +
                           </span>
-                          <span>สร้างควิซเพิ่ม</span>
+                          <span className="hover:underline">สร้างควิซเพิ่ม</span>
                         </Link>
                       </div>
                     </div>
 
                     {/* แถบยืนยันเมื่อมีการเปลี่ยนชุดที่ใช้งาน (ยังไม่บันทึก) */}
                     {hasPending && (
-                      <div className="mt-3 flex animate-slide-up flex-wrap items-center justify-between gap-3 overflow-hidden rounded-xl border border-tu-gold-200 bg-tu-gold-50 py-2.5 pl-3.5 pr-3">
-                        <span className="flex items-center gap-2 text-xs font-medium text-tu-gold-800">
+                      <div className="mt-4 flex animate-slide-up flex-wrap items-center justify-between gap-3 overflow-hidden rounded-2xl border border-tu-gold-200 bg-tu-gold-50/50 p-3 pl-4 pr-3.5">
+                        <span className="flex items-center gap-2 text-xs font-semibold text-tu-gold-800">
                           <span className="relative flex h-2 w-2">
                             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-tu-gold-400 opacity-70" />
                             <span className="relative inline-flex h-2 w-2 rounded-full bg-tu-gold-500" />
                           </span>
-                          มีการเปลี่ยนชุดที่ใช้งาน — ยังไม่บันทึก
+                          มีข้อสอบที่มีการเปลี่ยนแปลงการเปิด/ปิดสอบ — ยังไม่บันทึก
                         </span>
                         <div className="flex items-center gap-2">
                           <button
                             type="button"
                             onClick={() => cancelActive(row.week)}
-                            className="rounded-lg px-3 py-1.5 text-xs font-semibold text-ink-500 transition hover:bg-paper-200 active:scale-95"
+                            className="rounded-xl px-3.5 py-2 text-xs font-bold text-ink-500 transition hover:bg-paper-200 active:scale-95"
                           >
                             ยกเลิก
                           </button>
                           <button
                             type="button"
                             onClick={() => saveActive(row.week)}
-                            className="inline-flex items-center gap-1.5 rounded-lg bg-tu-red-500 px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-tu-red-600 active:scale-95"
+                            className="inline-flex items-center gap-1.5 rounded-xl bg-tu-red-600 px-4 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-tu-red-700 active:scale-95"
                           >
                             <Check className="h-3.5 w-3.5" strokeWidth={3} />
                             บันทึกการเปลี่ยนแปลง

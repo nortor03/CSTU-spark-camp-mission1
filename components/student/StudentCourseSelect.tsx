@@ -106,7 +106,7 @@ async function loadCourseProgress(
  * เลือกวิชาแล้วจึงไปดูสัปดาห์/แบบทดสอบของวิชานั้น
  */
 export default function StudentCourseSelect() {
-  const { studentId, hydrated, importCourse, importQuizzes } = useCourse();
+  const { studentId, hydrated, importCourse, importQuizzes, courses: localCourses } = useCourse();
   const [items, setItems] = useState<CourseProgress[] | null>(null);
   const [loadError, setLoadError] = useState(false);
 
@@ -122,46 +122,71 @@ export default function StudentCourseSelect() {
 
     fetchCourses()
       .then(async (summaries) => {
-        const results = await Promise.all(
-          summaries.map((s) =>
-            loadCourseProgress(s, studentId, importCourse, importQuizzes),
-          ),
-        );
-        if (!cancelled) setItems(results);
+        if (summaries.length === 0 && localCourses.length > 0) {
+          const results: CourseProgress[] = localCourses.map((c) => ({
+            id: c.id,
+            code: c.courseCode || "วิชา",
+            subject: c.subject,
+            totalWeeks: c.totalWeeks,
+            totalQuizzes: Object.values(c.quizzes).flat().filter((q) => q.isActive).length,
+            doneQuizzes: c.submissions.filter((s) => s.isCurrentUser).length,
+            doneSummaries: c.totalWeeks,
+          }));
+          if (!cancelled) setItems(results);
+        } else {
+          const results = await Promise.all(
+            summaries.map((s) =>
+              loadCourseProgress(s, studentId, importCourse, importQuizzes),
+            ),
+          );
+          if (!cancelled) setItems(results);
+        }
       })
       .catch((err) => {
         console.warn("ไม่สามารถดึงรายวิชาจาก backend ได้, กำลังใช้ข้อมูลจำลอง", err);
         if (!cancelled) {
-          const mockItems: CourseProgress[] = [
-            {
-              id: "course-cn101",
-              code: "CN101",
-              subject: "การเขียนโปรแกรมเบื้องต้น",
-              totalWeeks: 12,
-              totalQuizzes: 5,
-              doneQuizzes: 3,
-              doneSummaries: 3,
-            },
-            {
-              id: "course-cs232",
-              code: "CS232",
-              subject: "โครงสร้างข้อมูลและอัลกอริทึม",
-              totalWeeks: 15,
-              totalQuizzes: 8,
-              doneQuizzes: 5,
-              doneSummaries: 5,
-            },
-            {
-              id: "course-ge145",
-              code: "GE145",
-              subject: "การคิดเชิงออกแบบ",
-              totalWeeks: 15,
-              totalQuizzes: 2,
-              doneQuizzes: 0,
-              doneSummaries: 0,
-            },
-          ];
-          setItems(mockItems);
+          const mockItems: CourseProgress[] = localCourses.map((c) => ({
+            id: c.id,
+            code: c.courseCode || "วิชา",
+            subject: c.subject,
+            totalWeeks: c.totalWeeks,
+            totalQuizzes: Object.values(c.quizzes).flat().filter((q) => q.isActive).length,
+            doneQuizzes: c.submissions.filter((s) => s.isCurrentUser).length,
+            doneSummaries: c.totalWeeks,
+          }));
+          setItems(
+            mockItems.length > 0
+              ? mockItems
+              : [
+                  {
+                    id: "course-cn101",
+                    code: "CN101",
+                    subject: "การเขียนโปรแกรมเบื้องต้น",
+                    totalWeeks: 12,
+                    totalQuizzes: 5,
+                    doneQuizzes: 3,
+                    doneSummaries: 3,
+                  },
+                  {
+                    id: "course-cs232",
+                    code: "CS232",
+                    subject: "โครงสร้างข้อมูลและอัลกอริทึม",
+                    totalWeeks: 15,
+                    totalQuizzes: 8,
+                    doneQuizzes: 5,
+                    doneSummaries: 5,
+                  },
+                  {
+                    id: "course-ge145",
+                    code: "GE145",
+                    subject: "การคิดเชิงออกแบบ",
+                    totalWeeks: 15,
+                    totalQuizzes: 2,
+                    doneQuizzes: 0,
+                    doneSummaries: 0,
+                  },
+                ],
+          );
           setLoadError(false);
         }
       });

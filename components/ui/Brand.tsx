@@ -1,6 +1,7 @@
 /**
- * โลโก้/แบรนด์ KroonQuiz
- * ตราสัญลักษณ์เป็นสัญลักษณ์ตัวย่อ KQ โทนพรีเมียมสีแดง-ทอง
+ * โลโก้/แบรนด์ kroonquiz
+ * ตราสัญลักษณ์เป็นลูกโป่งความคิด (thought bubble) สื่อถึง "กำลังคิด" ก่อนจะถึงคำตอบ
+ * จุดไล่ขนาดข้างในแทนความคิดที่กำลังก่อตัว ประกายทองมุมบนแทนไอเดีย
  */
 export default function Brand({
   size = "md",
@@ -11,9 +12,9 @@ export default function Brand({
   variant?: "dark" | "light";
 }) {
   const mark = {
-    sm: "h-9 w-9 text-[12px] rounded-xl",
-    md: "h-11 w-11 text-sm rounded-2xl",
-    lg: "h-14 w-14 text-lg rounded-2xl",
+    sm: "h-9 w-9",
+    md: "h-11 w-11",
+    lg: "h-14 w-14",
   }[size];
 
   const title = {
@@ -23,55 +24,32 @@ export default function Brand({
   }[size];
 
   const light = variant === "light";
+  const cloudFill = light ? "#7A1020" : "#C8102E";
+  const dotFill = light ? "#FBF0EA" : "#FBF0EA";
+  const sparkFill = "#F2A900";
 
   return (
     <div className="flex items-center gap-3">
-      {/* Icon Logo with gold border and glowing effect */}
-      <div
-        className={`relative grid flex-shrink-0 place-items-center border transition-all duration-300 shadow-sm ${mark} ${
-          light 
-            ? "bg-white text-tu-red-700 border-white/20 hover:scale-105" 
-            : "bg-gradient-to-br from-tu-red-500 to-tu-red-650 text-white border-tu-red-200/20 hover:scale-105"
-        }`}
+      {/* Icon: thought bubble — ไม่มีกล่อง/พื้นหลัง ลอยอยู่บนพื้นที่ใช้งานจริงได้เลย */}
+      <svg
+        viewBox="0 0 64 64"
+        fill="none"
+        className={`flex-shrink-0 transition-transform duration-300 hover:scale-105 ${mark}`}
         aria-hidden
       >
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="h-1/2 w-1/2"
-        >
-          {/* Graduation Cap */}
-          <path d="M21.4 10.9a1 1 0 0 0 0-1.8L12.8 5.2a2 2 0 0 0-1.6 0L2.6 9.1a1 1 0 0 0 0 1.8l8.6 3.9a2 2 0 0 0 1.6 0l8.6-3.9z" />
-          <path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5" />
-          {/* Tassel */}
-          <path d="M21.5 12H18v5" />
-        </svg>
-
-        {/* Small gold checkmark badge on top right */}
-        <span
-          className={`absolute -right-1 -top-1 flex h-4.5 w-4.5 items-center justify-center rounded-full border shadow-2xs ${
-            light 
-              ? "bg-tu-gold-500 text-white border-white" 
-              : "bg-tu-gold-500 text-tu-red-700 border-tu-red-650"
-          }`}
-        >
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="3.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="h-2.5 w-2.5"
-          >
-            <polyline points="20 6 9 17 4 12" />
-          </svg>
-        </span>
-      </div>
+        <circle cx="10" cy="54" r="2.6" fill={cloudFill} />
+        <circle cx="16" cy="47" r="4" fill={cloudFill} />
+        <circle cx="20" cy="27" r="11" fill={cloudFill} />
+        <circle cx="33" cy="17" r="13" fill={cloudFill} />
+        <circle cx="47" cy="23" r="11" fill={cloudFill} />
+        <circle cx="49" cy="35" r="10" fill={cloudFill} />
+        <circle cx="35" cy="41" r="11" fill={cloudFill} />
+        <circle cx="22" cy="38" r="10" fill={cloudFill} />
+        <circle cx="50" cy="11" r="2.8" fill={sparkFill} />
+        <circle cx="24" cy="30" r="2.8" fill={dotFill} />
+        <circle cx="33" cy="26" r="3.6" fill={dotFill} />
+        <circle cx="44" cy="18" r="4.6" fill={dotFill} />
+      </svg>
 
       <div className="leading-tight">
         <p

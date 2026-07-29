@@ -817,7 +817,99 @@ export default function StudentSummary({
     );
   }
 
-  if (!mine || !summary) return null;
+  if (!mine || !summary) {
+    return (
+      <div className="relative space-y-10">
+        <div className="text-sm font-medium text-ink-400">
+          <Link href="/student" className="transition-colors hover:text-tu-red-600">
+            รายวิชาเรียน
+          </Link>
+          {course && (
+            <>
+              <span className="mx-2 text-ink-300">/</span>
+              <Link
+                href={`/student/course/${course.id}`}
+                className="transition-colors hover:text-tu-red-600"
+              >
+                {course.subject}
+              </Link>
+              <span className="mx-2 text-ink-300">/</span>
+              <span className="text-ink-700">วิเคราะห์ผลการเรียนรู้</span>
+            </>
+          )}
+        </div>
+
+        <div>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="eyebrow">ผลการฝึกซ้อมด้วยตนเอง · สัปดาห์ที่ {wk}</p>
+              <h1 className="display mt-1.5 text-2xl sm:text-3xl md:text-[34px]">
+                รายงานการฝึกซ้อมของคุณ
+              </h1>
+              <hr className="rule-gold my-3" />
+            </div>
+
+            <div className="flex flex-col items-end gap-2.5">
+              {course && (
+                <div className="inline-flex items-center gap-1 rounded-xl bg-paper-100 p-1">
+                  <Link
+                    href={`/student/summary/course/${course.id}`}
+                    className="rounded-lg px-4 py-2 text-sm font-bold text-ink-500 transition hover:text-ink-700"
+                  >
+                    ภาพรวม
+                  </Link>
+                  <button
+                    type="button"
+                    className="rounded-lg bg-white px-4 py-2 text-sm font-bold text-tu-red-700 shadow-sm"
+                  >
+                    รายสัปดาห์
+                  </button>
+                </div>
+              )}
+
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-ink-400">แสดงผลจาก</span>
+                  <div className="inline-flex items-center gap-1 rounded-xl bg-paper-100 p-1">
+                    <button
+                      type="button"
+                      onClick={() => setActiveRound("official")}
+                      className="rounded-lg px-3.5 py-1.5 text-xs font-bold text-ink-500 hover:text-ink-700"
+                    >
+                      ข้อสอบอาจารย์
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded-lg bg-white px-3.5 py-1.5 text-xs font-bold text-tu-red-700 shadow-sm"
+                    >
+                      ฝึกด้วยตนเอง
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="card-empty py-16">
+          <div className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-tu-gold-50 text-tu-gold-600">
+            <Target className="h-6 w-6" />
+          </div>
+          <h2 className="display mt-4 text-xl">ยังไม่มีผลการฝึกซ้อมของสัปดาห์นี้</h2>
+          <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-ink-500">
+            คุณยังไม่ได้ทำแบบฝึกซ้อมด้วยตนเองในสัปดาห์นี้ สามารถกดปุ่มด้านล่างเพื่อเริ่มทำแบบฝึกซ้อมจำลองได้ทันที
+          </p>
+          <Link
+            href={`/student/quiz/${week.match(/\d+/)?.[0] ?? "1"}?practice=1`}
+            className="btn-primary mt-6 inline-flex items-center gap-2"
+          >
+            <Sparkles className="h-4 w-4" />
+            เริ่มทำแบบฝึกซ้อมด้วย AI
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   const strongest = summary.topics[0];
   const weakest = summary.topics[summary.topics.length - 1];
@@ -906,16 +998,42 @@ export default function StudentSummary({
           </div>
 
           <div className="flex flex-col items-end gap-2.5">
-            {/* ป้ายระบุสัปดาห์แบบฟิกซ์คงที่ ตามที่กำหนด */}
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-tu-red-50 px-3.5 py-1.5 text-xs font-bold text-tu-red-700 ring-1 ring-tu-red-200">
-              สัปดาห์ที่ {wk}
-            </span>
+            {/* สลับภาพรวม/รายสัปดาห์ — เหมือนหน้าภาพรวมทั้งวิชา (เฉพาะมุมมองนักศึกษาเจ้าของ) */}
+            {!isTeacherView && !isLocked && course && (
+              <div className="inline-flex items-center gap-1 rounded-xl bg-paper-100 p-1">
+                <Link
+                  href={`/student/summary/course/${course.id}`}
+                  className="rounded-lg px-4 py-2 text-sm font-bold text-ink-500 transition hover:text-ink-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-tu-red-300"
+                >
+                  ภาพรวม
+                </Link>
+                <button
+                  type="button"
+                  className="rounded-lg bg-white px-4 py-2 text-sm font-bold text-tu-red-700 shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-tu-red-300"
+                >
+                  รายสัปดาห์
+                </button>
+              </div>
+            )}
 
-            {/* 2) จากนั้นค่อยเลือกแหล่งข้อมูลของสัปดาห์นี้ — โชว์เฉพาะเมื่อมีทั้งสองแหล่ง (ทั้งมุมมองนักศึกษาและอาจารย์) */}
-            {attemptResults.length > 0 && !isLocked && (
+            {/* 1) เลือกสัปดาห์ก่อน — มุมมองอาจารย์ไม่ต้องมี บอกไว้ที่ eyebrow ด้านบนแล้ว */}
+            {!isTeacherView && !isLocked && (
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                {weeksAvailable.length > 0 && (
+                  <WeekDropdown
+                    currentWeek={week}
+                    weeks={weeksAvailable}
+                    onSelect={(w) => router.replace(`/student/summary/${weekNumber(w)}`)}
+                  />
+                )}
+              </div>
+            )}
+
+            {/* 2) จากนั้นค่อยเลือกแหล่งข้อมูลของสัปดาห์นี้ — โชว์เสมอ */}
+            {!isLocked && (
               <div className="flex flex-wrap items-center justify-end gap-2">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-ink-400">แสดงผลจาก</span>
+                  <span className="text-xs font-semibold text-ink-400">แสดงผลจาก</span>
                   <div className="inline-flex items-center gap-1 rounded-xl bg-paper-100 p-1">
                     <button
                       type="button"
@@ -932,7 +1050,9 @@ export default function StudentSummary({
                       type="button"
                       onClick={() =>
                         setActiveRound(
-                          attemptResults[attemptResults.length - 1].attempt.id,
+                          attemptResults.length > 0
+                            ? attemptResults[attemptResults.length - 1].attempt.id
+                            : "practice"
                         )
                       }
                       className={`rounded-lg px-3.5 py-1.5 text-xs font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-tu-red-300 ${
@@ -947,7 +1067,7 @@ export default function StudentSummary({
                 </div>
 
                 {/* บอกว่ากำลังดูรอบไหนอยู่ — โผล่ตลอดตอนดูฝึกซ้อม แม้มีรอบเดียว */}
-                {activeRound !== "official" && (
+                {activeRound !== "official" && attemptResults.length > 0 && (
                   <RoundPicker
                     activeRound={activeRound}
                     attemptResults={attemptResults}

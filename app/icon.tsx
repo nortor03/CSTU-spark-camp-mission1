@@ -14,71 +14,32 @@ export const contentType = "image/png";
 export default function Icon() {
   return new ImageResponse(
     (
-      // ImageResponse JSX element
+      // ตราสัญลักษณ์ลูกโป่งความคิด (thought bubble) บนพื้นแดงมน — คู่กับ Brand.tsx
       <div
         style={{
-          background: "linear-gradient(135deg, #DC5462 0%, #C8102E 100%)", // Grad of TU Red
+          background: "#C8102E",
           width: "100%",
           height: "100%",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          color: "white",
           borderRadius: "8px",
-          border: "1.5px solid #F2A900", // TU Gold
-          position: "relative",
         }}
       >
-        {/* Graduation Cap SVG */}
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          style={{
-            width: "55%",
-            height: "55%",
-          }}
-        >
-          <path d="M21.4 10.9a1 1 0 0 0 0-1.8L12.8 5.2a2 2 0 0 0-1.6 0L2.6 9.1a1 1 0 0 0 0 1.8l8.6 3.9a2 2 0 0 0 1.6 0l8.6-3.9z" />
-          <path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5" />
-          <path d="M21.5 12H18v5" />
+        <svg viewBox="0 0 64 64" width="26" height="26" fill="none">
+          <circle cx="10" cy="54" r="2.6" fill="#7A1020" />
+          <circle cx="16" cy="47" r="4" fill="#7A1020" />
+          <circle cx="20" cy="27" r="11" fill="#7A1020" />
+          <circle cx="33" cy="17" r="13" fill="#7A1020" />
+          <circle cx="47" cy="23" r="11" fill="#7A1020" />
+          <circle cx="49" cy="35" r="10" fill="#7A1020" />
+          <circle cx="35" cy="41" r="11" fill="#7A1020" />
+          <circle cx="22" cy="38" r="10" fill="#7A1020" />
+          <circle cx="50" cy="11" r="2.8" fill="#F2A900" />
+          <circle cx="24" cy="30" r="2.8" fill="#FBF0EA" />
+          <circle cx="33" cy="26" r="3.6" fill="#FBF0EA" />
+          <circle cx="44" cy="18" r="4.6" fill="#FBF0EA" />
         </svg>
-
-        {/* Small gold checkmark badge on top right */}
-        <div
-          style={{
-            position: "absolute",
-            right: "-2px",
-            top: "-2px",
-            display: "flex",
-            height: "10px",
-            width: "10px",
-            alignItems: "center",
-            justifyContent: "center",
-            borderRadius: "50%",
-            backgroundColor: "#F2A900", // Gold
-            border: "1px solid #C8102E", // Red border
-            color: "white",
-          }}
-        >
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="4.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            style={{
-              width: "6px",
-              height: "6px",
-            }}
-          >
-            <polyline points="20 6 9 17 4 12" />
-          </svg>
-        </div>
       </div>
     ),
     {

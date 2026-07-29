@@ -45,6 +45,7 @@ import {
   Zap,
   ArrowRight,
   AlertTriangle,
+  BookOpen,
 } from "lucide-react";
 import ImprovementChart from "./ImprovementChart";
 
@@ -783,6 +784,9 @@ export default function StudentSummary({
         chosenText: q.choices.find((c) => c.id === chosenId)?.text ?? "(ไม่ได้ตอบ)",
         correctText: q.choices.find((c) => c.id === q.answer)?.text ?? "(ไม่ได้ตอบ)",
         aiComment: aiCommentByQuestion.get(q.id) ?? null,
+        // เอกสารอ้างอิงมาจากตัวคำถามเองเสมอ (ติดมากับควิซตอน AI generate) ไม่ใช่
+        // จาก feedback evidence — evidence.sources จาก backend ยังว่างเปล่าอยู่
+        sources: q.sources ?? [],
       };
     });
   }, [activeQuiz, mine, feedback, activePracticeRound]);
@@ -1339,6 +1343,20 @@ export default function StudentSummary({
                           AI อธิบายเพิ่มเติม
                         </p>
                         <p className="text-xs leading-relaxed text-ink-600">{q.aiComment}</p>
+                      </div>
+                    )}
+
+                    {q.sources.length > 0 && (
+                      <div className="mt-2.5 flex items-start gap-2 rounded-xl border border-line-soft bg-paper-50 px-4 py-2.5">
+                        <BookOpen className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-ink-400" />
+                        <p className="text-xs leading-relaxed text-ink-600">
+                          <span className="font-semibold text-ink-500">อ้างอิงจาก: </span>
+                          {q.sources
+                            .map((s) =>
+                              s.sourceLocation ? `${s.filename} (${s.sourceLocation})` : s.filename,
+                            )
+                            .join(", ")}
+                        </p>
                       </div>
                     )}
                   </div>

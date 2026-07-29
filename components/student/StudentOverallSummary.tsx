@@ -420,11 +420,27 @@ export default function StudentOverallSummary({ courseId }: { courseId: string }
             </p>
           </div>
 
-          {/* ป้ายระบุภาพรวมทั้งวิชาแบบฟิกซ์คงที่ */}
+          {/* สลับภาพรวม/รายสัปดาห์ + แหล่งข้อมูล (ข้อสอบอาจารย์/ฝึกซ้อม) */}
           <div className="flex flex-shrink-0 flex-col items-end gap-2.5">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-tu-red-50 px-3.5 py-1.5 text-xs font-bold text-tu-red-700 ring-1 ring-tu-red-200">
-              ภาพรวมทั้งวิชา
-            </span>
+            <div className="inline-flex items-center gap-1 rounded-xl bg-paper-100 p-1">
+              <button
+                type="button"
+                className="rounded-lg bg-white px-4 py-2 text-sm font-bold text-tu-red-700 shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-tu-red-300"
+              >
+                ภาพรวม
+              </button>
+              <Link
+                replace
+                href={
+                  weekResults.length > 0
+                    ? `/student/summary/${weekResults[weekResults.length - 1].wkNum}`
+                    : "/student/summary"
+                }
+                className="rounded-lg px-4 py-2 text-sm font-bold text-ink-500 transition hover:text-ink-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-tu-red-300"
+              >
+                รายสัปดาห์
+              </Link>
+            </div>
 
             {/* โชว์เฉพาะเมื่อทั้งคอร์สมีข้อมูลฝึกซ้อมอย่างน้อย 1 สัปดาห์ (มีแหล่งเดียวไม่ต้องมีปุ่มสลับ) */}
             {Object.keys(practiceByWeek).length > 0 && (

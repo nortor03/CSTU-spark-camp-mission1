@@ -35,6 +35,7 @@ import {
   Meh,
   Frown,
   BookOpen,
+  Target,
 } from "lucide-react";
 
 type Phase = "loading" | "empty" | "doing" | "submitting" | "result";
@@ -452,8 +453,9 @@ export default function StudentQuiz({ week }: { week: string }) {
               </span>
             )}
             {isTargetedPractice && (
-              <span className="rounded-full bg-tu-gold-100 px-3 py-1 text-[11px] font-bold text-tu-gold-700">
-                🎯 ฝึกเจาะจุดที่พลาด
+              <span className="inline-flex items-center gap-1 rounded-full bg-tu-gold-100 px-3 py-1 text-[11px] font-bold text-tu-gold-700">
+                <Target className="h-3 w-3" />
+                ฝึกเจาะจุดที่พลาด
                 {practiceAttemptNumber != null && ` · รอบที่ ${practiceAttemptNumber}`}
               </span>
             )}

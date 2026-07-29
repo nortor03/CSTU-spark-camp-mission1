@@ -7,7 +7,7 @@ import { weekNumber, resolveHex, tagStyles } from "@/lib/weeks";
 import { extractSyllabus } from "@/lib/syllabus";
 import { buildPlanPayload } from "@/lib/planPayload";
 import { fetchCourse, syncCourse } from "@/lib/coursesApi";
-import { fetchCourseQuizzes } from "@/lib/quizzesApi";
+import { fetchCourseQuizzes, saveQuizToBackend } from "@/lib/quizzesApi";
 import PageHeader from "@/components/ui/PageHeader";
 import Modal, { ModalHeader } from "@/components/ui/Modal";
 import EditCloModal, { type EditingClo } from "./EditCloModal";
@@ -88,6 +88,10 @@ export default function CourseDetail({ courseId }: { courseId: string }) {
 
   // เปลี่ยน "ชุดที่ใช้งาน" ต้องกดยืนยันก่อน — เก็บตัวเลือกที่ค้าง (ยังไม่บันทึก) ต่อสัปดาห์
   const [pendingActive, setPendingActive] = useState<Record<string, string>>({});
+  // สัปดาห์ที่กำลังบันทึกการเปลี่ยนชุด active ขึ้น backend อยู่ (null = ไม่มี)
+  const [savingActiveWeek, setSavingActiveWeek] = useState<string | null>(null);
+  // ข้อความ error ต่อสัปดาห์ ถ้าบันทึกขึ้น backend ไม่สำเร็จ
+  const [activeSaveError, setActiveSaveError] = useState<Record<string, string>>({});
   // ป็อปอัปลบ/เตือน — เก็บควิซที่กำลังจะลบ
   const [deleteTarget, setDeleteTarget] = useState<{
     week: string;
@@ -108,19 +112,58 @@ export default function CourseDetail({ courseId }: { courseId: string }) {
       return next;
     });
   }
-  /** บันทึกการเปลี่ยนชุดที่ใช้งานของสัปดาห์นั้น */
-  function saveActive(week: string) {
+  /**
+   * บันทึกการเปลี่ยนชุดที่ใช้งานของสัปดาห์นั้น — ต้องยิงขึ้น backend จริงด้วย
+   * (POST /api/v1/quizzes ต่อควิซ) ไม่ใช่แค่ toggleQuizActive ในเครื่องแบบเดิม
+   * เพราะเดิมกดแล้วดูเหมือนสำเร็จในเครื่องอาจารย์เอง แต่ backend ไม่เคยรู้เรื่อง
+   * ทำให้นักเรียนที่ดึงข้อมูลจาก backend ตรงๆ ไม่เห็นควิซที่เพิ่ง "เปิด" เลย
+   *
+   * backend เองก็ไม่บังคับว่า 1 สัปดาห์มีควิซ active ได้แค่ 1 ชุด (ยืนยันด้วย
+   * curl แล้ว — activate ตัวใหม่ไม่ได้ปิดตัวเก่าอัตโนมัติ) ฝั่ง frontend เลยต้อง
+   * ปิดตัวที่เคย active อยู่เดิมเองด้วย ก่อนเปิดตัวใหม่
+   */
+  async function saveActive(week: string) {
     const pid = pendingActive[week];
-    if (pid) toggleQuizActive(week, pid);
+    if (!pid || !course) return;
+    const weekQuizzes = course.quizzes[week] ?? [];
+    const target = weekQuizzes.find((q) => q.id === pid);
+    if (!target) return;
+
+    setSavingActiveWeek(week);
+    setActiveSaveError((prev) => {
+      const next = { ...prev };
+      delete next[week];
+      return next;
+    });
+    try {
+      const toDeactivate = weekQuizzes.filter((q) => q.isActive && q.id !== pid);
+      for (const q of toDeactivate) {
+        await saveQuizToBackend(courseId, week, { ...q, isActive: false });
+      }
+      await saveQuizToBackend(courseId, week, { ...target, isActive: true });
+      toggleQuizActive(week, pid);
+      setPendingActive((prev) => {
+        const next = { ...prev };
+        delete next[week];
+        return next;
+      });
+    } catch {
+      setActiveSaveError((prev) => ({
+        ...prev,
+        [week]: "บันทึกไม่สำเร็จ ลองใหม่อีกครั้ง",
+      }));
+    } finally {
+      setSavingActiveWeek(null);
+    }
+  }
+  /** ยกเลิกการเปลี่ยน — กลับไปใช้ชุดที่บันทึกไว้ */
+  function cancelActive(week: string) {
     setPendingActive((prev) => {
       const next = { ...prev };
       delete next[week];
       return next;
     });
-  }
-  /** ยกเลิกการเปลี่ยน — กลับไปใช้ชุดที่บันทึกไว้ */
-  function cancelActive(week: string) {
-    setPendingActive((prev) => {
+    setActiveSaveError((prev) => {
       const next = { ...prev };
       delete next[week];
       return next;
@@ -698,20 +741,27 @@ export default function CourseDetail({ courseId }: { courseId: string }) {
                           มีข้อสอบที่มีการเปลี่ยนแปลงการเปิด/ปิดสอบ — ยังไม่บันทึก
                         </span>
                         <div className="flex items-center gap-2">
+                          {activeSaveError[row.week] && (
+                            <span className="text-xs font-semibold text-tu-red-600">
+                              {activeSaveError[row.week]}
+                            </span>
+                          )}
                           <button
                             type="button"
                             onClick={() => cancelActive(row.week)}
-                            className="rounded-xl px-3.5 py-2 text-xs font-bold text-ink-500 transition hover:bg-paper-200 active:scale-95"
+                            disabled={savingActiveWeek === row.week}
+                            className="rounded-xl px-3.5 py-2 text-xs font-bold text-ink-500 transition hover:bg-paper-200 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
                           >
                             ยกเลิก
                           </button>
                           <button
                             type="button"
                             onClick={() => saveActive(row.week)}
-                            className="inline-flex items-center gap-1.5 rounded-xl bg-tu-red-600 px-4 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-tu-red-700 active:scale-95"
+                            disabled={savingActiveWeek === row.week}
+                            className="inline-flex items-center gap-1.5 rounded-xl bg-tu-red-600 px-4 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-tu-red-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
                           >
                             <Check className="h-3.5 w-3.5" strokeWidth={3} />
-                            บันทึกการเปลี่ยนแปลง
+                            {savingActiveWeek === row.week ? "กำลังบันทึก…" : "บันทึกการเปลี่ยนแปลง"}
                           </button>
                         </div>
                       </div>

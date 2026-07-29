@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { useCourse } from "@/lib/courseStore";
 import { weekNumber, resolveHex } from "@/lib/weeks";
@@ -26,9 +27,10 @@ import type { Submission } from "@/lib/analytics";
 import {
   fetchPracticeQuizzes,
   fetchPracticeQuizSubmissions,
+  generateTargetedPracticeQuiz,
   type PracticeQuizSummary,
 } from "@/lib/practiceQuizApi";
-import type { SubmitQuizResult } from "@/lib/quizGradingApi";
+import { fetchStudentSubmissions, type SubmitQuizResult } from "@/lib/quizGradingApi";
 import { getPracticeHistory, savePracticeAttempt } from "@/lib/practiceHistory";
 import { fetchWeekNote, saveWeekNote } from "@/lib/notesApi";
 
@@ -56,11 +58,56 @@ export default function StudentCourseWeeks({ courseId }: { courseId: string }) {
     hydrated,
   } = useCourse();
   const course = getCourse(courseId);
+  const router = useRouter();
   const [expandedWeeks, setExpandedWeeks] = useState<Set<string>>(new Set());
+  // สัปดาห์ที่กำลังสร้างแบบฝึกหัดเจาะจุดอ่อนด้วย AI อยู่ (null = ไม่มี) + error ต่อสัปดาห์
+  const [generatingWeek, setGeneratingWeek] = useState<string | null>(null);
+  const [generateError, setGenerateError] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (course && activeCourseId !== courseId) setActiveCourse(courseId);
   }, [course, courseId, activeCourseId, setActiveCourse]);
+
+  /**
+   * ปุ่ม "สร้างข้อสอบฝึกซ้อมด้วย AI" — เดิมลิงก์ไปโหมดฝึกซ้อมสุ่มในเครื่อง
+   * (?practice=1) ซึ่งไม่ใช่ของ AI จริงตามที่ label บอก (เจนไวผิดปกติเพราะไม่ได้
+   * เรียก backend เลย) แก้ให้เรียก generateTargetedPracticeQuiz จริง เหมือนปุ่ม
+   * เดียวกันในหน้า StudentSummary.tsx ที่แก้ไปก่อนหน้านี้แล้ว — ต้องหา submissionId
+   * จริงจาก backend เอง (row.mySubmission เป็น record ในเครื่อง ไม่มี submissionId
+   * จริงของ backend ติดมาด้วย)
+   */
+  async function handleGeneratePractice(row: WeekRow) {
+    if (!row.activeQuiz || !row.mySubmission || !studentId) return;
+    const quiz = row.activeQuiz;
+    const mySubmission = row.mySubmission;
+    setGeneratingWeek(row.week);
+    setGenerateError((prev) => {
+      const next = { ...prev };
+      delete next[row.week];
+      return next;
+    });
+    try {
+      const subs = await fetchStudentSubmissions(quiz.id, studentId);
+      const submissionId = subs[0]?.submissionId;
+      if (!submissionId) throw new Error("ไม่พบ submission จริงของรอบนี้");
+      const wrongQuestionIds = quiz.questions
+        .filter((q) => mySubmission.answers[q.id] !== q.answer)
+        .map((q) => q.id);
+      if (wrongQuestionIds.length === 0) throw new Error("ไม่มีข้อที่ตอบผิดให้ฝึกซ้อม");
+      const { quiz: newQuiz } = await generateTargetedPracticeQuiz({
+        submissionId,
+        wrongQuestionIds,
+        week: row.week,
+      });
+      router.push(`/student/quiz/${weekNumber(row.week)}?practiceQuizId=${newQuiz.id}`);
+    } catch (err) {
+      setGenerateError((prev) => ({
+        ...prev,
+        [row.week]: err instanceof Error ? err.message : "สร้างแบบฝึกหัดไม่สำเร็จ",
+      }));
+      setGeneratingWeek(null);
+    }
+  }
 
   function toggleWeek(week: string) {
     setExpandedWeeks((prev) => {
@@ -273,15 +320,26 @@ export default function StudentCourseWeeks({ courseId }: { courseId: string }) {
                         )}
 
                         {row.mySubmission && (
-                          <div className="mt-3 flex justify-start">
-                            <Link
-                              href={`/student/quiz/${wk}?practice=1`}
-                              className="group inline-flex items-center gap-2 rounded-xl border border-tu-gold-200 bg-gradient-to-r from-tu-gold-50 to-amber-50 px-4 py-2 text-xs font-bold text-tu-gold-700 shadow-sm transition-all hover:from-tu-gold-100 hover:to-amber-100 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-tu-gold-500/15"
+                          <div className="mt-3 flex flex-col items-start gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => handleGeneratePractice(row)}
+                              disabled={generatingWeek === row.week}
+                              className="group inline-flex items-center gap-2 rounded-xl border border-tu-gold-200 bg-gradient-to-r from-tu-gold-50 to-amber-50 px-4 py-2 text-xs font-bold text-tu-gold-700 shadow-sm transition-all hover:from-tu-gold-100 hover:to-amber-100 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-tu-gold-500/15 disabled:cursor-not-allowed disabled:opacity-60"
                             >
                               <Sparkles className="h-3.5 w-3.5 text-tu-gold-600 transition-transform duration-300 group-hover:rotate-12" />
-                              <span>สร้างข้อสอบฝึกซ้อมด้วย AI</span>
-                              <ArrowRight className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5" />
-                            </Link>
+                              <span>
+                                {generatingWeek === row.week
+                                  ? "กำลังสร้าง…"
+                                  : "สร้างข้อสอบฝึกซ้อมด้วย AI"}
+                              </span>
+                              {generatingWeek !== row.week && (
+                                <ArrowRight className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5" />
+                              )}
+                            </button>
+                            {generateError[row.week] && (
+                              <p className="text-[11px] text-tu-red-600">{generateError[row.week]}</p>
+                            )}
                           </div>
                         )}
                       </Section>

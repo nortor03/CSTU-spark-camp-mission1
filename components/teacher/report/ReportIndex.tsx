@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo } from "react";
 import { useCourse, type Course } from "@/lib/courseStore";
 import PageHeader from "@/components/ui/PageHeader";
+import { SkeletonCardGrid } from "@/components/ui/Skeleton";
 import { CalendarDays, Users } from "lucide-react";
 
 /**
@@ -14,11 +15,7 @@ export default function ReportIndex() {
   const { courses, hydrated } = useCourse();
 
   if (!hydrated) {
-    return (
-      <div className="grid place-items-center py-24 text-sm text-ink-400">
-        กำลังโหลด…
-      </div>
-    );
+    return <SkeletonCardGrid />;
   }
 
   return (

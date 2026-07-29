@@ -14,6 +14,7 @@ import { fetchStudentSubmissions } from "@/lib/quizGradingApi";
 import { fetchWeekNote } from "@/lib/notesApi";
 import { weekOptions, DEFAULT_WEEK_COUNT } from "@/lib/weeks";
 import PageHeader from "@/components/ui/PageHeader";
+import { SkeletonCardGrid } from "@/components/ui/Skeleton";
 import { ClipboardCheck, Edit3 } from "lucide-react";
 import type { Quiz } from "@/lib/quiz";
 
@@ -203,11 +204,7 @@ export default function StudentCourseSelect() {
   }, [hydrated, studentId]);
 
   if (!hydrated || items === null) {
-    return (
-      <div className="grid place-items-center py-24 text-sm text-ink-400">
-        กำลังโหลด…
-      </div>
-    );
+    return <SkeletonCardGrid withAction={false} />;
   }
 
   return (

@@ -9,6 +9,7 @@ import { generateMockSubmissions } from "@/lib/mockClass";
 import { buildCloMastery } from "@/components/student/CloRadar";
 import { weekNumber } from "@/lib/weeks";
 import PageHeader from "@/components/ui/PageHeader";
+import { SkeletonKpiSection } from "@/components/ui/Skeleton";
 import MasteryBar, { MasteryLegend } from "@/components/ui/MasteryBar";
 import SynthesisNotes from "@/components/teacher/report/class-report/SynthesisNotes";
 import SkillClusters from "@/components/teacher/report/class-report/SkillClusters";
@@ -118,11 +119,7 @@ export default function ClassReport({
   }, [allSubmissions, cloMastery]);
 
   if (!hydrated) {
-    return (
-      <div className="grid place-items-center py-24 text-sm text-ink-400">
-        กำลังโหลด…
-      </div>
-    );
+    return <SkeletonKpiSection />;
   }
 
   if (!report || !course) return (

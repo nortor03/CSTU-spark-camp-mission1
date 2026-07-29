@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCourse } from "@/lib/courseStore";
 import { resolveHex, weekNumber } from "@/lib/weeks";
 import PageHeader from "@/components/ui/PageHeader";
+import { SkeletonListRows } from "@/components/ui/Skeleton";
 
 interface QuizRow {
   courseId: string;
@@ -56,11 +57,7 @@ export default function StudentQuizList() {
   }
 
   if (!hydrated) {
-    return (
-      <div className="grid place-items-center py-24 text-sm text-ink-400">
-        กำลังโหลด…
-      </div>
-    );
+    return <SkeletonListRows />;
   }
 
   return (

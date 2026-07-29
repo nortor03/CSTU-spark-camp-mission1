@@ -9,6 +9,7 @@ import { buildPlanPayload } from "@/lib/planPayload";
 import { fetchCourse, syncCourse } from "@/lib/coursesApi";
 import { fetchCourseQuizzes } from "@/lib/quizzesApi";
 import PageHeader from "@/components/ui/PageHeader";
+import { SkeletonListRows } from "@/components/ui/Skeleton";
 import Modal, { ModalHeader } from "@/components/ui/Modal";
 import EditCloModal, { type EditingClo } from "./EditCloModal";
 import EditWeekTopicsModal, {
@@ -214,11 +215,7 @@ export default function CourseDetail({ courseId }: { courseId: string }) {
   }, [course]);
 
   if (!hydrated || (!course && remoteLoading)) {
-    return (
-      <div className="grid place-items-center py-24 text-sm text-ink-400">
-        กำลังโหลด…
-      </div>
-    );
+    return <SkeletonListRows withHeader={false} />;
   }
 
   // เผื่อ id ไม่ตรงกับวิชาใด ทั้งในเครื่องนี้และที่ backend (เช่นถูกลบไปแล้ว)

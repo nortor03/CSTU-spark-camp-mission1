@@ -48,6 +48,7 @@ import {
   BookOpen,
 } from "lucide-react";
 import ImprovementChart from "./ImprovementChart";
+import { SkeletonStatHero } from "@/components/ui/Skeleton";
 
 /* ─── Design tokens ─── */
 const LEVEL_CHIP: Record<MasteryLevel, string> = {
@@ -798,9 +799,7 @@ export default function StudentSummary({
   const weakShown = useCountUp(summary?.weak.length ?? 0);
 
   if (!hydrated) {
-    return (
-      <div className="grid place-items-center py-24 text-sm text-ink-400">กำลังโหลด…</div>
-    );
+    return <SkeletonStatHero />;
   }
 
   if (!quiz || !officialMine || !officialSummary) {

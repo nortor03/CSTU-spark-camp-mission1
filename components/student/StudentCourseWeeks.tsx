@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useCourse } from "@/lib/courseStore";
 import { weekNumber, resolveHex } from "@/lib/weeks";
 import PageHeader from "@/components/ui/PageHeader";
+import { SkeletonListRows } from "@/components/ui/Skeleton";
 import {
   ChevronDown,
   ChevronLeft,
@@ -97,11 +98,7 @@ export default function StudentCourseWeeks({ courseId }: { courseId: string }) {
   }, [course]);
 
   if (!hydrated) {
-    return (
-      <div className="grid place-items-center py-24 text-sm text-ink-400">
-        กำลังโหลด…
-      </div>
-    );
+    return <SkeletonListRows withHeader={false} />;
   }
 
   if (!course) {

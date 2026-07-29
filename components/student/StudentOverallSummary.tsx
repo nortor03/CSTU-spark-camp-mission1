@@ -639,41 +639,41 @@ export default function StudentOverallSummary({ courseId }: { courseId: string }
             <section>
               <div className="mb-2.5 flex items-center justify-between">
                 <h2 className="display text-lg">สรุปข้อสังเกต</h2>
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-tu-gold-50 px-3 py-1 text-[10px] font-bold text-tu-gold-700 ring-1 ring-tu-gold-200">
-                  <BarChart3 className="h-3 w-3" />ภาพรวม
-                </span>
               </div>
               <hr className="rule-gold mb-5" />
-              <div className="space-y-4">
+              <div className="space-y-5">
                 {hasWeak ? (
-                  <div className="rounded-xl border-l-[3px] border-tu-red-500 bg-tu-red-50/40 py-2.5 pl-4 pr-3">
-                    <p className="mb-1 flex items-center gap-1.5 text-xs font-bold text-tu-red-600">
-                      <Target className="h-3.5 w-3.5" />จุดที่ควรโฟกัสที่สุด
+                  <div className="space-y-1">
+                    <p className="flex items-center gap-2 text-xs font-bold tracking-wide text-tu-red-700 uppercase">
+                      <span className="h-2 w-2 rounded-full bg-tu-red-600" />
+                      จุดที่ควรโฟกัสที่สุด
                     </p>
-                    <p className="text-sm leading-relaxed text-ink-600">
-                      เรื่อง <span className="font-bold text-ink-900">&ldquo;{weakest.topic}&rdquo;</span>{" "}
+                    <p className="pl-4 text-sm leading-relaxed text-ink-700">
+                      เรื่อง <span className="font-semibold text-ink-950">&ldquo;{weakest.topic}&rdquo;</span>{" "}
                       ยังเป็นจุดอ่อนที่สุดในภาพรวม — ตอบถูก {weakest.correct}/{weakest.total} ข้อ ({weakest.percent}%)
                     </p>
                   </div>
                 ) : (
-                  <div className="rounded-xl border-l-[3px] border-emerald-500 bg-emerald-50/40 py-2.5 pl-4 pr-3">
-                    <p className="mb-1 flex items-center gap-1.5 text-xs font-bold text-[#047857]">
-                      <Check className="h-3.5 w-3.5" strokeWidth={3} />ทำได้ดีทุกหัวข้อ
+                  <div className="space-y-1">
+                    <p className="flex items-center gap-2 text-xs font-bold tracking-wide text-emerald-700 uppercase">
+                      <span className="h-2 w-2 rounded-full bg-emerald-600" />
+                      ทำได้ดีทุกหัวข้อ
                     </p>
-                    <p className="text-sm leading-relaxed text-ink-600">
+                    <p className="pl-4 text-sm leading-relaxed text-ink-700">
                       ทุกหัวข้อที่เรียนผ่านเกณฑ์เข้าใจดีทั้งหมด — ลองอ่านเนื้อหาสัปดาห์ถัดไปล่วงหน้าได้เลย
                     </p>
                   </div>
                 )}
 
                 {strongest?.level === "strong" && (
-                  <div className="rounded-xl border-l-[3px] border-emerald-500 bg-emerald-50/40 py-2.5 pl-4 pr-3">
-                    <p className="mb-1 flex items-center gap-1.5 text-xs font-bold text-[#047857]">
-                      <TrendingUp className="h-3.5 w-3.5" />จุดแข็งของคุณ
+                  <div className="space-y-1">
+                    <p className="flex items-center gap-2 text-xs font-bold tracking-wide text-emerald-700 uppercase">
+                      <span className="h-2 w-2 rounded-full bg-emerald-600" />
+                      จุดแข็งของคุณ
                     </p>
-                    <p className="text-sm leading-relaxed text-ink-600">
+                    <p className="pl-4 text-sm leading-relaxed text-ink-700">
                       เข้าใจเรื่อง{" "}
-                      <span className="font-bold text-ink-900">&ldquo;{strongest.topic}&rdquo;</span>{" "}
+                      <span className="font-semibold text-ink-950">&ldquo;{strongest.topic}&rdquo;</span>{" "}
                       ได้ดีที่สุด ({strongest.percent}%) — ใช้ความเข้าใจนี้ต่อยอดหัวข้อที่ยังไม่แม่น
                     </p>
                   </div>
@@ -682,10 +682,12 @@ export default function StudentOverallSummary({ courseId }: { courseId: string }
                 {overall.allTopics
                   .filter((t) => t !== weakest && t !== strongest)
                   .map((t) => (
-                    <div key={t.topic} className="flex items-start gap-3 rounded-lg px-1 py-0.5 hover:bg-paper-100/60">
-                      <span className={`mt-1.5 h-2 w-2 flex-shrink-0 rounded-full ${t.level === "weak" ? "bg-tu-red-500" : t.level === "medium" ? "bg-tu-gold-500" : "bg-emerald-500"}`} aria-hidden />
-                      <p className="text-sm leading-relaxed text-ink-600">
-                        <span className="font-semibold text-ink-800">&ldquo;{t.topic}&rdquo;</span>{" "}
+                    <div key={t.topic} className="space-y-1">
+                      <p className="flex items-center gap-2 text-xs font-bold tracking-wide text-ink-500 uppercase">
+                        <span className={`h-2 w-2 rounded-full ${t.level === "weak" ? "bg-tu-red-500" : t.level === "medium" ? "bg-tu-gold-500" : "bg-emerald-500"}`} />
+                        {t.topic}
+                      </p>
+                      <p className="pl-4 text-sm leading-relaxed text-ink-600">
                         อยู่ระดับ{LEVEL_META[t.level].label} ({t.percent}%)
                         {t.level === "medium" ? " — ยังขยับเป็นเข้าใจดีได้อีก"
                           : t.level === "weak" ? " — ควรกลับไปทบทวน"

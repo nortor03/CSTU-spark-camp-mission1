@@ -447,39 +447,36 @@ function AiFeedbackPanel({
 }) {
   if (status === "loading") {
     return (
-      <div className="flex items-center gap-3 rounded-xl border border-dashed border-line bg-paper-50/60 px-4 py-5">
+      <div className="flex items-center gap-3 py-4">
         <div className="h-4 w-4 flex-shrink-0 animate-spin rounded-full border-2 border-line border-t-tu-gold-500" />
-        <p className="text-sm text-ink-500">กำลังวิเคราะห์ผลด้วย AI…</p>
+        <p className="text-sm text-ink-500">กำลังสรุปข้อสังเกต…</p>
       </div>
     );
   }
 
   if (status === "error" || !feedback) {
     return (
-      <div className="flex items-start gap-3 rounded-xl border-l-[3px] border-ink-300 bg-paper-50/60 py-2.5 pl-4 pr-3">
-        <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-ink-400" />
-        <p className="text-sm leading-relaxed text-ink-500">
-          ยังไม่มีผลวิเคราะห์ AI สำหรับรอบนี้ ลองรีเฟรชหน้าอีกครั้ง
-        </p>
+      <div className="py-2 text-sm leading-relaxed text-ink-500">
+        ยังไม่มีข้อมูลสรุปข้อสังเกตสำหรับรอบนี้
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      <div className="rounded-xl border-l-[3px] border-emerald-500 bg-emerald-50/40 py-2.5 pl-4 pr-3">
-        <p className="mb-1 flex items-center gap-1.5 text-xs font-bold text-[#047857]">
-          <TrendingUp className="h-3.5 w-3.5" />
+    <div className="space-y-5">
+      <div className="space-y-1">
+        <p className="flex items-center gap-2 text-xs font-bold tracking-wide text-emerald-700 uppercase">
+          <span className="h-2 w-2 rounded-full bg-emerald-600" />
           จุดแข็งของคุณ
         </p>
-        <p className="text-sm leading-relaxed text-ink-600">{feedback.strengths}</p>
+        <p className="pl-4 text-sm leading-relaxed text-ink-700">{feedback.strengths}</p>
       </div>
-      <div className="rounded-xl border-l-[3px] border-tu-red-500 bg-tu-red-50/40 py-2.5 pl-4 pr-3">
-        <p className="mb-1 flex items-center gap-1.5 text-xs font-bold text-tu-red-600">
-          <Target className="h-3.5 w-3.5" />
+      <div className="space-y-1">
+        <p className="flex items-center gap-2 text-xs font-bold tracking-wide text-tu-red-700 uppercase">
+          <span className="h-2 w-2 rounded-full bg-tu-red-600" />
           จุดที่ควรโฟกัส
         </p>
-        <p className="text-sm leading-relaxed text-ink-600">{feedback.weaknesses}</p>
+        <p className="pl-4 text-sm leading-relaxed text-ink-700">{feedback.weaknesses}</p>
       </div>
     </div>
   );
@@ -1150,87 +1147,81 @@ export default function StudentSummary({
           <Reveal delay={100}>
             <section>
               <div className="mb-2.5 flex items-center justify-between">
-                <h2 className="display text-lg">AI สรุปข้อสังเกต</h2>
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-tu-gold-50 px-3 py-1 text-[10px] font-bold text-tu-gold-700 ring-1 ring-tu-gold-200">
-                  <Zap className="h-3 w-3" /> AI Insights
-                </span>
+                <h2 className="display text-lg">สรุปข้อสังเกต</h2>
               </div>
               <hr className="rule-gold mb-5" />
 
               {feedbackStatus !== "unavailable" ? (
                 <AiFeedbackPanel status={feedbackStatus} feedback={feedback} />
               ) : (
-              <div className="space-y-4">
-                {hasWeak ? (
-                  <div className="rounded-xl border-l-[3px] border-tu-red-500 bg-tu-red-50/40 py-2.5 pl-4 pr-3 transition-colors hover:bg-tu-red-50/70">
-                    <p className="mb-1 flex items-center gap-1.5 text-xs font-bold text-tu-red-600">
-                      <Target className="h-3.5 w-3.5" />
-                      จุดที่ควรโฟกัสที่สุด
-                    </p>
-                    <p className="text-sm leading-relaxed text-ink-600">
-                      เรื่อง <span className="font-bold text-ink-900">&ldquo;{weakest.topic}&rdquo;</span>{" "}
-                      ยังเป็นจุดอ่อนที่สุด — ตอบถูก {weakest.correct}/{weakest.total} ข้อ (
-                      {weakest.percent}%) ควรทบทวนเนื้อหานี้ก่อนเข้าสู่สัปดาห์ถัดไป
-                    </p>
-                  </div>
-                ) : (
-                  <div className="rounded-xl border-l-[3px] border-emerald-500 bg-emerald-50/40 py-2.5 pl-4 pr-3 transition-colors hover:bg-emerald-50/70">
-                    <p className="mb-1 flex items-center gap-1.5 text-xs font-bold text-[#047857]">
-                      <Check className="h-3.5 w-3.5" strokeWidth={3} />
-                      ทำได้เยี่ยมทุกหัวข้อ
-                    </p>
-                    <p className="text-sm leading-relaxed text-ink-600">
-                      ไม่มีหัวข้อไหนต่ำกว่าเกณฑ์ — ลองอ่านเนื้อหาสัปดาห์ถัดไปล่วงหน้าได้เลย
-                    </p>
-                  </div>
-                )}
-
-                {strongest.level === "strong" && (
-                  <div className="rounded-xl border-l-[3px] border-emerald-500 bg-emerald-50/40 py-2.5 pl-4 pr-3 transition-colors hover:bg-emerald-50/70">
-                    <p className="mb-1 flex items-center gap-1.5 text-xs font-bold text-[#047857]">
-                      <TrendingUp className="h-3.5 w-3.5" />
-                      จุดแข็งของคุณ
-                    </p>
-                    <p className="text-sm leading-relaxed text-ink-600">
-                      เข้าใจเรื่อง{" "}
-                      <span className="font-bold text-ink-900">&ldquo;{strongest.topic}&rdquo;</span>{" "}
-                      ได้ดีที่สุด ({strongest.percent}%) —
-                      ใช้ความเข้าใจนี้ช่วยต่อยอดหัวข้อที่ยังไม่แม่นได้
-                    </p>
-                  </div>
-                )}
-
-                {summary.topics
-                  .filter((t) => t !== weakest && t !== strongest)
-                  .map((t) => (
-                    <div
-                      key={t.topic}
-                      className="flex items-start gap-3 rounded-lg px-1 py-0.5 transition-colors hover:bg-paper-100/60"
-                    >
-                      <span
-                        className={`mt-1.5 h-2 w-2 flex-shrink-0 rounded-full ${
-                          t.level === "weak"
-                            ? "bg-tu-red-500"
-                            : t.level === "medium"
-                              ? "bg-tu-gold-500"
-                              : "bg-emerald-500"
-                        }`}
-                        aria-hidden
-                      />
-                      <p className="text-sm leading-relaxed text-ink-600">
-                        <span className="font-semibold text-ink-800">
-                          &ldquo;{t.topic}&rdquo;
-                        </span>{" "}
-                        อยู่ระดับ{LEVEL_META[t.level].label} ({t.percent}%)
-                        {t.level === "medium"
-                          ? " — ยังขยับเป็นเข้าใจดีได้อีก ลองอธิบายด้วยคำพูดตัวเองดู"
-                          : t.level === "weak"
-                            ? " — ควรกลับไปทบทวนแล้วทำแบบทดสอบซ้ำ"
-                            : " — รักษาความเข้าใจนี้ไว้"}
+                <div className="space-y-5">
+                  {hasWeak ? (
+                    <div className="space-y-1">
+                      <p className="flex items-center gap-2 text-xs font-bold tracking-wide text-tu-red-700 uppercase">
+                        <span className="h-2 w-2 rounded-full bg-tu-red-600" />
+                        จุดที่ควรโฟกัสที่สุด
+                      </p>
+                      <p className="pl-4 text-sm leading-relaxed text-ink-700">
+                        เรื่อง <span className="font-semibold text-ink-950">&ldquo;{weakest.topic}&rdquo;</span>{" "}
+                        ยังเป็นจุดอ่อนที่สุด — ตอบถูก {weakest.correct}/{weakest.total} ข้อ (
+                        {weakest.percent}%) ควรทบทวนเนื้อหานี้ก่อนเข้าสู่สัปดาห์ถัดไป
                       </p>
                     </div>
-                  ))}
-              </div>
+                  ) : (
+                    <div className="space-y-1">
+                      <p className="flex items-center gap-2 text-xs font-bold tracking-wide text-emerald-700 uppercase">
+                        <span className="h-2 w-2 rounded-full bg-emerald-600" />
+                        ทำได้เยี่ยมทุกหัวข้อ
+                      </p>
+                      <p className="pl-4 text-sm leading-relaxed text-ink-700">
+                        ไม่มีหัวข้อไหนต่ำกว่าเกณฑ์ — ลองอ่านเนื้อหาสัปดาห์ถัดไปล่วงหน้าได้เลย
+                      </p>
+                    </div>
+                  )}
+
+                  {strongest.level === "strong" && (
+                    <div className="space-y-1">
+                      <p className="flex items-center gap-2 text-xs font-bold tracking-wide text-emerald-700 uppercase">
+                        <span className="h-2 w-2 rounded-full bg-emerald-600" />
+                        จุดแข็งของคุณ
+                      </p>
+                      <p className="pl-4 text-sm leading-relaxed text-ink-700">
+                        เข้าใจเรื่อง{" "}
+                        <span className="font-semibold text-ink-950">&ldquo;{strongest.topic}&rdquo;</span>{" "}
+                        ได้ดีที่สุด ({strongest.percent}%) —
+                        ใช้ความเข้าใจนี้ช่วยต่อยอดหัวข้อที่ยังไม่แม่นได้
+                      </p>
+                    </div>
+                  )}
+
+                  {summary.topics
+                    .filter((t) => t !== weakest && t !== strongest)
+                    .map((t) => (
+                      <div key={t.topic} className="space-y-1">
+                        <p className="flex items-center gap-2 text-xs font-bold tracking-wide text-ink-500 uppercase">
+                          <span
+                            className={`h-2 w-2 rounded-full ${
+                              t.level === "weak"
+                                ? "bg-tu-red-500"
+                                : t.level === "medium"
+                                  ? "bg-tu-gold-500"
+                                  : "bg-emerald-500"
+                            }`}
+                            aria-hidden
+                          />
+                          {t.topic}
+                        </p>
+                        <p className="pl-4 text-sm leading-relaxed text-ink-600">
+                          อยู่ระดับ{LEVEL_META[t.level].label} ({t.percent}%)
+                          {t.level === "medium"
+                            ? " — ยังขยับเป็นเข้าใจดีได้อีก ลองอธิบายด้วยคำพูดตัวเองดู"
+                            : t.level === "weak"
+                              ? " — ควรกลับไปทบทวนแล้วทำแบบทดสอบซ้ำ"
+                              : " — รักษาความเข้าใจนี้ไว้"}
+                        </p>
+                      </div>
+                    ))}
+                </div>
               )}
             </section>
           </Reveal>

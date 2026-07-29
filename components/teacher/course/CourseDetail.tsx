@@ -581,10 +581,9 @@ export default function CourseDetail({ courseId }: { courseId: string }) {
                         return (
                           <div
                             key={q.id}
-                            className="flex items-center justify-between gap-4 rounded-2xl border border-gray-200 border-l-[4px] bg-white p-4 transition-all duration-200 shadow-2xs"
+                            className="flex items-center justify-between gap-4 rounded-2xl bg-white p-4 transition-all duration-200 shadow-2xs"
                             style={{
-                              backgroundColor: active ? `${hex}0c` : "white",
-                              borderLeftColor: active ? hex : "#d1d5db",
+                              backgroundColor: active ? `${hex}0c` : "#fafafa",
                             }}
                           >
                             {/* ซ้าย: ข้อมูลควิซ */}
@@ -645,16 +644,25 @@ export default function CourseDetail({ courseId }: { courseId: string }) {
                                 </button>
                               </div>
 
-                              {/* Toggle Switch (ขวาสุด) */}
+                              {/* Toggle Switch (ขวาสุด) — บันทึกทันที */}
                               <button
                                 type="button"
-                                onClick={() =>
-                                  pickActive(row.week, q.id, committedActiveId)
-                                }
+                                onClick={() => {
+                                  // ถ้าเปิดอยู่แล้ว ให้ปิด (ส่ง "none" เพื่อปิดทุกชุด)
+                                  // ถ้าปิดอยู่ ให้เปิดชุดนี้ (ปิดชุดอื่นในสัปดาห์เดียวกันอัตโนมัติ)
+                                  const nextId = active ? "none" : q.id;
+                                  toggleQuizActive(row.week, nextId);
+                                  // เคลียร์ pending ในสัปดาห์นี้ด้วยเสมอ
+                                  setPendingActive((prev) => {
+                                    const next = { ...prev };
+                                    delete next[row.week];
+                                    return next;
+                                  });
+                                }}
                                 title={active ? "ปิดแบบทดสอบนี้" : "เปิดแบบทดสอบนี้"}
                                 aria-pressed={active}
                                 className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-emerald-500/15 ${
-                                  active ? "bg-emerald-500" : "bg-paper-300"
+                                  active ? "bg-emerald-500" : "bg-gray-300"
                                 }`}
                               >
                                 <span

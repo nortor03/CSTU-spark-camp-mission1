@@ -550,8 +550,8 @@ export default function StudentSummary({ week }: { week: string }) {
               }`}
             >
               {isTeacherView
-                ? `${activeRound === "official" ? "วิเคราะห์ผลการเรียนรู้" : `รายงานการฝึกซ้อม (รอบที่ ${selectedIndexLabel(attemptResults, activeRound)})`}ของ ${officialMine.studentName}`
-                : `${activeRound === "official" ? "วิเคราะห์ผลการเรียนรู้" : `รายงานการฝึกซ้อม (รอบที่ ${selectedIndexLabel(attemptResults, activeRound)})`}ของคุณ`}
+                ? `${activeRound === "official" ? "วิเคราะห์ผลการเรียนรู้" : "รายงานการฝึกซ้อม"}ของ ${officialMine.studentName}`
+                : `${activeRound === "official" ? "วิเคราะห์ผลการเรียนรู้" : "รายงานการฝึกซ้อม"}ของคุณ`}
             </h1>
             <hr className="rule-gold my-3" />
             <p className="max-w-lg text-sm leading-relaxed text-ink-500">{summary.headline}</p>

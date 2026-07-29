@@ -198,6 +198,7 @@ export default function SubmissionsTable({
               <th className="whitespace-nowrap pb-3 pt-3 pl-3">ชื่อนักศึกษา</th>
               {isQuizAssigned !== false ? (
                 <>
+                  <th className="whitespace-nowrap pb-3 pt-3 text-center">คะแนนควิซ</th>
                   {weekCloCodes.map((code) => (
                     <th key={code} className="whitespace-nowrap pb-3 pt-3 text-center">
                       {code} <span className="font-medium normal-case text-ink-300">(เต็ม 5)</span>
@@ -244,6 +245,12 @@ export default function SubmissionsTable({
                   </td>
                   {isQuizAssigned !== false ? (
                     <>
+                      <td
+                        className="whitespace-nowrap py-2.5 text-center font-bold tabular-nums text-ink-900"
+                      >
+                        {s.score}
+                        <span className="ml-0.5 text-xs font-semibold text-ink-300">/{s.total}</span>
+                      </td>
                       {weekCloCodes.map((code) => (
                         <td
                           key={code}

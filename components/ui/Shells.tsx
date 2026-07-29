@@ -40,23 +40,23 @@ const STUDENT_NAV: NavItem[] = [
 function SignOut({ href, role }: { href: string; role: string }) {
   const isTeacher = role === "อาจารย์";
   return (
-    <div className="flex items-center gap-3">
-      {/* Role Badge Container */}
-      <div className="flex items-center gap-2 rounded-xl bg-white/10 px-3 py-1.5 backdrop-blur-xs ring-1 ring-white/10">
-        <div className={`flex h-5 w-5 items-center justify-center rounded-lg ${
+    <div className="flex items-center gap-2 rounded-2xl bg-black/12 p-1">
+      {/* Role Badge */}
+      <div className="hidden items-center gap-2 rounded-xl px-3 py-1.5 sm:flex">
+        <div className={`flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-lg ${
           isTeacher ? "bg-tu-gold-500 text-tu-red-700" : "bg-white text-tu-red-600"
         }`}>
           <User className="h-3.5 w-3.5" strokeWidth={2.5} />
         </div>
-        <span className="text-xs font-bold tracking-wide text-white/90">
+        <span className="text-xs font-bold tracking-wide text-white/85">
           {role}
         </span>
       </div>
-      
+
       {/* Logout Button */}
       <Link
         href={href}
-        className="group flex items-center gap-1.5 rounded-xl bg-white/10 px-3.5 py-1.5 text-xs font-bold text-white shadow-2xs ring-1 ring-white/20 transition-all duration-200 hover:bg-white hover:text-tu-red-700 hover:ring-white active:scale-95"
+        className="group flex items-center gap-1.5 rounded-xl bg-white/10 px-3.5 py-2 text-xs font-bold text-white transition-all duration-200 hover:bg-white hover:text-tu-red-700 active:scale-95"
       >
         <span>ออกจากระบบ</span>
         <LogOut className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5" strokeWidth={2.5} />

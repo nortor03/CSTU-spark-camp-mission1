@@ -17,18 +17,21 @@ export default function ImprovementChart({
   const height = 140;
   const padding = 20;
 
+  const width = 500;
+  // คำนวณแกน y (0 = ล่างสุด, 100 = บนสุด)
+  const getY = (val: number) => height - padding - ((val / 100) * (height - padding * 2));
+
   const { path, points, areaPath } = useMemo(() => {
-    if (scores.length < 2) return { path: "", points: [], areaPath: "" };
+    // มีแค่ 1 จุด — ยังลากเส้นแนวโน้มไม่ได้ แต่โชว์จุดนิ่ง ๆ ตรงกลางไปก่อน
+    if (scores.length === 1) {
+      return { path: "", points: [{ x: width / 2, y: getY(scores[0]), val: scores[0] }], areaPath: "" };
+    }
+    if (scores.length < 1) return { path: "", points: [], areaPath: "" };
 
     // ให้กราฟขยายเต็มความกว้าง (100%) ดังนั้นใช้ viewBox อัตราส่วนแบบยืดหยุ่น
     // แต่เพื่อวาด SVG กำหนดความกว้างสมมติเป็น 500
-    const width = 500;
-    
     const xStep = (width - padding * 2) / (scores.length - 1);
-    
-    // คำนวณแกน y (0 = ล่างสุด, 100 = บนสุด)
-    const getY = (val: number) => height - padding - ((val / 100) * (height - padding * 2));
-    
+
     const pts = scores.map((s, i) => ({
       x: padding + i * xStep,
       y: getY(s),
@@ -38,17 +41,18 @@ export default function ImprovementChart({
     const linePath = pts
       .map((p, i) => `${i === 0 ? "M" : "L"} ${p.x},${p.y}`)
       .join(" ");
-      
+
     // สร้าง gradient area ใต้เส้น
     const aPath = `${linePath} L ${pts[pts.length - 1].x},${height} L ${pts[0].x},${height} Z`;
 
     return { path: linePath, points: pts, areaPath: aPath };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scores]);
 
-  if (scores.length < 2) {
+  if (scores.length < 1) {
     return (
       <div className="flex h-[140px] w-full items-center justify-center rounded-lg border border-dashed border-line-soft bg-paper-50 text-sm text-ink-400">
-        ต้องการข้อมูลอย่างน้อย 2 รอบเพื่อแสดงแนวโน้ม
+        ยังไม่มีข้อมูลให้แสดงแนวโน้ม
       </div>
     );
   }
@@ -99,7 +103,11 @@ export default function ImprovementChart({
       </svg>
       
       {/* แกน X */}
-      <div className="mt-3 flex justify-between px-[20px] text-[11px] font-semibold text-ink-400">
+      <div
+        className={`mt-3 flex px-[20px] text-[11px] font-semibold text-ink-400 ${
+          scores.length === 1 ? "justify-center" : "justify-between"
+        }`}
+      >
         {scores.map((_, i) => (
           <span key={i} className={i === scores.length - 1 ? "text-ink-600" : undefined}>
             {labels?.[i] ?? `Sess ${i + 1}`}

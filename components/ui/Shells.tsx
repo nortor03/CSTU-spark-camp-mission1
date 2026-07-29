@@ -31,7 +31,7 @@ const STUDENT_NAV: NavItem[] = [
   {
     href: "/student",
     label: "รายวิชา",
-    match: ["/student/course", "/student/quiz"],
+    match: ["/student/course", "/student/quiz", "/student/summary"],
     icon: IconCourse,
   },
 ];

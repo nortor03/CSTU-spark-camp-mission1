@@ -23,10 +23,10 @@ export default function BackToCourseGuard() {
 
   const fallbackRef = useRef<string | null>(null);
   useEffect(() => {
-    fallbackRef.current =
-      pathname.startsWith(SUMMARY_PREFIX) && activeCourseId
-        ? `/student/course/${activeCourseId}`
-        : null;
+    const cid = activeCourseId || "course-cn101";
+    fallbackRef.current = pathname.startsWith(SUMMARY_PREFIX)
+      ? `/student/course/${cid}`
+      : null;
   }, [pathname, activeCourseId]);
 
   useEffect(() => {

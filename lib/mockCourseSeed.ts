@@ -32,18 +32,27 @@ export interface MockCourseSeed {
  */
 export function buildMockCourseSeed(
   syllabusName: string | null,
+  courseCode = "CN101",
+  subject = "การเขียนโปรแกรมเบื้องต้น",
+  totalWeeks = 12,
+  quizWeeks = 2,
 ): MockCourseSeed {
   const file = syllabusName ?? "Course Syllabus";
 
   // หัวข้อ — จัดเข้าสัปดาห์ที่ 1..N ให้เลย (หน้ารายละเอียดวิชาจะได้เห็นเป็นแถวสัปดาห์)
-  const topics: Topic[] = MOCK_AI_TOPICS.map((t, i) => ({
-    ...t,
-    id: sid("t"),
-    file,
-    selected: false,
-    weekAssigned: `สัปดาห์ที่ ${i + 1}`,
-    aiGenerated: true,
-  }));
+  const topics: Topic[] = [];
+  for (let i = 0; i < totalWeeks; i++) {
+    const baseTopic = MOCK_AI_TOPICS[i % MOCK_AI_TOPICS.length];
+    const suffix = i >= MOCK_AI_TOPICS.length ? ` (${Math.floor(i / MOCK_AI_TOPICS.length) + 1})` : "";
+    topics.push({
+      id: sid("t"),
+      title: `${baseTopic.title}${suffix}`,
+      file,
+      selected: false,
+      weekAssigned: `สัปดาห์ที่ ${i + 1}`,
+      aiGenerated: true,
+    });
+  }
 
   // CLO — แยก "CLO n: คำอธิบาย" เป็น code + description
   const clos = MOCK_CLOS.map((line) => {
@@ -57,7 +66,7 @@ export function buildMockCourseSeed(
   });
 
   const extraction: SyllabusExtraction = {
-    course_code: "CN101",
+    course_code: courseCode,
     has_weekly_schedule: true,
     clos,
     assessment_activities: [],
@@ -68,9 +77,9 @@ export function buildMockCourseSeed(
     })),
   };
 
-  // ควิซตัวอย่าง — ใส่ให้ 2 สัปดาห์แรก เพื่อให้หน้ารายละเอียดวิชาเห็น accordion ควิซ
+  // ควิซตัวอย่าง — ใส่ให้ quizWeeks สัปดาห์แรก เพื่อให้หน้ารายละเอียดวิชาเห็น accordion ควิซ
   const quizzes: Record<string, Quiz[]> = {};
-  for (let i = 0; i < 2; i++) {
+  for (let i = 0; i < quizWeeks; i++) {
     const week = `สัปดาห์ที่ ${i + 1}`;
     const q = generateMockQuiz(week, {
       ...emptyPrompt(),

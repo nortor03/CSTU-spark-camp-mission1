@@ -11,7 +11,19 @@ import { fetchCourseQuizzes } from "@/lib/quizzesApi";
 import PageHeader from "@/components/ui/PageHeader";
 import Modal, { ModalHeader } from "@/components/ui/Modal";
 import EditCloModal, { type EditingClo } from "./EditCloModal";
-import { ChevronDown, Pencil, Trash2, FileText } from "lucide-react";
+import EditWeekTopicsModal, {
+  type WeekTopicEdit,
+} from "./EditWeekTopicsModal";
+import {
+  ChevronDown,
+  Pencil,
+  Trash2,
+  FileText,
+  ClipboardList,
+  Plus,
+  Check,
+  CheckCircle2,
+} from "lucide-react";
 import type { Topic } from "@/lib/types";
 import type { Quiz } from "@/lib/quiz";
 
@@ -34,6 +46,7 @@ export default function CourseDetail({ courseId }: { courseId: string }) {
     setSyllabus,
     setSyllabusExtraction,
     setTopics,
+    setWeekConfig,
     toggleQuizActive,
     deleteQuiz,
     updateClo,
@@ -44,6 +57,14 @@ export default function CourseDetail({ courseId }: { courseId: string }) {
   } = useCourse();
 
   const course = getCourse(courseId);
+  const slideFiles = useMemo(() => {
+    if (!course) return [];
+    const files = course.topics
+      .map((t) => t.file)
+      .filter(Boolean)
+      .filter((f) => f !== course.syllabusName);
+    return Array.from(new Set(files));
+  }, [course]);
   const syllabusRef = useRef<HTMLInputElement>(null);
   const [extracting, setExtracting] = useState(false);
   const [extractError, setExtractError] = useState("");
@@ -53,6 +74,8 @@ export default function CourseDetail({ courseId }: { courseId: string }) {
   const [expandedWeeks, setExpandedWeeks] = useState<Set<string>>(new Set());
   // CLO ที่กำลังแก้ไข (null = ปิด modal)
   const [editingClo, setEditingClo] = useState<EditingClo | null>(null);
+  // สัปดาห์ที่กำลังแก้หัวข้อ (null = ปิด modal)
+  const [editingWeek, setEditingWeek] = useState<string | null>(null);
 
   function toggleWeek(week: string) {
     setExpandedWeeks((prev) => {
@@ -314,6 +337,38 @@ export default function CourseDetail({ courseId }: { courseId: string }) {
         </div>
       </div>
 
+      {/* แถบไฟล์สไลด์การสอนทั้งหมด */}
+      {slideFiles.length > 0 && (
+        <div className="mb-6 rounded-xl border border-line bg-paper-50 p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="grid h-8 w-8 flex-shrink-0 place-items-center rounded-md bg-amber-50 text-amber-600">
+              <FileText className="h-4 w-4" strokeWidth={1.8} />
+            </span>
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-400">
+                สไลด์การสอนทั้งหมด ({slideFiles.length} ไฟล์)
+              </p>
+              <p className="text-xs text-ink-500">
+                ไฟล์ที่อัปโหลดเข้าสู่ระบบเพื่อให้นำไปจัดและวิเคราะห์เป็นจุดอ่อนจุดแข็งของนักศึกษา
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2 max-h-[160px] overflow-y-auto pr-1">
+            {slideFiles.map((file) => (
+              <div
+                key={file}
+                className="flex items-center gap-2 rounded-lg border border-line bg-white px-3 py-2 text-xs font-semibold text-ink-700 shadow-2xs transition hover:border-line-strong hover:bg-paper-50"
+              >
+                <FileText className="h-3.5 w-3.5 text-tu-red-500" />
+                <span className="truncate max-w-[220px]" title={file}>
+                  {file}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* ผลลัพธ์การเรียนรู้ (CLO) ที่แกะได้จาก syllabus */}
       {course.clos.length > 0 && (
         <div className="mb-6 card overflow-hidden">
@@ -406,6 +461,7 @@ export default function CourseDetail({ courseId }: { courseId: string }) {
             const hasPending =
               pendingActive[row.week] != null &&
               pendingActive[row.week] !== committedActiveId;
+            const activeQuiz = row.quizzes.find((q) => q.isActive);
 
             // เลขสัปดาห์ตัวใหญ่ (สีตามสัปดาห์) + คำว่า WEEK
             const WeekNum = (
@@ -422,17 +478,31 @@ export default function CourseDetail({ courseId }: { courseId: string }) {
               </div>
             );
 
-            // หัวข้อของสัปดาห์ + จำนวนแบบทดสอบ
+            // หัวข้อของสัปดาห์ + แถวสถานะ (chip)
             const WeekInfo = (
               <div className="min-w-0 flex-1">
-                <p className="max-w-[54ch] text-[15px] font-semibold leading-snug text-ink-900">
+                <p className="max-w-[54ch] text-[15px] font-bold leading-snug text-ink-900 transition-colors group-hover/hdr:text-tu-red-700">
                   {row.topics.map((t) => t.title).join("  ·  ")}
                 </p>
-                <p className="mt-1 text-xs text-ink-400">
-                  {hasQuizzes
-                    ? `${row.quizzes.length} แบบทดสอบ`
-                    : "ยังไม่มีแบบทดสอบ"}
-                </p>
+                <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                  <span className="inline-flex items-center gap-1 rounded-md bg-paper-100 px-2 py-0.5 text-[11px] font-semibold text-ink-500">
+                    <ClipboardList className="h-3 w-3" />
+                    {hasQuizzes
+                      ? `${row.quizzes.length} แบบทดสอบ`
+                      : "ยังไม่มีแบบทดสอบ"}
+                  </span>
+                  {hasQuizzes &&
+                    (activeQuiz ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-[#047857] ring-1 ring-emerald-200/70">
+                        <CheckCircle2 className="h-3 w-3" />
+                        พร้อมสอบ
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-tu-gold-50 px-2 py-0.5 text-[10px] font-bold text-tu-gold-700 ring-1 ring-tu-gold-200/70">
+                        ยังไม่ได้เลือกชุด
+                      </span>
+                    ))}
+                </div>
               </div>
             );
 
@@ -453,142 +523,251 @@ export default function CourseDetail({ courseId }: { courseId: string }) {
 
             return (
               <div key={row.week} className="border-b border-line-soft">
-                {hasQuizzes ? (
-                  /* สัปดาห์ที่มีควิซ — กดหัวเพื่อกาง/พับรายการควิซ */
+                <div className="flex items-center gap-2">
+                  {hasQuizzes ? (
+                    /* สัปดาห์ที่มีควิซ — กดหัวเพื่อกาง/พับรายการควิซ */
+                    <button
+                      type="button"
+                      onClick={() => toggleWeek(row.week)}
+                      aria-expanded={open}
+                      className="group/hdr -mx-2 flex flex-1 items-center gap-5 rounded-2xl px-2 py-5 text-left transition-colors hover:bg-paper-100/50"
+                    >
+                      {WeekNum}
+                      {WeekInfo}
+                      <span
+                        aria-hidden
+                        className={`grid h-9 w-9 flex-shrink-0 place-items-center rounded-full border transition-all duration-300 ${
+                          open
+                            ? "border-transparent"
+                            : "border-line text-ink-400 group-hover/hdr:border-line-strong group-hover/hdr:text-ink-600"
+                        }`}
+                        style={
+                          open
+                            ? { backgroundColor: soft.backgroundColor, color: soft.color }
+                            : undefined
+                        }
+                      >
+                        <ChevronDown
+                          className={`h-4 w-4 transition-transform duration-300 ${open ? "rotate-180" : ""}`}
+                        />
+                      </span>
+                    </button>
+                  ) : (
+                    /* สัปดาห์ที่ยังไม่มีควิซ — ปุ่มสร้างควิซแทน */
+                    <div className="-mx-2 flex flex-1 items-center gap-5 rounded-2xl px-2 py-5">
+                      {WeekNum}
+                      {WeekInfo}
+                      {createLink("สร้างควิซ")}
+                    </div>
+                  )}
+                  {/* แก้หัวข้อของสัปดาห์นี้ (เปลี่ยนชื่อ/เอาออก) */}
                   <button
                     type="button"
-                    onClick={() => toggleWeek(row.week)}
-                    aria-expanded={open}
-                    className="flex w-full items-center gap-5 py-5 text-left"
+                    onClick={() => setEditingWeek(row.week)}
+                    title="แก้ไขหัวข้อของสัปดาห์นี้"
+                    className="grid h-9 w-9 flex-shrink-0 place-items-center rounded-xl border border-line bg-white text-ink-400 transition hover:border-line-strong hover:text-tu-red-600 active:scale-95"
                   >
-                    {WeekNum}
-                    {WeekInfo}
-                    <ChevronDown
-                      className={`h-5 w-5 flex-shrink-0 text-ink-400 transition-transform ${open ? "rotate-180" : ""}`}
-                      aria-hidden
-                    />
+                    <Pencil className="h-[14px] w-[14px]" />
                   </button>
-                ) : (
-                  /* สัปดาห์ที่ยังไม่มีควิซ — ปุ่มสร้างควิซแทน */
-                  <div className="flex w-full items-center gap-5 py-5">
-                    {WeekNum}
-                    {WeekInfo}
-                    {createLink("สร้างควิซ")}
-                  </div>
-                )}
+                </div>
 
                 {/* รายการควิซที่กางออกมา — เยื้องให้ตรงกับหัวข้อ */}
                 {open && hasQuizzes && (
-                  <div className="ml-0 flex flex-col gap-2 pb-6 sm:ml-[76px]">
-                    {row.quizzes.map((q) => (
+                  <div className="ml-0 animate-slide-up pb-7 sm:ml-[76px]">
+                    <div className="relative overflow-hidden rounded-2xl border border-line-soft bg-white shadow-card">
+                      {/* แสงอุ่นสีประจำสัปดาห์ + สันซ้าย */}
                       <div
-                        key={q.id}
-                        className="flex items-center gap-3 rounded-xl border border-line bg-paper-50 px-3.5 py-3"
+                        aria-hidden
+                        className="pointer-events-none absolute inset-0"
                         style={{
-                          borderLeft: `3px solid ${hex}`,
-                          ...(q.isActive
-                            ? { backgroundColor: soft.backgroundColor }
-                            : {}),
+                          background: `radial-gradient(260px 140px at 0% 0%, ${hex}14, transparent 72%)`,
                         }}
-                      >
-                        {/* ปุ่มเลือกชุดที่ใช้งาน (active ได้ทีละชุดต่อสัปดาห์) */}
-                        <button
-                          type="button"
-                          onClick={() =>
-                            pickActive(row.week, q.id, committedActiveId)
-                          }
-                          title={q.id === selectedId ? "ชุดที่เลือก" : "เลือกชุดนี้"}
-                          aria-pressed={q.id === selectedId}
-                          className={`grid h-[19px] w-[19px] flex-shrink-0 place-items-center rounded-full border-2 bg-white transition ${q.id === selectedId ? "" : "border-line-strong"}`}
-                          style={
-                            q.id === selectedId
-                              ? { backgroundColor: hex, borderColor: hex }
-                              : undefined
-                          }
-                        >
-                          {q.id === selectedId && (
-                            <span className="h-1.5 w-1.5 rounded-full bg-white" />
-                          )}
-                        </button>
+                      />
+                      <div
+                        aria-hidden
+                        className="pointer-events-none absolute inset-y-0 left-0 w-1"
+                        style={{ backgroundColor: hex }}
+                      />
 
-                        {/* ชื่อชุด + จำนวนข้อ */}
-                        <div className="min-w-0 flex-1">
+                      {/* หัวแผง */}
+                      <div className="relative flex items-center justify-between gap-3 border-b border-line-soft px-4 py-3">
+                        <div className="flex items-center gap-2">
                           <span
-                            className={`block truncate text-[13.5px] font-semibold ${q.isActive ? "" : "text-ink-800"}`}
-                            style={q.isActive ? { color: soft.color } : undefined}
-                          >
-                            {q.title}
-                          </span>
-                          <span className="text-[11px] text-ink-400">
-                            {q.questions.length} ข้อ
-                          </span>
+                            className="h-1.5 w-1.5 rounded-full animate-pulse"
+                            style={{ backgroundColor: hex }}
+                          />
+                          <h4 className="text-[11px] font-bold uppercase tracking-widest text-ink-400">
+                            ชุดแบบทดสอบประจำสัปดาห์
+                          </h4>
                         </div>
-
-                        {/* ป้ายชุดที่เลือกอยู่ */}
-                        {q.isActive && (
-                          <span
-                            className="inline-flex flex-shrink-0 items-center gap-1 rounded-md px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide"
-                            style={{
-                              backgroundColor: soft.backgroundColor,
-                              color: soft.color,
-                            }}
-                          >
-                            <span
-                              className="h-1 w-1 rounded-full"
-                              style={{ backgroundColor: hex }}
-                            />
-                            เลือกอยู่
-                          </span>
-                        )}
-
-                        {/* จัดการ — แก้ไข / ลบ */}
-                        <div className="flex flex-shrink-0 gap-1.5">
-                          <Link
-                            href={`/quiz/${wk}?quiz=${q.id}`}
-                            title="แก้ไข"
-                            className="grid h-8 w-8 place-items-center rounded-lg border border-line bg-white text-ink-500 transition hover:border-line-strong hover:text-tu-red-600"
-                          >
-                            <Pencil className="h-[15px] w-[15px]" />
-                          </Link>
-                          <button
-                            type="button"
-                            onClick={() => handleDelete(row.week, q)}
-                            title="ลบ"
-                            className="grid h-8 w-8 place-items-center rounded-lg border border-line bg-white text-ink-400 transition hover:border-tu-red-200 hover:bg-tu-red-50/50 hover:text-tu-red-600"
-                          >
-                            <Trash2 className="h-[15px] w-[15px]" />
-                          </button>
-                        </div>
+                        <span className="flex-shrink-0 rounded-full bg-paper-100 px-2.5 py-1 text-[11px] font-bold tabular-nums text-ink-500 ring-1 ring-line-soft">
+                          {row.quizzes.length} ชุด
+                        </span>
                       </div>
-                    ))}
+
+                      {/* รายการควิซ */}
+                      <div className="relative space-y-2 p-2.5">
+                        {row.quizzes.map((q, i) => {
+                          const active = q.id === selectedId;
+                          const isCommitted = q.isActive;
+                          return (
+                            <div
+                              key={q.id}
+                              className={`group/row relative flex items-center gap-3 rounded-xl border border-line p-3.5 transition-all duration-200 animate-quiz-row ${
+                                active
+                                  ? "border-line-strong/70"
+                                  : "hover:border-line-strong hover:bg-paper-100/50 hover:shadow-sm"
+                              }`}
+                              style={{
+                                animationDelay: `${i * 55}ms`,
+                                borderLeftWidth: active ? "4px" : "3px",
+                                borderLeftColor: hex,
+                                ...(active
+                                  ? {
+                                      background: `linear-gradient(90deg, ${hex}17, ${hex}05 60%, transparent)`,
+                                      boxShadow: `inset 0 0 0 1px ${hex}33, 0 0 16px -8px ${hex}80`,
+                                    }
+                                  : {}),
+                              }}
+                            >
+                              {/* ปุ่มเลือกชุด */}
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  pickActive(row.week, q.id, committedActiveId)
+                                }
+                                title={active ? "ชุดที่เลือก" : "เลือกชุดนี้"}
+                                aria-pressed={active}
+                                className={`relative grid h-6 w-6 flex-shrink-0 place-items-center rounded-full border-2 bg-white transition-transform duration-200 group-hover/row:scale-110 ${
+                                  active ? "border-transparent" : "border-line-strong"
+                                }`}
+                                style={
+                                  active
+                                    ? { backgroundColor: hex, borderColor: hex }
+                                    : undefined
+                                }
+                              >
+                                {active ? (
+                                  <>
+                                    <Check className="h-3.5 w-3.5 text-white" strokeWidth={3.5} />
+                                    <span
+                                      aria-hidden
+                                      className="absolute inset-0 rounded-full"
+                                      style={{ boxShadow: `0 0 0 4px ${hex}22` }}
+                                    />
+                                  </>
+                                ) : (
+                                  <span className="h-1.5 w-1.5 rounded-full bg-transparent transition-colors group-hover/row:bg-ink-300" />
+                                )}
+                              </button>
+
+                              {/* ข้อมูลควิซ */}
+                              <div className="min-w-0 flex-1">
+                                <span
+                                  className={`block truncate text-sm font-bold transition-colors ${
+                                    active ? "" : "text-ink-900 group-hover/row:text-tu-red-700"
+                                  }`}
+                                  style={active ? { color: soft.color } : undefined}
+                                >
+                                  {q.title}
+                                </span>
+                                <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                                  <span className="inline-flex items-center gap-1 rounded-md bg-paper-100 px-1.5 py-0.5 text-[10px] font-bold text-ink-500">
+                                    <ClipboardList className="h-3 w-3 text-ink-400" />
+                                    {q.questions.length} ข้อ
+                                  </span>
+
+                                  {isCommitted && (
+                                    <span
+                                      className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide"
+                                      style={{ color: soft.color }}
+                                    >
+                                      <span className="relative flex h-1.5 w-1.5">
+                                        <span
+                                          className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-60"
+                                          style={{ backgroundColor: hex }}
+                                        />
+                                        <span
+                                          className="relative inline-flex h-1.5 w-1.5 rounded-full"
+                                          style={{ backgroundColor: hex }}
+                                        />
+                                      </span>
+                                      เลือกอยู่
+                                    </span>
+                                  )}
+
+                                  {active && !isCommitted && (
+                                    <span className="rounded bg-tu-gold-50 px-1.5 py-0.5 text-[10px] font-bold text-tu-gold-700 ring-1 ring-tu-gold-200/60">
+                                      ยังไม่บันทึก
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* ปุ่มจัดการ — เผยบนพื้นขาวเมื่อชี้แถว */}
+                              <div className="flex flex-shrink-0 items-center gap-1 rounded-lg px-1 py-1 opacity-0 transition-all duration-200 group-hover/row:bg-white/80 group-hover/row:opacity-100 group-hover/row:shadow-sm">
+                                <Link
+                                  href={`/quiz/${wk}?quiz=${q.id}`}
+                                  title="แก้ไขควิซ"
+                                  className="grid h-8 w-8 place-items-center rounded-lg text-ink-400 transition hover:bg-paper-200 hover:text-tu-red-600 active:scale-90"
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </Link>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDelete(row.week, q)}
+                                  title="ลบ"
+                                  className="grid h-8 w-8 place-items-center rounded-lg text-ink-300 transition hover:bg-tu-red-50 hover:text-tu-red-600 active:scale-90"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+
+                        {/* สร้างควิซเพิ่ม */}
+                        <Link
+                          href={`/quiz/${wk}?new=1`}
+                          className="group/add flex items-center justify-center gap-2 rounded-xl border border-dashed border-line-strong py-3 text-xs font-bold text-ink-500 transition-all duration-200 hover:border-tu-red-300 hover:bg-tu-red-50/40 hover:text-tu-red-600"
+                        >
+                          <span className="grid h-5 w-5 place-items-center rounded-full bg-paper-100 text-tu-red-500 transition-all duration-300 group-hover/add:rotate-90 group-hover/add:bg-white group-hover/add:shadow-sm">
+                            <Plus className="h-3 w-3" strokeWidth={3} />
+                          </span>
+                          <span>สร้างควิซเพิ่ม</span>
+                        </Link>
+                      </div>
+                    </div>
 
                     {/* แถบยืนยันเมื่อมีการเปลี่ยนชุดที่ใช้งาน (ยังไม่บันทึก) */}
                     {hasPending && (
-                      <div className="mt-1 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-tu-gold-200 bg-tu-gold-50 px-3.5 py-2.5">
-                        <span className="text-xs font-medium text-tu-gold-800">
+                      <div className="mt-3 flex animate-slide-up flex-wrap items-center justify-between gap-3 overflow-hidden rounded-xl border border-tu-gold-200 bg-tu-gold-50 py-2.5 pl-3.5 pr-3">
+                        <span className="flex items-center gap-2 text-xs font-medium text-tu-gold-800">
+                          <span className="relative flex h-2 w-2">
+                            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-tu-gold-400 opacity-70" />
+                            <span className="relative inline-flex h-2 w-2 rounded-full bg-tu-gold-500" />
+                          </span>
                           มีการเปลี่ยนชุดที่ใช้งาน — ยังไม่บันทึก
                         </span>
                         <div className="flex items-center gap-2">
                           <button
                             type="button"
                             onClick={() => cancelActive(row.week)}
-                            className="rounded-lg px-3 py-1.5 text-xs font-semibold text-ink-500 transition hover:bg-paper-200"
+                            className="rounded-lg px-3 py-1.5 text-xs font-semibold text-ink-500 transition hover:bg-paper-200 active:scale-95"
                           >
                             ยกเลิก
                           </button>
                           <button
                             type="button"
                             onClick={() => saveActive(row.week)}
-                            className="rounded-lg bg-tu-red-500 px-3.5 py-1.5 text-xs font-semibold text-white transition hover:bg-tu-red-600"
+                            className="inline-flex items-center gap-1.5 rounded-lg bg-tu-red-500 px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-tu-red-600 active:scale-95"
                           >
+                            <Check className="h-3.5 w-3.5" strokeWidth={3} />
                             บันทึกการเปลี่ยนแปลง
                           </button>
                         </div>
                       </div>
                     )}
-
-                    {/* สร้างควิซเพิ่ม */}
-                    <div className="pt-1.5">{createLink("สร้างควิซเพิ่ม")}</div>
                   </div>
                 )}
               </div>
@@ -653,6 +832,32 @@ export default function CourseDetail({ courseId }: { courseId: string }) {
         editing={editingClo}
         onClose={() => setEditingClo(null)}
         onSave={updateClo}
+      />
+
+      {/* แก้หัวข้อของสัปดาห์ (เปลี่ยนชื่อ / เอาออกจากสัปดาห์) */}
+      <EditWeekTopicsModal
+        week={editingWeek}
+        topics={course.topics.filter((t) => t.weekAssigned === editingWeek)}
+        colorKey={
+          editingWeek ? course.weekConfig?.[editingWeek]?.colorKey : undefined
+        }
+        onClose={() => setEditingWeek(null)}
+        onApply={(edits: WeekTopicEdit[], colorKey: string) => {
+          setTopics((prev) =>
+            prev.map((t) => {
+              const e = edits.find((x) => x.id === t.id);
+              if (!e) return t;
+              if (e.remove) return { ...t, weekAssigned: null };
+              return { ...t, title: e.title || t.title };
+            }),
+          );
+          if (editingWeek) {
+            setWeekConfig((prev) => ({
+              ...prev,
+              [editingWeek]: { ...prev[editingWeek], colorKey },
+            }));
+          }
+        }}
       />
     </div>
   );

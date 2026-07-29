@@ -186,9 +186,18 @@ export default function StudentCourseWeeks({ courseId }: { courseId: string }) {
                         ? row.topics.join("  ·  ")
                         : "ไม่มีรายละเอียดหัวข้อ"}
                     </p>
-                    <p className="mt-1 text-xs text-ink-400">
-                      {hasQuiz ? "มีแบบทดสอบ" : "ยังไม่มีแบบทดสอบ"}
-                    </p>
+                    <div className="mt-1 flex items-center gap-1.5">
+                      {hasQuiz ? (
+                        <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">
+                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                          มีแบบฝึกหัดทบทวน
+                        </span>
+                      ) : (
+                        <span className="text-[11px] font-semibold text-ink-400 bg-paper-100 px-2 py-0.5 rounded-md border border-line-soft">
+                          ไม่มีแบบฝึกหัดทบทวน
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <ChevronDown
                     className={`h-5 w-5 flex-shrink-0 text-ink-400 transition-transform ${open ? "rotate-180" : ""}`}
@@ -207,46 +216,6 @@ export default function StudentCourseWeeks({ courseId }: { courseId: string }) {
                       </p>
                     </Section>
 
-                    {/* 2. เอกสารประกอบ (ดาวน์โหลด) */}
-                    <Section icon={<FileText className="h-4 w-4" />} title="เอกสารประกอบ" hex={hex}>
-                      {row.files.length === 0 ? (
-                        <p className="text-[13px] text-ink-400">
-                          ยังไม่มีเอกสารสำหรับสัปดาห์นี้
-                        </p>
-                      ) : (
-                        <ul className="flex flex-col gap-2">
-                          {row.files.map((f) => (
-                            <li
-                              key={f}
-                              className="flex items-center justify-between gap-3 rounded-lg border border-line bg-white px-3 py-2"
-                            >
-                              <span className="flex min-w-0 items-center gap-2">
-                                <FileText className="h-4 w-4 flex-shrink-0 text-tu-red-500" />
-                                <span className="truncate text-[13px] text-ink-700">
-                                  {f}
-                                </span>
-                              </span>
-                              {/* หมายเหตุ: prototype เก็บไฟล์จริงแค่ syllabus — ใช้เป็นไฟล์ดาวน์โหลด
-                                  แทนสไลด์รายสัปดาห์ไปก่อน จนกว่าจะเก็บ data ของสไลด์แต่ละไฟล์ */}
-                              {course.syllabusData ? (
-                                <a
-                                  href={course.syllabusData}
-                                  download={f}
-                                  className="inline-flex flex-shrink-0 items-center gap-1 text-xs font-semibold text-tu-red-600 transition hover:text-tu-red-700"
-                                >
-                                  <Download className="h-3.5 w-3.5" />
-                                  ดาวน์โหลด
-                                </a>
-                              ) : (
-                                <span className="flex-shrink-0 text-xs text-ink-300">
-                                  ไม่มีไฟล์
-                                </span>
-                              )}
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </Section>
 
                     {/* 3. แบบทดสอบ (เฉพาะเมื่ออาจารย์เปิดไว้) */}
                     {row.activeQuiz && (

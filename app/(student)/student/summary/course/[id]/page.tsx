@@ -1,5 +1,14 @@
-import { redirect } from "next/navigation";
+import { StudentShell } from "@/components/ui/Shells";
+import StudentOverallSummary from "@/components/student/StudentOverallSummary";
 
-export default function RedirectToWeek1() {
-  redirect("/student/summary/1");
+export default function StudentOverallSummaryPage({
+  params,
+}: {
+  params: { id: string };
+}) {
+  return (
+    <StudentShell>
+      <StudentOverallSummary courseId={params.id} />
+    </StudentShell>
+  );
 }

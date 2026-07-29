@@ -186,12 +186,21 @@ input[type="number"] {
   animation: radar-pop 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) 0.25s both;
 }
 
+/* แถวควิซใน accordion เลื่อนเข้าจากสันด้านซ้ายแบบเหลื่อมเวลา */
+@keyframes quiz-row-in {
+  from { opacity: 0; transform: translateX(-10px); }
+}
+.animate-quiz-row {
+  animation: quiz-row-in 0.42s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .chart-draw,
   .chart-fade,
   .chart-fade-late,
   .bar-grow,
-  .radar-pop {
+  .radar-pop,
+  .animate-quiz-row {
     animation: none !important;
   }
 }

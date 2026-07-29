@@ -59,7 +59,7 @@ export default function StudentSummarySelect() {
               key={c.id}
               onClick={() => {
                 setActiveCourse(c.id);
-                router.push("/student/summary/1");
+                router.push(`/student/summary/course/${c.id}`);
               }}
               className="group -mx-4 flex w-full text-left items-center justify-between gap-4 px-4 py-5 transition-colors hover:bg-paper-50 sm:-mx-6 sm:px-6"
             >

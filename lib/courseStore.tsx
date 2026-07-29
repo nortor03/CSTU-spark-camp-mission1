@@ -20,6 +20,7 @@ import type {
 } from "./syllabus";
 import type { CourseOut } from "./coursesApi";
 import { MOCK_AI_TOPICS } from "./mockTopics";
+import { buildMockCourseSeed } from "./mockCourseSeed";
 import { DEFAULT_WEEK_COUNT } from "./weeks";
 
 /**
@@ -386,17 +387,135 @@ export function CourseProvider({ children }: { children: ReactNode }) {
           studentId: sid,
           activeCourseId: savedActiveId,
         } = migrate(JSON.parse(raw));
-        setCourses(loaded);
+        
+        let finalCourses = loaded;
+        // Seed default mock courses ONLY if the courses list is completely empty
+        if (loaded.length === 0) {
+          const buildSeed = (code: string, subject: string, weeks: number, id: string, quizWeeks = 2, completedQuizzes = 0) => {
+            const seedData = buildMockCourseSeed("Course Syllabus", code, subject, weeks, quizWeeks);
+            const course = emptyCourse(
+              subject,
+              "Course Syllabus",
+              null,
+              seedData.topics,
+              seedData.extraction,
+              id,
+              code,
+              seedData.quizzes
+            );
+
+            // Seed mock submissions dynamically to make stats 100% real
+            const submissions = [];
+            for (let w = 1; w <= completedQuizzes; w++) {
+              const week = `สัปดาห์ที่ ${w}`;
+              const quizList = seedData.quizzes[week] || [];
+              const activeQuiz = quizList.find(q => q.isActive) || quizList[0];
+              if (activeQuiz) {
+                submissions.push({
+                  id: `sub-${id}-${w}`,
+                  studentId: "anon",
+                  studentName: "นายสมชาย ใจดี",
+                  week,
+                  quizRevision: activeQuiz.id,
+                  answers: {},
+                  score: 4,
+                  total: 5,
+                  percent: 80,
+                  submittedAt: new Date().toISOString(),
+                  isCurrentUser: true,
+                });
+              }
+            }
+            course.submissions = submissions;
+
+            // Seed localStorage summaries
+            if (typeof window !== "undefined") {
+              for (let w = 1; w <= completedQuizzes + 1; w++) {
+                const noteKey = `tonlabkit:note:anon:${id}:สัปดาห์ที่ ${w}`;
+                try {
+                  if (!localStorage.getItem(noteKey)) {
+                    localStorage.setItem(noteKey, `สรุปสั้นสัปดาห์ที่ ${w}: เข้าใจและสามารถทำแบบฝึกหัดทบทวนบทเรียนได้ครบถ้วน`);
+                  }
+                } catch {}
+              }
+            }
+
+            return course;
+          };
+
+          const seed1 = buildSeed("CN101", "การเขียนโปรแกรมเบื้องต้น", 12, "course-cn101", 5, 3);
+          const seed2 = buildSeed("CS232", "โครงสร้างข้อมูลและอัลกอริทึม", 15, "course-cs232", 8, 5);
+          const seed3 = buildSeed("GE145", "การคิดเชิงออกแบบ", 15, "course-ge145", 2, 0);
+          finalCourses = [seed1, seed2, seed3];
+        }
+
+        setCourses(finalCourses);
         setStudentId(sid);
-        // คงวิชาที่เคยเปิดทำงานอยู่ไว้หลัง refresh — กลับไปวิชาแรกสุดก็ต่อเมื่อ
-        // ไม่มีค่าที่บันทึกไว้ หรือวิชานั้นถูกลบไปแล้วเท่านั้น
+        // คงวิชาที่เคยเปิดทำงานอยู่ไว้หลัง refresh
         const stillExists =
-          savedActiveId && loaded.some((c) => c.id === savedActiveId);
+          savedActiveId && finalCourses.some((c) => c.id === savedActiveId);
         if (stillExists) {
           setActiveCourseId(savedActiveId);
-        } else if (loaded.length > 0) {
-          setActiveCourseId(loaded[0].id);
+        } else if (finalCourses.length > 0) {
+          setActiveCourseId(finalCourses[0].id);
         }
+      } else {
+        // Seeding default mock courses when localStorage is totally empty
+        const buildSeed = (code: string, subject: string, weeks: number, id: string, quizWeeks = 2, completedQuizzes = 0) => {
+          const seedData = buildMockCourseSeed("Course Syllabus", code, subject, weeks, quizWeeks);
+          const course = emptyCourse(
+            subject,
+            "Course Syllabus",
+            null,
+            seedData.topics,
+            seedData.extraction,
+            id,
+            code,
+            seedData.quizzes
+          );
+
+          const submissions = [];
+          for (let w = 1; w <= completedQuizzes; w++) {
+            const week = `สัปดาห์ที่ ${w}`;
+            const quizList = seedData.quizzes[week] || [];
+            const activeQuiz = quizList.find(q => q.isActive) || quizList[0];
+            if (activeQuiz) {
+              submissions.push({
+                id: `sub-${id}-${w}`,
+                studentId: "anon",
+                studentName: "นายสมชาย ใจดี",
+                week,
+                quizRevision: activeQuiz.id,
+                answers: {},
+                score: 4,
+                total: 5,
+                percent: 80,
+                submittedAt: new Date().toISOString(),
+                isCurrentUser: true,
+              });
+            }
+          }
+          course.submissions = submissions;
+
+          if (typeof window !== "undefined") {
+            for (let w = 1; w <= completedQuizzes + 1; w++) {
+              const noteKey = `tonlabkit:note:anon:${id}:สัปดาห์ที่ ${w}`;
+              try {
+                if (!localStorage.getItem(noteKey)) {
+                  localStorage.setItem(noteKey, `สรุปสั้นสัปดาห์ที่ ${w}: เข้าใจและสามารถทำแบบฝึกหัดทบทวนบทเรียนได้ครบถ้วน`);
+                }
+              } catch {}
+            }
+          }
+
+          return course;
+        };
+        const seed1 = buildSeed("CN101", "การเขียนโปรแกรมเบื้องต้น", 12, "course-cn101", 5, 3);
+        const seed2 = buildSeed("CS232", "โครงสร้างข้อมูลและอัลกอริทึม", 15, "course-cs232", 8, 5);
+        const seed3 = buildSeed("GE145", "การคิดเชิงออกแบบ", 15, "course-ge145", 2, 0);
+        const initialList = [seed1, seed2, seed3];
+        setCourses(initialList);
+        setActiveCourseId(initialList[0].id);
       }
     } catch {
       // localStorage เสีย/ปิดอยู่ — เริ่มจากว่าง

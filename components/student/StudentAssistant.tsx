@@ -50,7 +50,7 @@ export default function StudentAssistant() {
     {
       id: "welcome",
       sender: "bot",
-      text: "สวัสดี! เราคือผู้ช่วยทบทวนของคุณ 📚 ถามเนื้อหาที่ยังไม่เข้าใจ หรือให้ช่วยออกโจทย์ฝึกเพิ่มเพื่อทบทวนด้วยตัวเองได้เลย",
+      text: "สวัสดีครับ! ผมเป็นผู้ช่วยสอนประจำวิชา ยินดีต้อนรับนักศึกษาเข้าสู่ระบบทบทวนบทเรียน หากมีเนื้อหาตรงไหนยังไม่เข้าใจ หรืออยากได้โจทย์ฝึกฝนเพิ่มเติม สอบถามเข้ามาได้เลยนะครับ",
     },
   ]);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -78,6 +78,10 @@ export default function StudentAssistant() {
         },
       ]);
     }, 900);
+  }
+
+  if (pathname.includes("/student/quiz/")) {
+    return null;
   }
 
   return (
@@ -117,7 +121,7 @@ export default function StudentAssistant() {
               <Sparkles className="h-5 w-5" />
             </span>
             <div className="min-w-0">
-              <p className="text-sm font-bold text-ink-900">ผู้ช่วยทบทวน AI</p>
+              <p className="text-sm font-bold text-ink-900">ผู้ช่วยทบทวนบทเรียน</p>
               <p className="truncate text-[11px] text-ink-400">
                 {weekLabel ? `กำลังดู · ${weekLabel}` : "พร้อมช่วยทบทวนทุกสัปดาห์"}
               </p>

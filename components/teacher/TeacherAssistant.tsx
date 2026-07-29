@@ -130,7 +130,8 @@ function mockReply(text: string): string {
 
 export default function TeacherAssistant() {
   const pathname = usePathname();
-  if (pathname === "/course" || pathname === "/report") {
+  // แสดงแชทบอทฝั่งอาจารย์เฉพาะในหน้าสร้าง/แก้ไขควิซ (/quiz) เท่านั้น ตามที่ผู้ใช้งานกำหนด
+  if (!pathname.startsWith("/quiz")) {
     return null;
   }
   const ctx = contextLabel(pathname);

@@ -22,6 +22,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import CloRadar, { buildCloMastery, type CloMastery } from "./CloRadar";
+import ImprovementChart from "./ImprovementChart";
 import type { Quiz } from "@/lib/quiz";
 import type { StudentAnswers } from "@/lib/feedback";
 import { getPracticeHistory, type PracticeAttempt } from "@/lib/practiceHistory";
@@ -123,28 +124,6 @@ function ScoreRing({ percent, size = 170, strokeWidth = 11 }: { percent: number;
         <span className="mt-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-ink-400">เฉลี่ยรวม</span>
       </div>
     </div>
-  );
-}
-
-/* ─── Sparkline ─── */
-function Sparkline({ data }: { data: number[] }) {
-  if (data.length < 2) return null;
-  const W = 220, H = 52;
-  const maxV = Math.max(...data, 1);
-  const pts = data.map((v, i) => ({ x: (i / (data.length - 1)) * (W - 16) + 8, y: H - 8 - (v / maxV) * (H - 16) }));
-  const path = pts.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ");
-  const area = `${path} L ${pts[pts.length - 1].x} ${H} L ${pts[0].x} ${H} Z`;
-  return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" preserveAspectRatio="none">
-      <defs>
-        <linearGradient id="spk-fill" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#C8102E" stopOpacity="0.18" /><stop offset="100%" stopColor="#C8102E" stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <path d={area} fill="url(#spk-fill)" />
-      <path d={path} stroke="#C8102E" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-      {pts.map((p, i) => <circle key={i} cx={p.x} cy={p.y} r="3.5" fill="white" stroke="#C8102E" strokeWidth="2" />)}
-    </svg>
   );
 }
 
@@ -494,20 +473,6 @@ export default function StudentOverallSummary({ courseId }: { courseId: string }
               <span aria-hidden>{LEVEL_META[level].icon}</span>
               {LEVEL_META[level].label}
             </span>
-
-            {/* Sparkline */}
-            {weekResults.length >= 2 && (
-              <div className="mt-6 w-full max-w-[220px]">
-                <p className="mb-2 text-center text-[10px] font-bold uppercase tracking-widest text-ink-400">
-                  พัฒนาการรายสัปดาห์
-                </p>
-                <Sparkline data={weekResults.map((r) => r.percent)} />
-                <div className="mt-1 flex justify-between text-[10px] text-ink-400">
-                  <span>สัปดาห์ {weekResults[0].wkNum}</span>
-                  <span>สัปดาห์ {weekResults[weekResults.length - 1].wkNum}</span>
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Right: CLO Radar */}
@@ -539,6 +504,23 @@ export default function StudentOverallSummary({ courseId }: { courseId: string }
               </div>
             )}
           </div>
+        </section>
+      </Reveal>
+
+      {/* ─── กราฟพัฒนาการรายสัปดาห์ ─── */}
+      <Reveal>
+        <section className="border-t border-line-soft pt-10">
+          <div className="mb-1 flex items-start justify-between gap-3">
+            <h2 className="display text-lg">พัฒนาการรายสัปดาห์</h2>
+            <span className="flex-shrink-0 rounded-full bg-paper-100 px-3 py-1 text-[11px] font-bold text-ink-500">
+              {weekResults.length} สัปดาห์
+            </span>
+          </div>
+          <p className="mb-4 text-xs text-ink-400">คะแนนสอบจากอาจารย์ในแต่ละสัปดาห์ (%)</p>
+          <ImprovementChart
+            scores={weekResults.map((r) => r.percent)}
+            labels={weekResults.map((r) => `สัปดาห์ ${r.wkNum}`)}
+          />
         </section>
       </Reveal>
 

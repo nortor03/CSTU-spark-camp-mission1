@@ -205,6 +205,24 @@ input[type="number"] {
   }
 }
 
+/* ---------- Skeleton loading — แถบเทาไล่แสงวิ่ง ใช้แทน "กำลังโหลด…" ---------- */
+@keyframes skeleton-shimmer {
+  from { background-position: 150% 0; }
+  to { background-position: -50% 0; }
+}
+.skeleton {
+  background-image: linear-gradient(100deg, #F5EDE1 35%, #FEFCF8 50%, #F5EDE1 65%);
+  background-size: 250% 100%;
+  animation: skeleton-shimmer 1.7s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+    background-image: none;
+    background-color: #F5EDE1;
+  }
+}
+
 /* ---------- SurveyJS — card-based quiz layout ---------- */
 .survey-quiz .sv-root-modern,
 .survey-quiz .sd-root-modern {

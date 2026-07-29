@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import CloRadar, { buildCloMastery, type CloMastery } from "./CloRadar";
 import ImprovementChart from "./ImprovementChart";
+import { SkeletonStatHero } from "@/components/ui/Skeleton";
 import type { Quiz } from "@/lib/quiz";
 import type { StudentAnswers } from "@/lib/feedback";
 import type { PracticeAttempt } from "@/lib/practiceHistory";
@@ -346,7 +347,7 @@ export default function StudentOverallSummary({ courseId }: { courseId: string }
 
 
   /* ─── Loading / empty states ─── */
-  if (!hydrated) return <div className="grid place-items-center py-24 text-sm text-ink-400">กำลังโหลด…</div>;
+  if (!hydrated) return <SkeletonStatHero />;
 
   if (!course) {
     return (
@@ -433,8 +434,8 @@ export default function StudentOverallSummary({ courseId }: { courseId: string }
                 replace
                 href={
                   weekResults.length > 0
-                    ? `/student/summary/${weekResults[weekResults.length - 1].wkNum}`
-                    : "/student/summary"
+                    ? `/student/summary/${weekResults[0].wkNum}`
+                    : "/student/summary/1"
                 }
                 className="rounded-lg px-4 py-2 text-sm font-bold text-ink-500 transition hover:text-ink-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-tu-red-300"
               >

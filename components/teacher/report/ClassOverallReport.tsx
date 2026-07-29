@@ -20,6 +20,7 @@ import StudentOverallTable, {
 } from "@/components/teacher/report/class-report/StudentOverallTable";
 import { fetchPracticeQuizzes, fetchPracticeQuizSubmissions } from "@/lib/practiceQuizApi";
 import { ChevronDown } from "lucide-react";
+import { SkeletonKpiSection } from "@/components/ui/Skeleton";
 import type { Quiz } from "@/lib/quiz";
 import type { StudentAnswers } from "@/lib/feedback";
 
@@ -263,11 +264,7 @@ export default function ClassOverallReport({ courseId }: { courseId: string }) {
   }, [overall]);
 
   if (!hydrated) {
-    return (
-      <div className="grid place-items-center py-24 text-sm text-ink-400">
-        กำลังโหลด…
-      </div>
-    );
+    return <SkeletonKpiSection />;
   }
 
   if (!course) {

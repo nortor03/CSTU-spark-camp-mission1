@@ -6,6 +6,7 @@ import { useCourse } from "@/lib/courseStore";
 import { levelOf, LEVEL_META, type Submission } from "@/lib/analytics";
 import { resolveHex, weekNumber } from "@/lib/weeks";
 import PageHeader from "@/components/ui/PageHeader";
+import { SkeletonListRows } from "@/components/ui/Skeleton";
 
 /** รายการผลการทำแบบทดสอบของนักเรียนคนนี้ ครอบทุกวิชา จัดกลุ่มตามวิชา */
 export default function SummaryIndex() {
@@ -36,11 +37,7 @@ export default function SummaryIndex() {
   }
 
   if (!hydrated) {
-    return (
-      <div className="grid place-items-center py-24 text-sm text-ink-400">
-        กำลังโหลด…
-      </div>
-    );
+    return <SkeletonListRows />;
   }
 
   return (

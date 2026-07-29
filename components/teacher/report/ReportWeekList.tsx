@@ -7,6 +7,7 @@ import { buildClassReport } from "@/lib/analytics";
 import { generateMockSubmissions } from "@/lib/mockClass";
 import { resolveHex, weekNumber } from "@/lib/weeks";
 import PageHeader from "@/components/ui/PageHeader";
+import { SkeletonListRows } from "@/components/ui/Skeleton";
 
 /** รายการสัปดาห์ที่มีแบบทดสอบของวิชาหนึ่ง พร้อมตัวเลขคร่าว ๆ */
 export default function ReportWeekList({ courseId }: { courseId: string }) {
@@ -41,11 +42,7 @@ export default function ReportWeekList({ courseId }: { courseId: string }) {
   }, [course]);
 
   if (!hydrated) {
-    return (
-      <div className="grid place-items-center py-24 text-sm text-ink-400">
-        กำลังโหลด…
-      </div>
-    );
+    return <SkeletonListRows />;
   }
 
   if (!course) {

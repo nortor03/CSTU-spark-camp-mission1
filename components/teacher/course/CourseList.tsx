@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useCourse } from "@/lib/courseStore";
 import { deleteCourse, fetchCourses, type CourseSummary } from "@/lib/coursesApi";
 import PageHeader from "@/components/ui/PageHeader";
+import { SkeletonCardGrid } from "@/components/ui/Skeleton";
 import Modal, { ModalHeader } from "@/components/ui/Modal";
 import { ChevronRight, Trash2, Calendar, Users, CheckSquare } from "lucide-react";
 
@@ -88,11 +89,7 @@ export default function CourseList() {
   }
 
   if (status === "loading") {
-    return (
-      <div className="grid place-items-center py-24 text-sm text-ink-400">
-        กำลังโหลด…
-      </div>
-    );
+    return <SkeletonCardGrid headerAction />;
   }
 
   if (status === "error") {

@@ -11,7 +11,7 @@ import { MOCK_CLOS, generateMockQuiz, emptyPrompt } from "./quiz";
  * ตั้งเป็น `false` เมื่อหลังบ้านจริงพร้อม — ระบบจะกลับไปใช้ syllabus extraction จริง
  * และถ้าเปิดไม่ได้/ไม่มีข้อมูล ก็จะขึ้น "สถานะว่าง" ตามปกติ (ไม่ fallback มาที่ mock)
  */
-export const USE_MOCK_COURSE_PREVIEW = true;
+export const USE_MOCK_COURSE_PREVIEW = false;
 
 let seedCounter = 0;
 function sid(prefix: string): string {

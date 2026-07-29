@@ -1,5 +1,13 @@
-import type { Quiz } from "./quiz";
+import type { QuizChoice } from "./quiz";
 import type { StudentAnswers } from "./feedback";
+
+/**
+ * โครงขั้นต่ำที่พอสำหรับ render เป็นฟอร์ม — ใช้ได้ทั้ง Quiz เต็ม (โหมดฝึกซ้อม)
+ * และ StudentQuiz ที่ไม่มีเฉลย (โหมดควิซจริง จาก lib/quizGradingApi.ts)
+ */
+interface AnswerableQuiz {
+  questions: { id: string; question: string; choices: QuizChoice[] }[];
+}
 
 /* ==========================================================================
    สะพานเชื่อม Quiz (โครงข้อมูลของเรา) ↔ SurveyJS (Form Library)
@@ -34,7 +42,7 @@ function questionName(index: number): string {
 }
 
 /** แปลงควิซของเรา → SurveyJS model JSON (ทุกข้ออยู่หน้าเดียว เหมือน Google Form) */
-export function quizToSurveyJSON(quiz: Quiz): SurveyJSModel {
+export function quizToSurveyJSON(quiz: AnswerableQuiz): SurveyJSModel {
   return {
     // ไม่ใส่ title ระดับแบบทดสอบ — หน้าเพจแสดงชื่อให้แล้ว (กันชื่อซ้ำ)
     showQuestionNumbers: "on",
@@ -54,7 +62,7 @@ export function quizToSurveyJSON(quiz: Quiz): SurveyJSModel {
  * เดินตามคำถามในควิซเพื่อการันตีว่ามีครบทุกข้อ (ข้อที่ไม่ตอบ = null)
  */
 export function surveyDataToAnswers(
-  quiz: Quiz,
+  quiz: AnswerableQuiz,
   data: Record<string, unknown>,
 ): StudentAnswers {
   const answers: StudentAnswers = {};

@@ -5,18 +5,47 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCourse } from "@/lib/courseStore";
 import { generateMockQuiz, emptyPrompt, type Quiz } from "@/lib/quiz";
-import { gradeQuiz, type QuizResult, type StudentAnswers } from "@/lib/feedback";
+import {
+  gradeQuiz,
+  buildGradedResult,
+  type QuizResult,
+  type StudentAnswers,
+} from "@/lib/feedback";
 import { buildStudentSummary, type StudentSummary } from "@/lib/analytics";
+import {
+  fetchStudentQuiz,
+  fetchStudentSubmissions,
+  submitQuizAnswers,
+  type StudentQuiz as OfficialQuiz,
+  type SubmitQuizResult,
+} from "@/lib/quizGradingApi";
+import {
+  generateTargetedPracticeQuiz,
+  fetchPracticeQuiz,
+} from "@/lib/practiceQuizApi";
 import StudentSkillRadar from "./StudentSkillRadar";
 import SurveyQuizForm from "./SurveyQuizForm";
-import { savePracticeAttempt } from "@/lib/practiceHistory";
-import { ChevronDown, ChevronLeft, Smile, Meh, Frown } from "lucide-react";
+import { savePracticeAttempt, getPracticeHistory } from "@/lib/practiceHistory";
+import {
+  ChevronDown,
+  ChevronLeft,
+  Smile,
+  Meh,
+  Frown,
+  BookOpen,
+  Target,
+} from "lucide-react";
 
-type Phase = "loading" | "empty" | "doing" | "result";
+type Phase = "loading" | "empty" | "doing" | "submitting" | "result";
 
 /**
  * หน้าทำแบบทดสอบของนักเรียน 1 สัปดาห์
  * ไหลเป็น: ทำข้อสอบ (เลือกตอบ) → ส่งคำตอบ → เห็นคะแนน + feedback จาก AI
+ *
+ * แบบทดสอบจริง (ไม่ใช่โหมดฝึกซ้อม) ตรวจที่ backend เท่านั้น — เครื่องนักเรียน
+ * ไม่เคยได้รับเฉลยเลยก่อนส่งคำตอบ (ดู lib/quizGradingApi.ts) โหมดฝึกซ้อมยังคง
+ * เป็นควิซจำลองที่สร้าง+ตรวจในเครื่องทั้งหมดเหมือนเดิม (ไม่ใช่แบบทดสอบจริง
+ * จึงไม่มีเฉลยจริงให้รั่วไหล)
  */
 export default function StudentQuiz({ week }: { week: string }) {
   const { getQuiz, hydrated, studentId, activeCourseId, saveSubmission } =
@@ -24,17 +53,36 @@ export default function StudentQuiz({ week }: { week: string }) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const practice = searchParams.get("practice") === "1";
+  const practiceQuizId = searchParams.get("practiceQuizId");
 
-  const [quiz, setQuiz] = useState<Quiz | null>(null);
+  // โหมดฝึกซ้อม: Quiz เต็ม (มีเฉลย) เพราะเป็นชุดจำลองสร้าง+ตรวจในเครื่องเอง
+  // โหมดควิซจริง: OfficialQuiz ที่ไม่มีเฉลยติดมาเลย (ตรวจที่ backend ตอนส่งเท่านั้น)
+  const [quiz, setQuiz] = useState<Quiz | OfficialQuiz | null>(null);
   const [phase, setPhase] = useState<Phase>("loading");
+  const [loadError, setLoadError] = useState("");
+  const [submitError, setSubmitError] = useState("");
   const [result, setResult] = useState<QuizResult | null>(null);
   const [summary, setSummary] = useState<StudentSummary | null>(null);
   const inited = useRef(false);
+  const lastAnswersRef = useRef<StudentAnswers | null>(null);
 
-  // ชุดที่จะทำ — ปกติใช้ควิซของอาจารย์ · โหมดฝึกซ้อมเจนชุดใหม่ (mock) จากหัวข้อเดิม
-  const makeQuiz = useCallback((): Quiz | null => {
+  // แบบฝึกหัดที่ AI สร้างเจาะจุดที่พลาดโดยเฉพาะ (กดจากหน้าผลลัพธ์) — ตรวจในเครื่อง
+  // เหมือนโหมดฝึกซ้อมทั่วไป เพราะเป็นชุดที่สร้างมาให้นักเรียนคนนี้ฝึกเองเท่านั้น
+  // ไม่ใช่แบบทดสอบทางการ จึงไม่ต้องส่งไป backend ตรวจแบบ official quiz
+  const [isTargetedPractice, setIsTargetedPractice] = useState(false);
+  const [practiceAttemptNumber, setPracticeAttemptNumber] = useState<
+    number | null
+  >(null);
+  const [practiceGenerating, setPracticeGenerating] = useState(false);
+  const [practiceGenError, setPracticeGenError] = useState("");
+  const inPracticeMode = practice || isTargetedPractice;
+  // id ของ submission ที่กำลังโชว์ผลอยู่ — ใช้เป็นตัวชี้ให้ backend ดึงข้อมูลข้อที่ผิด
+  // ไปสร้างแบบฝึกหัดเจาะจุดอ่อนต่อ (ไม่ต้องส่งเนื้อหาข้อซ้ำไปให้ backend อีก)
+  const [submissionId, setSubmissionId] = useState<string | null>(null);
+
+  // ชุดฝึกซ้อม (mock) — เจนจากหัวข้อของควิซจริงถ้ามี ไม่งั้นใช้ค่าเริ่มต้น
+  const makePracticeQuiz = useCallback((): Quiz => {
     const official = getQuiz(week);
-    if (!practice) return official ?? null;
     const topics = official
       ? (Array.from(
           new Set(official.questions.map((q) => q.topic).filter(Boolean)),
@@ -45,78 +93,247 @@ export default function StudentQuiz({ week }: { week: string }) {
       topics,
       count: official?.questions.length ?? 5,
     });
-  }, [practice, week, getQuiz]);
+  }, [week, getQuiz]);
+
+  // เฉลยรู้ได้ก็ตอนตรวจแล้วเท่านั้น (ทั้งตอนส่งใหม่ และตอนดึงประวัติที่เคยส่งไปแล้ว)
+  // ประกอบ QuizResult + StudentSummary จากผลตรวจที่ backend ส่งกลับมา — ไม่มีการ
+  // เดา/เก็บเฉลยไว้ล่วงหน้าเลย
+  function applyGradedResult(sq: OfficialQuiz, submission: SubmitQuizResult) {
+    const gradedResult = buildGradedResult(sq.questions, submission.questions);
+    setResult(gradedResult);
+    setSubmissionId(submission.submissionId);
+
+    const correctById = new Map(
+      submission.questions.map((g) => [g.questionId, g.correctId]),
+    );
+    const answers: StudentAnswers = {};
+    submission.questions.forEach((g) => {
+      answers[g.questionId] = g.chosenId;
+    });
+    const quizWithAnswerKey: Quiz = {
+      id: sq.id,
+      isActive: true,
+      revision: sq.id,
+      week: sq.week,
+      title: sq.title,
+      questions: sq.questions.map((q) => ({
+        ...q,
+        type: "mcq",
+        answer: correctById.get(q.id) ?? "",
+      })),
+    };
+    setSummary(buildStudentSummary(quizWithAnswerKey, answers));
+  }
 
   useEffect(() => {
     if (!hydrated || inited.current) return;
     inited.current = true;
-    const q = makeQuiz();
-    if (q) {
-      setQuiz(q);
+
+    if (practice) {
+      setQuiz(makePracticeQuiz());
       setPhase("doing");
-    } else {
-      setPhase("empty");
+      return;
     }
-  }, [hydrated, makeQuiz]);
+
+    // เปิดแบบฝึกหัดเก่าที่เคยสร้างไว้ (กดจากรายการในหน้ารายละเอียดวิชา)
+    if (practiceQuizId) {
+      fetchPracticeQuiz(practiceQuizId)
+        .then(({ status, quiz: q }) => {
+          if (status === "completed" && q) {
+            setQuiz(q);
+            setIsTargetedPractice(true);
+
+            // เคยทำรอบนี้ไปแล้วในเครื่องนี้ไหม (เทียบด้วย quiz.id ที่ snapshot
+            // ไว้ตอนบันทึกผลฝึกซ้อม) — ถ้าเคย โชว์ผลเดิมเลย ไม่ให้ทำใหม่เงียบๆ
+            const history = getPracticeHistory(studentId, activeCourseId, week);
+            const attempt = history.filter((h) => h.quiz.id === q.id).pop();
+            if (attempt) {
+              setResult(gradeQuiz(attempt.quiz, attempt.answers));
+              setSummary(buildStudentSummary(attempt.quiz, attempt.answers));
+              setPhase("result");
+            } else {
+              setPhase("doing");
+            }
+          } else {
+            setLoadError(
+              status === "pending"
+                ? "แบบฝึกหัดนี้ยังสร้างไม่เสร็จ ลองใหม่อีกครั้งภายหลัง"
+                : "สร้างแบบฝึกหัดนี้ไม่สำเร็จ",
+            );
+            setPhase("empty");
+          }
+        })
+        .catch((err) => {
+          setLoadError(
+            err instanceof Error ? err.message : "โหลดแบบฝึกหัดไม่สำเร็จ",
+          );
+          setPhase("empty");
+        });
+      return;
+    }
+
+    // ควิซจริง — ต้องดึงชุดที่ "ไม่มีเฉลย" จาก backend เสมอ ไม่ใช้ควิซในเครื่อง
+    // (courseStore) ตรงๆ เพราะชุดนั้นมี field คำตอบที่ถูกติดมาด้วย (อาจารย์ใช้แก้ไข)
+    const official = getQuiz(week);
+    if (!official) {
+      setPhase("empty");
+      return;
+    }
+    const id = studentId ?? "ไม่ระบุรหัส";
+    Promise.all([
+      fetchStudentQuiz(official.id),
+      fetchStudentSubmissions(official.id, id),
+    ])
+      .then(([sq, submissions]) => {
+        setQuiz(sq);
+        if (submissions.length > 0) {
+          // เคยทำไปแล้ว — โชว์ผลล่าสุดทันที แทนที่จะปล่อยให้ทำใหม่เงียบๆ
+          // โดยไม่รู้ว่าเคยได้คะแนนอะไรไปแล้ว (ยังกด "ทำแบบทดสอบใหม่" ได้ตามปกติ)
+          applyGradedResult(sq, submissions[0]);
+          setPhase("result");
+        } else {
+          setPhase("doing");
+        }
+      })
+      .catch((err) => {
+        setLoadError(
+          err instanceof Error ? err.message : "โหลดแบบทดสอบไม่สำเร็จ",
+        );
+        setPhase("empty");
+      });
+  }, [
+    hydrated,
+    practice,
+    practiceQuizId,
+    week,
+    getQuiz,
+    studentId,
+    makePracticeQuiz,
+  ]);
 
   const finish = useCallback(
-    (answers: StudentAnswers) => {
+    async (answers: StudentAnswers) => {
       if (!quiz) return;
-      const graded = gradeQuiz(quiz, answers);
-      const summ = buildStudentSummary(quiz, answers);
-      setResult(graded);
-      setSummary(summ);
+      lastAnswersRef.current = answers;
 
-      if (!practice) {
-        // ผลทางการ — บันทึกเข้าระบบ (มีผลกับสรุป/รายงาน)
-        const id = studentId ?? "ไม่ระบุรหัส";
-        saveSubmission({
-          id: `${quiz.revision}-${id}`,
-          studentId: id,
-          studentName: `นักศึกษา ${id}`,
-          week,
-          quizRevision: quiz.revision,
-          answers,
-          score: graded.score,
-          total: graded.total,
-          percent: graded.percent,
-          submittedAt: new Date().toISOString(),
-          isCurrentUser: true,
-        });
-      } else {
-        // โหมดฝึกซ้อม — เก็บเป็นประวัติ (ดูย้อนได้ทุกรอบ) แยกจากผลทางการ
+      if (inPracticeMode) {
+        // โหมดฝึกซ้อม (สุ่มหรือเจาะจุดอ่อน) — ควิซมีเฉลยอยู่แล้วในเครื่อง ตรวจในเครื่องได้เลย
+        const graded = gradeQuiz(quiz as Quiz, answers);
+        const summ = buildStudentSummary(quiz as Quiz, answers);
+        setResult(graded);
+        setSummary(summ);
         savePracticeAttempt(studentId, activeCourseId, week, {
           id: `${Date.now()}`,
           at: new Date().toISOString(),
           score: graded.score,
           total: graded.total,
           percent: graded.percent,
-          quiz,
+          quiz: quiz as Quiz,
           answers,
         });
+        setPhase("result");
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
       }
 
-      setPhase("result");
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      // ควิซจริง — ส่งคำตอบไปให้ backend ตรวจ+บันทึก เครื่องนี้ไม่ตรวจเอง
+      setSubmitError("");
+      setPhase("submitting");
+      const id = studentId ?? "ไม่ระบุรหัส";
+      try {
+        const graded = await submitQuizAnswers({
+          quizId: quiz.id,
+          studentId: id,
+          answers,
+        });
+        applyGradedResult(quiz, graded);
+
+        saveSubmission({
+          id: `${quiz.id}-${id}`,
+          studentId: id,
+          studentName: `นักศึกษา ${id}`,
+          week,
+          quizRevision: quiz.id,
+          answers,
+          score: graded.score,
+          total: graded.total,
+          percent: graded.percent,
+          submittedAt: graded.submittedAt,
+          isCurrentUser: true,
+        });
+
+        setPhase("result");
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      } catch (err) {
+        setSubmitError(
+          err instanceof Error ? err.message : "ส่งคำตอบไปตรวจไม่สำเร็จ",
+        );
+        setPhase("doing");
+      }
     },
-    [quiz, week, studentId, activeCourseId, saveSubmission, practice],
+    [quiz, week, studentId, activeCourseId, saveSubmission, inPracticeMode],
   );
+
+  function retrySubmit() {
+    if (lastAnswersRef.current) finish(lastAnswersRef.current);
+  }
 
   function retry() {
     if (practice) {
-      const q = makeQuiz(); // เจนคำถามชุดใหม่ทุกครั้งที่ฝึกซ้อม
-      if (q) setQuiz(q);
+      setQuiz(makePracticeQuiz()); // เจนคำถามชุดใหม่ทุกครั้งที่ฝึกซ้อม
     }
     setResult(null);
     setPhase("doing");
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  if (phase === "loading") {
+  /**
+   * กดจากหน้าผลลัพธ์ (ตอบผิดอย่างน้อย 1 ข้อ) — ชี้ไปที่ submission รอบนั้น ให้
+   * backend ดึงข้อที่ผิด/เฉลย/หัวข้อ/CLO ไปสร้างแบบฝึกหัดเจาะจุดอ่อนเอง แล้วเข้าสู่
+   * โหมดฝึกซ้อมด้วยชุดที่ได้ (ตรวจในเครื่อง ไม่ใช่ official submission)
+   */
+  async function startTargetedPractice() {
+    if (!result || !submissionId) return;
+    const wrongQuestionIds = result.questions
+      .filter((q) => !q.isCorrect)
+      .map((q) => q.question.id);
+    if (wrongQuestionIds.length === 0) return;
+
+    setPracticeGenError("");
+    setPracticeGenerating(true);
+    try {
+      const { quiz: generated, attemptNumber } = await generateTargetedPracticeQuiz({
+        submissionId,
+        wrongQuestionIds,
+        week,
+      });
+      setQuiz(generated);
+      setIsTargetedPractice(true);
+      setPracticeAttemptNumber(attemptNumber);
+      setResult(null);
+      setSummary(null);
+      setPhase("doing");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch (err) {
+      setPracticeGenError(
+        err instanceof Error ? err.message : "สร้างแบบฝึกหัดไม่สำเร็จ",
+      );
+    } finally {
+      setPracticeGenerating(false);
+    }
+  }
+
+  if (phase === "loading" || phase === "submitting" || practiceGenerating) {
     return (
       <div className="flex flex-col items-center justify-center gap-3 py-24">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-line border-t-tu-red-500" />
-        <p className="text-sm text-ink-400">กำลังโหลด…</p>
+        <p className="text-sm text-ink-400">
+          {practiceGenerating
+            ? "กำลังสร้างแบบฝึกหัดเจาะจุดที่พลาด…"
+            : phase === "submitting"
+              ? "กำลังส่งคำตอบไปตรวจ…"
+              : "กำลังโหลด…"}
+        </p>
       </div>
     );
   }
@@ -127,9 +344,11 @@ export default function StudentQuiz({ week }: { week: string }) {
         <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-paper-200 text-2xl">
           📝
         </div>
-        <h2 className="display text-lg">ยังไม่มีแบบทดสอบสำหรับ {week}</h2>
+        <h2 className="display text-lg">
+          {loadError ? "โหลดแบบทดสอบไม่สำเร็จ" : `ยังไม่มีแบบทดสอบสำหรับ ${week}`}
+        </h2>
         <p className="mt-2 text-sm text-ink-500">
-          อาจารย์ยังไม่ได้สร้างแบบทดสอบของสัปดาห์นี้
+          {loadError || "อาจารย์ยังไม่ได้สร้างแบบทดสอบของสัปดาห์นี้"}
         </p>
         <Link href="/student" className="btn-primary mt-6">
           กลับไปเลือกสัปดาห์
@@ -145,7 +364,11 @@ export default function StudentQuiz({ week }: { week: string }) {
         result={result}
         summary={summary}
         onRetry={retry}
-        practice={practice}
+        practice={inPracticeMode}
+        onStartTargetedPractice={
+          !practice && submissionId ? startTargetedPractice : undefined
+        }
+        practiceGenError={practiceGenError}
       />
     );
   }
@@ -169,6 +392,12 @@ export default function StudentQuiz({ week }: { week: string }) {
                 โหมดฝึกซ้อม
               </span>
             )}
+            {isTargetedPractice && (
+              <span className="rounded-full bg-tu-gold-100 px-3 py-1 text-[11px] font-bold text-tu-gold-700">
+                🎯 ฝึกเจาะจุดที่พลาด
+                {practiceAttemptNumber != null && ` · รอบที่ ${practiceAttemptNumber}`}
+              </span>
+            )}
             <span className="rounded-full bg-tu-red-50 px-3 py-1 text-[11px] font-bold text-tu-red-600 ring-1 ring-tu-red-100">
               {week}
             </span>
@@ -180,6 +409,19 @@ export default function StudentQuiz({ week }: { week: string }) {
           {quiz.questions.length} ข้อ · ตอบให้ครบทุกข้อก่อนส่ง
         </p>
       </div>
+
+      {submitError && (
+        <div className="alert-error mb-4 flex flex-wrap items-center justify-between gap-3">
+          <span>{submitError}</span>
+          <button
+            type="button"
+            onClick={retrySubmit}
+            className="btn-secondary flex-shrink-0"
+          >
+            ลองส่งอีกครั้ง
+          </button>
+        </div>
+      )}
 
       <SurveyQuizForm quiz={quiz} onComplete={finish} />
     </div>
@@ -238,6 +480,8 @@ export function ResultView({
   onRetry,
   practice = false,
   isModal = false,
+  onStartTargetedPractice,
+  practiceGenError = "",
 }: {
   week: string;
   result: QuizResult;
@@ -245,6 +489,9 @@ export function ResultView({
   onRetry: () => void;
   practice?: boolean;
   isModal?: boolean;
+  /** กดเพื่อขอให้ AI สร้างแบบฝึกหัดเจาะจุดที่พลาดของรอบนี้โดยเฉพาะ */
+  onStartTargetedPractice?: () => void;
+  practiceGenError?: string;
 }) {
   const percent = Math.round((result.score / result.total) * 100);
 
@@ -353,6 +600,20 @@ export function ResultView({
                 >
                   ดูสรุปจุดแข็ง / จุดอ่อน →
                 </Link>
+              )}
+
+              {!isModal && onStartTargetedPractice && wrongIds.length > 0 && (
+                <button
+                  type="button"
+                  onClick={onStartTargetedPractice}
+                  className="btn-secondary inline-flex w-fit items-center gap-1.5"
+                >
+                  <Target className="h-3.5 w-3.5" />
+                  สร้างแบบฝึกหัดเจาะจุดที่พลาด
+                </button>
+              )}
+              {practiceGenError && (
+                <p className="text-xs text-tu-red-600">{practiceGenError}</p>
               )}
             </div>
           </div>
@@ -480,7 +741,31 @@ export function ResultView({
                       <p className="mt-1.5 text-xs leading-relaxed text-ink-600">
                         {r.feedback}
                       </p>
+                      {r.explanation && (
+                        <p className="mt-2 border-t border-tu-gold-200 pt-2 text-xs leading-relaxed text-ink-600">
+                          {r.explanation}
+                        </p>
+                      )}
                     </div>
+
+                    {/* ที่มา — สไลด์/หน้าที่ควรกลับไปอ่านเพิ่ม (ถ้า backend แนบมาให้) */}
+                    {r.sources && r.sources.length > 0 && (
+                      <div className="mt-2.5 flex items-start gap-2 rounded-xl border border-line-soft bg-paper-50 px-4 py-2.5">
+                        <BookOpen className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-ink-400" />
+                        <p className="text-xs leading-relaxed text-ink-600">
+                          <span className="font-semibold text-ink-500">
+                            อ่านเพิ่มเติมที่:{" "}
+                          </span>
+                          {r.sources
+                            .map((s) =>
+                              s.sourceLocation
+                                ? `${s.filename} (${s.sourceLocation})`
+                                : s.filename,
+                            )
+                            .join(", ")}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -494,9 +779,12 @@ export function ResultView({
           <Link href="/student" className="btn-ghost">
             ← เลือกสัปดาห์อื่น
           </Link>
-          <button type="button" onClick={onRetry} className="btn-secondary">
-            ทำแบบทดสอบใหม่
-          </button>
+          {/* แบบทดสอบจริงทำได้ครั้งเดียว ไม่ให้ทำซ้ำ — ปุ่มทำใหม่มีเฉพาะโหมดฝึกซ้อม */}
+          {practice && (
+            <button type="button" onClick={onRetry} className="btn-secondary">
+              ฝึกซ้อมข้อใหม่
+            </button>
+          )}
         </div>
       )}
     </div>

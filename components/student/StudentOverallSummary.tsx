@@ -25,7 +25,12 @@ import CloRadar, { buildCloMastery, type CloMastery } from "./CloRadar";
 import ImprovementChart from "./ImprovementChart";
 import type { Quiz } from "@/lib/quiz";
 import type { StudentAnswers } from "@/lib/feedback";
-import { getPracticeHistory, type PracticeAttempt } from "@/lib/practiceHistory";
+import type { PracticeAttempt } from "@/lib/practiceHistory";
+import {
+  fetchPracticeQuizzes,
+  fetchPracticeQuiz,
+  fetchPracticeQuizSubmissions,
+} from "@/lib/practiceQuizApi";
 
 
 /* ─── Design tokens ─── */
@@ -183,7 +188,7 @@ export default function StudentOverallSummary({ courseId }: { courseId: string }
     return results;
   }, [course, submissions, studentId]);
 
-  /* --- ดึงข้อมูลฝึกซ้อมจาก localStorage (ต้องทำใน useEffect เพราะเป็น client-only) --- */
+  /* --- ดึงข้อมูลฝึกซ้อม (แบบฝึกหัดเจาะจุดอ่อน) จาก backend จริงทุกสัปดาห์ --- */
 
   const [practiceByWeek, setPracticeByWeek] = useState<Record<string, PracticeAttempt[]>>({});
   // แหล่งข้อมูลที่เลือกดู (เฉพาะส่วน "ความเข้าใจรายหัวข้อ") — ข้อสอบอาจารย์ หรือ ฝึกซ้อม
@@ -194,14 +199,62 @@ export default function StudentOverallSummary({ courseId }: { courseId: string }
   const [misconceptionsOpen, setMisconceptionsOpen] = useState(false);
 
   useEffect(() => {
-    if (!course || !hydrated) return;
-    const map: Record<string, PracticeAttempt[]> = {};
-    for (const wk of Object.keys(course.quizzes)) {
-      const attempts = getPracticeHistory(studentId, courseId, wk);
-      if (attempts.length > 0) map[wk] = attempts;
+    if (!course || !hydrated || !studentId) {
+      setPracticeByWeek({});
+      return;
     }
-    setPracticeByWeek(map);
-  }, [course, courseId, studentId, hydrated]);
+    let cancelled = false;
+    const weeks = Object.keys(course.quizzes).filter(
+      (wk) => (course.quizzes[wk] ?? []).length > 0,
+    );
+    Promise.all(
+      weeks.map(async (wk) => {
+        const quiz = course.quizzes[wk][0];
+        try {
+          const list = await fetchPracticeQuizzes(quiz.id, studentId);
+          const completed = list.filter((p) => p.status === "completed");
+          const built = await Promise.all(
+            completed.map(async (p): Promise<PracticeAttempt | null> => {
+              try {
+                const [{ quiz: pq }, subs] = await Promise.all([
+                  fetchPracticeQuiz(p.id),
+                  fetchPracticeQuizSubmissions(p.id, studentId),
+                ]);
+                const latest = subs[0];
+                if (!pq || !latest) return null;
+                const answers: StudentAnswers = {};
+                for (const q of latest.questions) answers[q.questionId] = q.chosenId;
+                return {
+                  id: p.id,
+                  at: latest.submittedAt,
+                  score: latest.score,
+                  total: latest.total,
+                  percent: Math.round(latest.percent),
+                  quiz: pq,
+                  answers,
+                };
+              } catch {
+                return null;
+              }
+            }),
+          );
+          return [wk, built.filter((a): a is PracticeAttempt => a !== null)] as const;
+        } catch {
+          return [wk, [] as PracticeAttempt[]] as const;
+        }
+      }),
+    ).then((entries) => {
+      if (cancelled) return;
+      const map: Record<string, PracticeAttempt[]> = {};
+      for (const [wk, attempts] of entries) {
+        if (attempts.length > 0) map[wk] = attempts;
+      }
+      setPracticeByWeek(map);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [course, studentId, hydrated]);
 
 
   /* --- Aggregate overall data --- */

@@ -15,10 +15,15 @@ import {
   type StudentSummary as StudentSummaryData,
 } from "@/lib/analytics";
 import type { QuizQuestion } from "@/lib/quiz";
+import type { StudentAnswers } from "@/lib/feedback";
 import { weekNumber } from "@/lib/weeks";
 import { getPracticeHistory, type PracticeAttempt } from "@/lib/practiceHistory";
 import { fetchStudentSubmissions } from "@/lib/quizGradingApi";
-import { fetchPracticeQuizzes, fetchPracticeQuiz } from "@/lib/practiceQuizApi";
+import {
+  fetchPracticeQuizzes,
+  fetchPracticeQuiz,
+  fetchPracticeQuizSubmissions,
+} from "@/lib/practiceQuizApi";
 import {
   analyzeSubmissionFeedback,
   loadPracticeFeedback,
@@ -522,9 +527,15 @@ export default function StudentSummary({
   // (app/layout.tsx) แทน — เพราะ popstate listener ที่ผูกไว้ในหน้านี้เองจะถูกถอด (unmount)
   // ระหว่างที่ Next.js กำลังจัดการ popstate event เดียวกันอยู่พอดี ทำให้ไม่ทำงาน
 
-  // ประวัติการฝึกซ้อมจริง (เก็บแยกใน localStorage ต่อสัปดาห์ — ไม่ใช่ผลทางการ)
-  // มุมมองอาจารย์ = ใช้ประวัติจริงถ้ามี (เช่นทดสอบเป็นตัวเอง) ไม่งั้น fallback เป็นประวัติฝึกซ้อมจำลอง
-  // ของนักศึกษาคนนั้น (เพื่อนร่วมชั้นในระบบนี้เป็นข้อมูลจำลองทั้งหมดอยู่แล้ว ไม่มี backend หลายผู้ใช้จริง)
+  // ประวัติการฝึกซ้อม "เจาะจุดอ่อน" (targeted practice) — ดึงจาก backend ตรงๆ
+  // แล้ว (ไม่ใช้ localStorage อีกต่อไปสำหรับนักเรียนเจ้าของบัญชีเอง) ผสม 3 endpoint
+  // เข้าด้วยกันต่อรอบ: รายการ (attemptNumber/status), เนื้อควิซ+เฉลย (สำหรับ
+  // buildStudentSummary), และคะแนน/คำตอบที่ส่งจริง — ข้ามรอบที่ยังไม่เคยส่งคำตอบ
+  // (สร้างไว้แต่ยังไม่ได้ทำ ไม่มีอะไรให้ทบทวน)
+  //
+  // มุมมองอาจารย์ = เพื่อนร่วมชั้นในระบบนี้เป็นข้อมูลจำลองทั้งหมด ไม่มี backend
+  // หลายผู้ใช้จริงให้ดึง ยังต้องพึ่ง localStorage/mock เหมือนเดิม (ใช้ประวัติจริงถ้ามี
+  // เช่นทดสอบเป็นตัวเอง ไม่งั้น fallback เป็นประวัติฝึกซ้อมจำลองของนักศึกษาคนนั้น)
   const [attempts, setAttempts] = useState<PracticeAttempt[]>([]);
   useEffect(() => {
     if (!hydrated) {
@@ -536,7 +547,53 @@ export default function StudentSummary({
       setAttempts(real.length > 0 ? real : quiz ? generateMockPracticeAttempts(quiz, viewStudentId!) : []);
       return;
     }
-    setAttempts(getPracticeHistory(studentId, activeCourseId, week));
+    if (!quiz || !studentId) {
+      setAttempts([]);
+      return;
+    }
+    let cancelled = false;
+    fetchPracticeQuizzes(quiz.id, studentId)
+      .then(async (list) => {
+        const completed = list.filter((p) => p.status === "completed");
+        const built = await Promise.all(
+          completed.map(async (p): Promise<PracticeAttempt | null> => {
+            try {
+              const [{ quiz: pq }, subs] = await Promise.all([
+                fetchPracticeQuiz(p.id),
+                fetchPracticeQuizSubmissions(p.id, studentId),
+              ]);
+              const latest = subs[0];
+              if (!pq || !latest) return null;
+              const answers: StudentAnswers = {};
+              for (const q of latest.questions) answers[q.questionId] = q.chosenId;
+              return {
+                id: p.id,
+                at: latest.submittedAt,
+                score: latest.score,
+                total: latest.total,
+                percent: Math.round(latest.percent),
+                quiz: pq,
+                answers,
+              };
+            } catch {
+              return null;
+            }
+          }),
+        );
+        if (cancelled) return;
+        setAttempts(
+          built
+            .filter((a): a is PracticeAttempt => a !== null)
+            .sort((a, b) => a.at.localeCompare(b.at)),
+        );
+      })
+      .catch((err) => {
+        console.warn("โหลดประวัติแบบฝึกหัดจาก backend ไม่สำเร็จ", err);
+        if (!cancelled) setAttempts([]);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [isTeacherView, viewStudentId, hydrated, studentId, activeCourseId, week, quiz]);
 
   // จำนวนแบบฝึกหัดเจาะจุดอ่อนที่ AI สร้างให้จริง — ดึงจาก backend ตรงๆ
@@ -577,6 +634,12 @@ export default function StudentSummary({
   const [feedbackStatus, setFeedbackStatus] = useState<
     "idle" | "loading" | "error" | "unavailable"
   >("loading");
+  // เลขรอบฝึกซ้อมที่กำลังดูอยู่ (null = รอบข้อสอบจริง) — ต้องใช้คู่กับ
+  // evidence[].practiceRound เวลากรอง เพราะ backend ยืนยันแล้วว่า questionId
+  // "ไม่การันตีไม่ชนกันข้ามรอบ" (AI มินต์ id ใหม่ทุกครั้งที่ generate ไม่ใช่
+  // unique ทั้งระบบ) เจอจริง: practice-a03017af7c74 มี q1-q5 ชนกับ q1-q7 ของ
+  // ควิซจริงต้นทางเป๊ะ ถ้ากรองด้วย questionId เฉย ๆ จะได้ evidence ผิดรอบ
+  const [activePracticeRound, setActivePracticeRound] = useState<number | null>(null);
   useEffect(() => {
     if (isTeacherView || !hydrated || !quiz || !studentId) {
       setFeedback(null);
@@ -609,11 +672,20 @@ export default function StudentSummary({
         // (เช่นนักเรียนส่งข้อสอบจริงซ้ำหลายครั้ง) เดาแบบเหมารวมว่าใช้ submission
         // ล่าสุดเสมอเคยทำให้ยิง feedback ผิดตัว ได้ 404 มาก่อน (ยืนยันกับทีม
         // backend แล้วว่าไม่ใช่บั๊กฝั่งเขา — ดู lib/practiceQuizApi.ts)
-        const { submissionId } = await fetchPracticeQuiz(targetedPracticeQuizId);
+        const [{ submissionId }, list] = await Promise.all([
+          fetchPracticeQuiz(targetedPracticeQuizId),
+          fetchPracticeQuizzes(quiz.id, studentId),
+        ]);
         if (!submissionId) throw new Error("แบบฝึกหัดนี้ไม่มี submission ต้นทาง");
+        if (!cancelled) {
+          setActivePracticeRound(
+            list.find((p) => p.id === targetedPracticeQuizId)?.attemptNumber ?? null,
+          );
+        }
         const { feedbackId } = await triggerFeedbackAnalysis(submissionId);
         return loadPracticeFeedback(quiz.id, targetedPracticeQuizId, feedbackId);
       }
+      if (!cancelled) setActivePracticeRound(null);
       const subs = await fetchStudentSubmissions(quiz.id, studentId);
       if (subs.length === 0) throw new Error("ยังไม่มี submission จริง");
       return analyzeSubmissionFeedback(subs[0].submissionId, quiz.id);
@@ -684,10 +756,19 @@ export default function StudentSummary({
   // ถ้ามี (จาก feedback.findings[].evidence ที่ kind === "quiz" จับคู่ด้วย questionId)
   const questionReview = useMemo(() => {
     if (!activeQuiz || !mine) return [];
+    // สำคัญ: ต้องกรองด้วย practiceRound ควบคู่กับ questionId เสมอ — backend
+    // ยืนยันแล้วว่า questionId ไม่ unique ข้ามรอบ (AI มินต์ id ใหม่ทุกครั้งที่
+    // generate) เจอจริงว่า q1-q5 ของรอบฝึกซ้อมชนกับ q1-q7 ของควิซจริงต้นทาง —
+    // ถ้ากรองด้วย questionId เฉย ๆ จะได้คำอธิบายจาก AI ผิดรอบ
     const aiCommentByQuestion = new Map(
       (feedback?.findings ?? [])
         .flatMap((f) => f.evidence)
-        .filter((e) => e.kind === "quiz" && e.questionId)
+        .filter(
+          (e) =>
+            e.kind === "quiz" &&
+            e.questionId &&
+            (e.practiceRound ?? null) === activePracticeRound,
+        )
         .map((e) => [e.questionId as string, e.comment]),
     );
     return activeQuiz.questions.map((q: QuizQuestion) => {
@@ -703,7 +784,7 @@ export default function StudentSummary({
         aiComment: aiCommentByQuestion.get(q.id) ?? null,
       };
     });
-  }, [activeQuiz, mine, feedback]);
+  }, [activeQuiz, mine, feedback, activePracticeRound]);
   const [questionFilter, setQuestionFilter] = useState<"all" | "correct" | "wrong">("all");
   const filteredQuestions = questionReview.filter((q) =>
     questionFilter === "all" ? true : questionFilter === "correct" ? q.isCorrect : !q.isCorrect,

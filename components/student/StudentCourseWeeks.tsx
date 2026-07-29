@@ -24,8 +24,10 @@ import type { Quiz } from "@/lib/quiz";
 import type { Submission } from "@/lib/analytics";
 import {
   fetchPracticeQuizzes,
+  fetchPracticeQuizSubmissions,
   type PracticeQuizSummary,
 } from "@/lib/practiceQuizApi";
+import type { SubmitQuizResult } from "@/lib/quizGradingApi";
 import { getPracticeHistory, savePracticeAttempt } from "@/lib/practiceHistory";
 import { fetchWeekNote, saveWeekNote } from "@/lib/notesApi";
 
@@ -342,6 +344,12 @@ function PracticeQuizzesList({
   courseId: string;
 }) {
   const [items, setItems] = useState<PracticeQuizSummary[] | null>(null);
+  // คะแนนของแต่ละแบบฝึกหัด (key = practice_quiz_id) — ดึงจาก backend ตรงๆ
+  // (GET /practice-quizzes/{id}/submissions/{studentId}) ไม่ใช้ localStorage
+  // อีกต่อไปสำหรับแบบฝึกหัดที่ backend สร้างให้จริง
+  const [scores, setScores] = useState<Record<string, SubmitQuizResult | null>>(
+    {},
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -444,13 +452,29 @@ function PracticeQuizzesList({
     };
   }, [quizId, studentId, courseId, week, wkLabel]);
 
-  // ผลฝึกซ้อมเก็บในเครื่อง (localStorage) เท่านั้น — จับคู่แต่ละแบบฝึกหัดที่ backend
-  // list มา กับรอบล่าสุดที่เคยทำจริงในเครื่องนี้ (เทียบด้วย quiz.id ที่ snapshot ไว้)
-  const history = getPracticeHistory(studentId, courseId, week);
-  function latestAttemptFor(practiceQuizId: string) {
-    const matches = history.filter((h) => h.quiz.id === practiceQuizId);
-    return matches.length > 0 ? matches[matches.length - 1] : null;
-  }
+  // ดึงคะแนนของแต่ละแบบฝึกหัดที่ backend สร้างให้จริงจาก backend ตรงๆ (ไม่ใช้
+  // localStorage อีกแล้ว) — ข้อมูลจำลอง (practice-mock-*, ตอน backend ล่ม) ไม่มี
+  // จริงฝั่ง backend เลยข้ามไป ไม่ยิงขอคะแนนให้
+  useEffect(() => {
+    if (!items || items.length === 0) return;
+    let cancelled = false;
+    const realItems = items.filter((p) => !p.id.startsWith("practice-mock-"));
+    Promise.all(
+      realItems.map((p) =>
+        fetchPracticeQuizSubmissions(p.id, studentId)
+          .then((subs): [string, SubmitQuizResult | null] => [
+            p.id,
+            subs[0] ?? null,
+          ])
+          .catch(() => [p.id, null] as [string, SubmitQuizResult | null]),
+      ),
+    ).then((entries) => {
+      if (!cancelled) setScores(Object.fromEntries(entries));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [items, studentId]);
 
   if (items === null) {
     return <p className="mt-2.5 text-xs text-ink-400">กำลังโหลดแบบฝึกหัด…</p>;
@@ -465,7 +489,7 @@ function PracticeQuizzesList({
       </p>
       <div className="flex flex-col gap-1.5">
         {items.map((p) => {
-          const attempt = latestAttemptFor(p.id);
+          const attempt = scores[p.id] ?? null;
           const meta = PRACTICE_STATUS_META[p.status];
           return (
             <div
@@ -479,7 +503,7 @@ function PracticeQuizzesList({
                 {attempt ? (
                   <p className="mt-0.5 inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600">
                     <CheckCircle2 className="h-3 w-3" />
-                    ทำแล้ว · ได้ {attempt.score}/{attempt.total} ข้อ ({attempt.percent}%)
+                    ทำแล้ว · ได้ {attempt.score}/{attempt.total} ข้อ ({Math.round(attempt.percent)}%)
                   </p>
                 ) : (
                   <span
@@ -491,7 +515,7 @@ function PracticeQuizzesList({
               </div>
               {p.status === "completed" ? (
                 <Link
-                  href={attempt ? `/student/summary/${wkLabel}?round=${attempt.id}&lock=1` : `/student/quiz/${wkLabel}?practiceQuizId=${p.id}`}
+                  href={attempt ? `/student/summary/${wkLabel}?round=${p.id}&lock=1` : `/student/quiz/${wkLabel}?practiceQuizId=${p.id}`}
                   className={`flex-shrink-0 px-3 py-1.5 text-xs ${
                     attempt ? "btn-secondary" : "btn-primary"
                   }`}

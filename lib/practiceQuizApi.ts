@@ -1,5 +1,6 @@
 import type { Quiz } from "./quiz";
 import { waitForQuizGenerate } from "./aiQuiz";
+import type { SubmitQuizResult } from "./quizGradingApi";
 
 /* ==========================================================================
    จุดเชื่อม AI สำหรับ "สร้างแบบฝึกหัดเจาะจุดที่พลาด" — นักเรียนกดจากหน้าผลลัพธ์
@@ -60,41 +61,36 @@ import { waitForQuizGenerate } from "./aiQuiz";
       ของนักเรียนแบบเหมารวมทุกรอบ แทนที่จะใช้ submission ที่ practice quiz รอบนั้น
       อ้างอิงจริง) แก้แล้วในข้อ 4 ด้านล่าง — ดู StudentSummary.tsx
 
-   2) [ของใหม่] ยังไม่มีทางบันทึกคำตอบ/คะแนนของ "รอบฝึกซ้อม" เข้า backend เลย —
-      ตอนนี้ตรวจในเครื่องล้วนๆ (gradeQuiz ใน lib/feedback.ts) แล้วเก็บใน
-      localStorage เท่านั้น (lib/practiceHistory.ts) เครื่อง/browser อื่นเห็นไม่ได้
-      เลย ขอ endpoint ใหม่ (ยึด pattern เดียวกับ POST /quizzes/{id}/submissions
-      ของแบบทดสอบจริง เพื่อความสม่ำเสมอของ API):
+   2) [ปิดแล้ว — deploy แล้ว ยืนยันกับข้อมูลจริงแล้ว] บันทึกคำตอบ/คะแนนของ
+      "รอบฝึกซ้อม" เข้า backend ได้แล้ว:
 
         POST /api/v1/practice-quizzes/{practice_quiz_id}/submissions
           body: { studentId: string, answers: Record<questionId, choiceId|null> }
-          → backend มีเฉลยอยู่แล้วตอน generate ตรวจ+บันทึกเองได้เลย
           → 200 { submissionId, score, total, percent, questions: [...], submittedAt }
-            (shape เดียวกับ SubmitQuizResult ใน lib/quizGradingApi.ts)
+            (shape เดียวกับ SubmitQuizResult ใน lib/quizGradingApi.ts ยืนยันแล้ว)
+          ตรวจกับ practice-a03017af7c74 จริง ได้ 5/5 ตรงตาม answer key จริง
 
         GET /api/v1/practice-quizzes/{practice_quiz_id}/submissions/{student_id}
-          → 200 SubmitQuizResult[] เรียงล่าสุดก่อน — เอาไว้เช็คว่าเคยทำรอบนี้
-          ไปแล้วหรือยัง/ได้คะแนนอะไร (เหมือน pattern ของ quiz submissions)
+          → 200 SubmitQuizResult[] เรียงล่าสุดก่อน
 
-   3) [ของใหม่ ต่อยอดจากข้อ 2 — ตัดสินใจ spec แล้ว รอ backend implement]
-      evidence[] ใน feedback ตอนนี้ผูกกับคำถามของ "ควิซจริง" ต้นทางเท่านั้น
-      (questionId เป็น q1-q7 เสมอ, practiceRound เป็น null ทุกรายการ แม้เปิดผ่าน
-      endpoint ของ practice quiz ก็ตาม) — ไม่เคยประเมินคำถามที่ AI สร้างใหม่ให้
-      แต่ละรอบฝึกซ้อมเลย ทำให้หน้าเว็บ (ทบทวนคำตอบรายข้อ) แนบคำอธิบายจาก AI ต่อ
-      คำถามของรอบฝึกซ้อมไม่ได้เพราะไม่มีข้อมูลให้ match
+      ต่อฝั่ง frontend แล้วที่ submitPracticeQuizAnswers/fetchPracticeQuizSubmissions
+      ด้านล่าง — StudentQuiz.tsx (โหมดฝึกซ้อมเจาะจุดอ่อน ไม่ใช่โหมดสุ่ม) ส่งคำตอบ
+      ขึ้น backend จริงแล้ว ไม่ตรวจในเครื่อง/ไม่เขียน localStorage อีกต่อไป —
+      StudentCourseWeeks.tsx และ StudentSummary.tsx อ่านคะแนนจาก backend ตรงๆ
+      (lib/practiceHistory.ts ยังอยู่แค่สำหรับโหมดฝึกซ้อมสุ่มที่ไม่มี
+      practice_quiz_id จริงให้ผูกกับ backend ได้เท่านั้น)
 
-      spec ที่ตกลงกันแล้ว: หลังนักเรียนส่งคำตอบรอบฝึกซ้อมผ่าน endpoint ข้อ 2
-      backend วิเคราะห์คำถามชุดนั้นแล้ว "merge evidence ใหม่เข้า finding เดิม"
-      (ไม่สร้าง feedback/finding ก้อนใหม่ ใช้ feedbackId เดิมเสมอ) โดย:
-        - evidence ที่มาจากรอบฝึกซ้อม ต้องมี questionId ตรงกับคำถามของ practice
-          quiz รอบนั้นจริง ๆ (คนละชุดกับ q1-q7 เดิม ไม่ชนกัน) และ practiceRound
-          เป็นเลขรอบ (ไม่ใช่ null)
-        - finding.score (คะแนน CLO เต็ม 5) ยังคง "ผูกกับ submission ทางการ
-          เท่านั้น ไม่ขยับตามผลฝึกซ้อม" — คะแนน CLO ของนักเรียนต้องมีค่าเดียวที่
-          ชัดเจน ไม่งงว่าอันไหนคือของจริง
-      เหตุผลที่เลือก merge ไม่แยก finding ใหม่ต่อรอบ: ฝั่ง frontend ดูทีละรอบอยู่
-      แล้ว (เลือกผ่าน RoundPicker) กรอง evidence ด้วย questionId ตรง ๆ อยู่แล้ว
-      ไม่ต้องสนใจว่ามาจาก practiceRound ไหน เพราะ questionId แต่ละรอบไม่ชนกันเอง
+   3) [ปิดแล้ว — deploy แล้ว ยืนยันกับข้อมูลจริงแล้ว] evidence รายคำถามของรอบ
+      ฝึกซ้อม merge เข้า finding เดิมตาม spec ที่ตกลงกันแล้ว (feedbackId เดิม,
+      score ไม่ขยับ, practiceRound เป็นเลขรอบจริง) — ยืนยันด้วยข้อมูลจริง:
+      practice-a03017af7c74 (รอบ 1) มี evidence q1-q5 ซ้อนกับ q1-q7 เดิมของ
+      ควิซจริงต้นทางจริง แยกได้ด้วย practiceRound (1 vs null)
+
+      *** คำเตือนสำคัญจาก backend ที่ frontend ต้องรู้: questionId ไม่ unique
+      ข้ามรอบ (AI มินต์ id ใหม่ทุกครั้งที่ generate ไม่ใช่ unique ทั้งระบบ) ***
+      ห้าม filter evidence ด้วย questionId เฉย ๆ เด็ดขาด ต้อง filter ด้วย
+      questionId + practiceRound คู่กันเสมอ — แก้แล้วใน StudentSummary.tsx
+      (ดู activePracticeRound state)
 
    4) [ปิดแล้ว — deploy แล้ว ยืนยันกับข้อมูลจริงแล้ว] PracticeQuizSummary และ
       GET /practice-quizzes/{id} มี field submissionId แล้ว (ยืนยันด้วย curl
@@ -211,6 +207,49 @@ export async function fetchPracticeQuiz(practiceQuizId: string): Promise<{
   if (!res.ok) {
     throw new Error(
       await readErrorMessage(res, `โหลดแบบฝึกหัดไม่สำเร็จ (${res.status})`),
+    );
+  }
+  return res.json();
+}
+
+/**
+ * ส่งคำตอบของแบบฝึกหัดเจาะจุดอ่อน (target practice) ไปให้ backend ตรวจ+บันทึกจริง
+ * — ใช้ได้เฉพาะแบบฝึกหัดที่ backend สร้างให้ (มี practice_quiz_id จริง) เท่านั้น
+ * โหมดฝึกซ้อมแบบสุ่ม (mock quiz เจนในเครื่อง) ไม่มี id ให้ส่งแบบนี้ได้
+ */
+export async function submitPracticeQuizAnswers(params: {
+  practiceQuizId: string;
+  studentId: string;
+  answers: Record<string, string | null>;
+}): Promise<SubmitQuizResult> {
+  const { practiceQuizId, studentId, answers } = params;
+  const res = await fetch(
+    `${QUIZ_API_URL}/api/v1/practice-quizzes/${encodeURIComponent(practiceQuizId)}/submissions`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ studentId, answers }),
+    },
+  );
+  if (!res.ok) {
+    throw new Error(
+      await readErrorMessage(res, `ส่งคำตอบแบบฝึกหัดไม่สำเร็จ (${res.status})`),
+    );
+  }
+  return res.json();
+}
+
+/** ประวัติที่นักเรียนคนนี้เคยทำแบบฝึกหัดรอบนี้ไว้ เรียงล่าสุดก่อน ([]) ถ้ายังไม่เคยทำ */
+export async function fetchPracticeQuizSubmissions(
+  practiceQuizId: string,
+  studentId: string,
+): Promise<SubmitQuizResult[]> {
+  const res = await fetch(
+    `${QUIZ_API_URL}/api/v1/practice-quizzes/${encodeURIComponent(practiceQuizId)}/submissions/${encodeURIComponent(studentId)}`,
+  );
+  if (!res.ok) {
+    throw new Error(
+      await readErrorMessage(res, `โหลดประวัติแบบฝึกหัดไม่สำเร็จ (${res.status})`),
     );
   }
   return res.json();

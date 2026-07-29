@@ -18,7 +18,7 @@ import SkillClusters from "@/components/teacher/report/class-report/SkillCluster
 import StudentOverallTable, {
   type StudentAggRow,
 } from "@/components/teacher/report/class-report/StudentOverallTable";
-import { getPracticeHistory } from "@/lib/practiceHistory";
+import { fetchPracticeQuizzes, fetchPracticeQuizSubmissions } from "@/lib/practiceQuizApi";
 import { ChevronDown } from "lucide-react";
 import type { Quiz } from "@/lib/quiz";
 import type { StudentAnswers } from "@/lib/feedback";
@@ -214,16 +214,42 @@ export default function ClassOverallReport({ courseId }: { courseId: string }) {
   }, [weekAggs, course]);
 
   // จำนวนครั้งฝึกซ้อมจริงของผู้ใช้ปัจจุบัน (เพื่อนร่วมชั้นจำลองไม่มีประวัติฝึกซ้อมจริงให้อ่าน)
-  // อ่าน localStorage ใน useEffect เท่านั้น กัน hydration mismatch
+  // ดึงจาก backend ตรงๆ (นับเฉพาะแบบฝึกหัดที่มีคำตอบส่งจริงแล้ว) — ทำใน useEffect
   const [currentUserPracticeCount, setCurrentUserPracticeCount] = useState<number | null>(null);
   useEffect(() => {
-    if (!course || !hydrated) return;
-    let total = 0;
-    for (const w of weekAggs) {
-      total += getPracticeHistory(studentId, courseId, w.week).length;
+    if (!course || !hydrated || !studentId) {
+      setCurrentUserPracticeCount(null);
+      return;
     }
-    setCurrentUserPracticeCount(total);
-  }, [course, hydrated, weekAggs, studentId, courseId]);
+    let cancelled = false;
+    Promise.all(
+      weekAggs.map(async (w) => {
+        try {
+          const list = await fetchPracticeQuizzes(w.quiz.id, studentId);
+          const completed = list.filter((p) => p.status === "completed");
+          const counts: number[] = await Promise.all(
+            completed.map(async (p): Promise<number> => {
+              try {
+                const subs = await fetchPracticeQuizSubmissions(p.id, studentId);
+                return subs.length > 0 ? 1 : 0;
+              } catch {
+                return 0;
+              }
+            }),
+          );
+          return counts.reduce((a, b) => a + b, 0);
+        } catch {
+          return 0;
+        }
+      }),
+    ).then((counts) => {
+      if (cancelled) return;
+      setCurrentUserPracticeCount(counts.reduce((a, b) => a + b, 0));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [course, hydrated, weekAggs, studentId]);
 
   // จุดที่ควรโฟกัสทั้งชั้นเรียน — เทมเพลตข้อความอิงข้อมูลจริง (หัวข้อ/CLO ที่ดี-แย่ที่สุด)
   const insight = useMemo(() => {

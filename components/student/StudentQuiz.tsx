@@ -22,10 +22,12 @@ import {
 import {
   generateTargetedPracticeQuiz,
   fetchPracticeQuiz,
+  submitPracticeQuizAnswers,
+  fetchPracticeQuizSubmissions,
 } from "@/lib/practiceQuizApi";
 import StudentSkillRadar from "./StudentSkillRadar";
 import SurveyQuizForm from "./SurveyQuizForm";
-import { savePracticeAttempt, getPracticeHistory } from "@/lib/practiceHistory";
+import { savePracticeAttempt } from "@/lib/practiceHistory";
 import {
   ChevronDown,
   ChevronLeft,
@@ -138,18 +140,24 @@ export default function StudentQuiz({ week }: { week: string }) {
     // เปิดแบบฝึกหัดเก่าที่เคยสร้างไว้ (กดจากรายการในหน้ารายละเอียดวิชา)
     if (practiceQuizId) {
       fetchPracticeQuiz(practiceQuizId)
-        .then(({ status, quiz: q }) => {
+        .then(async ({ status, quiz: q }) => {
           if (status === "completed" && q) {
             setQuiz(q);
             setIsTargetedPractice(true);
 
-            // เคยทำรอบนี้ไปแล้วในเครื่องนี้ไหม (เทียบด้วย quiz.id ที่ snapshot
-            // ไว้ตอนบันทึกผลฝึกซ้อม) — ถ้าเคย โชว์ผลเดิมเลย ไม่ให้ทำใหม่เงียบๆ
-            const history = getPracticeHistory(studentId, activeCourseId, week);
-            const attempt = history.filter((h) => h.quiz.id === q.id).pop();
-            if (attempt) {
-              setResult(gradeQuiz(attempt.quiz, attempt.answers));
-              setSummary(buildStudentSummary(attempt.quiz, attempt.answers));
+            // เคยทำรอบนี้ไปแล้วจริงหรือยัง — เช็คกับ backend ตรงๆ (ไม่เชื่อ
+            // ข้อมูลในเครื่องอีกต่อไป) ถ้าเคยส่งคำตอบไปแล้ว โชว์ผลเดิมทันที
+            // ไม่ให้ทำใหม่เงียบๆ โดยไม่รู้ว่าเคยได้คะแนนอะไรไปแล้ว
+            const id = studentId ?? "ไม่ระบุรหัส";
+            const subs = await fetchPracticeQuizSubmissions(practiceQuizId, id);
+            if (subs.length > 0) {
+              const latest = subs[0];
+              setResult(buildGradedResult(q.questions, latest.questions));
+              const answers: StudentAnswers = {};
+              latest.questions.forEach((g) => {
+                answers[g.questionId] = g.chosenId;
+              });
+              setSummary(buildStudentSummary(q, answers));
               setPhase("result");
             } else {
               setPhase("doing");
@@ -216,8 +224,37 @@ export default function StudentQuiz({ week }: { week: string }) {
       if (!quiz) return;
       lastAnswersRef.current = answers;
 
+      if (isTargetedPractice) {
+        // แบบฝึกหัดเจาะจุดอ่อนที่ backend สร้างให้ (มี practice_quiz_id จริง) —
+        // ส่งคำตอบไปให้ backend ตรวจ+บันทึกจริง เหมือนควิซจริง ไม่ตรวจในเครื่อง/
+        // ไม่เขียน localStorage อีกต่อไป (ต่างจากโหมดฝึกซ้อมแบบสุ่มด้านล่าง ซึ่งไม่มี
+        // practice_quiz_id จริงให้ผูกกับ backend ได้เลย)
+        setSubmitError("");
+        setPhase("submitting");
+        const id = studentId ?? "ไม่ระบุรหัส";
+        try {
+          const graded = await submitPracticeQuizAnswers({
+            practiceQuizId: quiz.id,
+            studentId: id,
+            answers,
+          });
+          setResult(buildGradedResult((quiz as Quiz).questions, graded.questions));
+          setSummary(buildStudentSummary(quiz as Quiz, answers));
+          setPhase("result");
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        } catch (err) {
+          setSubmitError(
+            err instanceof Error ? err.message : "ส่งคำตอบไปตรวจไม่สำเร็จ",
+          );
+          setPhase("doing");
+        }
+        return;
+      }
+
       if (inPracticeMode) {
-        // โหมดฝึกซ้อม (สุ่มหรือเจาะจุดอ่อน) — ควิซมีเฉลยอยู่แล้วในเครื่อง ตรวจในเครื่องได้เลย
+        // โหมดฝึกซ้อมแบบสุ่ม (mock quiz เจนในเครื่อง ไม่มี practice_quiz_id จริง)
+        // — ตรวจในเครื่องได้เลย ไม่มีทางส่ง backend ได้เพราะควิซนี้ไม่เคยมีอยู่จริง
+        // ฝั่ง backend เลย
         const graded = gradeQuiz(quiz as Quiz, answers);
         const summ = buildStudentSummary(quiz as Quiz, answers);
         setResult(graded);
@@ -271,7 +308,15 @@ export default function StudentQuiz({ week }: { week: string }) {
         setPhase("doing");
       }
     },
-    [quiz, week, studentId, activeCourseId, saveSubmission, inPracticeMode],
+    [
+      quiz,
+      week,
+      studentId,
+      activeCourseId,
+      saveSubmission,
+      inPracticeMode,
+      isTargetedPractice,
+    ],
   );
 
   function retrySubmit() {

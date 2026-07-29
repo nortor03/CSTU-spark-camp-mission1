@@ -32,12 +32,6 @@ const STUDENT_NAV: NavItem[] = [
     match: ["/student/course", "/student/quiz"],
     icon: IconCourse,
   },
-  {
-    href: "/student/summary",
-    label: "จุดแข็ง / จุดอ่อน",
-    match: ["/student/summary"],
-    icon: IconReport,
-  },
 ];
 
 /** ปุ่มออกจากระบบบนแถบแดง */

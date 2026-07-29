@@ -316,13 +316,13 @@ export default function StudentOverallSummary({ courseId }: { courseId: string }
     return (
       <div>
         <div className="mb-6 text-sm font-medium text-ink-400">
-          <Link href="/student/summary" className="transition-colors hover:text-tu-red-600">จุดแข็ง / จุดอ่อน</Link>
+          <Link href="/student" className="transition-colors hover:text-tu-red-600">รายวิชาเรียน</Link>
           <span className="mx-2 text-ink-300">/</span>
           <span className="text-ink-700">ไม่พบรายวิชา</span>
         </div>
         <div className="card-empty">
           <h2 className="display text-lg">ไม่พบรายวิชา</h2>
-          <Link href="/student/summary" className="btn-primary mt-5">ย้อนกลับ</Link>
+          <Link href="/student" className="btn-primary mt-5">ย้อนกลับ</Link>
         </div>
       </div>
     );
@@ -332,16 +332,18 @@ export default function StudentOverallSummary({ courseId }: { courseId: string }
     return (
       <div>
         <div className="mb-6 text-sm font-medium text-ink-400">
-          <Link href="/student/summary" className="transition-colors hover:text-tu-red-600">จุดแข็ง / จุดอ่อน</Link>
+          <Link href="/student" className="transition-colors hover:text-tu-red-600">รายวิชาเรียน</Link>
           <span className="mx-2 text-ink-300">/</span>
-          <span className="text-ink-700">{course.subject}</span>
+          <Link href={`/student/course/${course.id}`} className="transition-colors hover:text-tu-red-600">{course.subject}</Link>
+          <span className="mx-2 text-ink-300">/</span>
+          <span className="text-ink-700">วิเคราะห์ผลการเรียนรู้</span>
         </div>
         <div className="card-empty">
           <h2 className="display text-lg">ยังไม่มีผลแบบทดสอบ</h2>
           <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-ink-500">
-            ทำแบบทดสอบของวิชานี้ก่อน ระบบจะสรุปจุดแข็งและจุดอ่อนให้
+            ทำแบบทดสอบของวิชานี้ก่อน ระบบจะทำการวิเคราะห์ผลการเรียนรู้ให้
           </p>
-          <Link href="/student" className="btn-primary mt-5">ไปทำแบบทดสอบ</Link>
+          <Link href={`/student/course/${course.id}`} className="btn-primary mt-5">กลับไปหน้ารายวิชา</Link>
         </div>
       </div>
     );
@@ -360,9 +362,11 @@ export default function StudentOverallSummary({ courseId }: { courseId: string }
 
       {/* ─── Breadcrumb ─── */}
       <div className="text-sm font-medium text-ink-400">
-        <Link href="/student/summary" className="transition-colors hover:text-tu-red-600">จุดแข็ง / จุดอ่อน</Link>
+        <Link href="/student" className="transition-colors hover:text-tu-red-600">รายวิชาเรียน</Link>
         <span className="mx-2 text-ink-300">/</span>
-        <span className="text-ink-700">{course.subject}</span>
+        <Link href={`/student/course/${course.id}`} className="transition-colors hover:text-tu-red-600">{course.subject}</Link>
+        <span className="mx-2 text-ink-300">/</span>
+        <span className="text-ink-700">วิเคราะห์ผลการเรียนรู้</span>
       </div>
 
       {/* ─── Header + Week Buttons ─── */}
@@ -371,7 +375,7 @@ export default function StudentOverallSummary({ courseId }: { courseId: string }
           <div>
             <p className="eyebrow">ภาพรวมทั้งวิชา · {course.subject}</p>
             <h1 className="display mt-1.5 text-2xl sm:text-3xl md:text-[32px]">
-              จุดแข็งและจุดอ่อนของคุณ
+              วิเคราะห์ผลการเรียนรู้ของคุณ
             </h1>
             <hr className="rule-gold my-3" />
             <p className="max-w-lg text-sm leading-relaxed text-ink-500">

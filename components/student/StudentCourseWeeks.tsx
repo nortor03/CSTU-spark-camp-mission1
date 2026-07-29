@@ -16,6 +16,7 @@ import {
   Pencil,
   CheckCircle2,
   Target,
+  TrendingUp,
 } from "lucide-react";
 import type { Quiz } from "@/lib/quiz";
 import type { Submission } from "@/lib/analytics";
@@ -123,7 +124,19 @@ export default function StudentCourseWeeks({ courseId }: { courseId: string }) {
         )}
       </Link>
 
-      <PageHeader eyebrow="รายละเอียดรายวิชา" title={course.subject} />
+      <PageHeader
+        eyebrow="รายละเอียดรายวิชา"
+        title={course.subject}
+        action={
+          <Link
+            href={`/student/summary/course/${course.id}`}
+            className="group flex items-center gap-2 rounded-xl border border-tu-gold-200 bg-gradient-to-r from-tu-gold-50 to-amber-50 px-4 py-2 text-sm font-bold text-tu-gold-700 shadow-sm transition-all hover:from-tu-gold-100 hover:to-amber-100 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-tu-gold-500/15"
+          >
+            <TrendingUp className="h-4 w-4 text-tu-gold-600 transition-transform duration-300 group-hover:scale-110" />
+            <span>วิเคราะห์ผลการเรียนรู้</span>
+          </Link>
+        }
+      />
 
       {course.syllabusName && (
         <div className="mb-6 flex items-center gap-2.5 rounded-xl border border-line bg-paper-50 px-4 py-3">

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo, useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCourse } from "@/lib/courseStore";
-import { generateMockSubmissions } from "@/lib/mockClass";
+import { generateMockSubmissions, generateMockPracticeAttempts } from "@/lib/mockClass";
 import {
   buildStudentSummary,
   levelOf,
@@ -392,19 +392,33 @@ export default function StudentSummary({ week }: { week: string }) {
   const searchParams = useSearchParams();
   const viewStudentId = searchParams.get("student");
   const isTeacherView = !!viewStudentId;
+  const isLocked = searchParams.get("lock") === "1";
 
   const [activeRound, setActiveRound] = useState<string>("official");
 
+  const roundParam = searchParams.get("round");
+  useEffect(() => {
+    if (roundParam) {
+      setActiveRound(roundParam);
+    }
+  }, [roundParam]);
+
   // ประวัติการฝึกซ้อมจริง (เก็บแยกใน localStorage ต่อสัปดาห์ — ไม่ใช่ผลทางการ)
-  // มุมมองอาจารย์ = ดูเฉพาะผลสอบจริง ไม่มีรอบฝึกซ้อม (ของนักศึกษาแต่ละคน)
+  // มุมมองอาจารย์ = ใช้ประวัติจริงถ้ามี (เช่นทดสอบเป็นตัวเอง) ไม่งั้น fallback เป็นประวัติฝึกซ้อมจำลอง
+  // ของนักศึกษาคนนั้น (เพื่อนร่วมชั้นในระบบนี้เป็นข้อมูลจำลองทั้งหมดอยู่แล้ว ไม่มี backend หลายผู้ใช้จริง)
   const [attempts, setAttempts] = useState<PracticeAttempt[]>([]);
   useEffect(() => {
-    if (isTeacherView || !hydrated) {
+    if (!hydrated) {
       setAttempts([]);
       return;
     }
+    if (isTeacherView) {
+      const real = getPracticeHistory(viewStudentId, activeCourseId, week);
+      setAttempts(real.length > 0 ? real : quiz ? generateMockPracticeAttempts(quiz, viewStudentId!) : []);
+      return;
+    }
     setAttempts(getPracticeHistory(studentId, activeCourseId, week));
-  }, [isTeacherView, hydrated, studentId, activeCourseId, week]);
+  }, [isTeacherView, viewStudentId, hydrated, studentId, activeCourseId, week, quiz]);
 
   // แต่ละรอบฝึกซ้อมมีชุดคำถามของตัวเอง — ตรวจด้วยควิซของรอบนั้น ไม่ใช่ควิซทางการ
   const attemptResults = useMemo(
@@ -526,8 +540,9 @@ export default function StudentSummary({ week }: { week: string }) {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="eyebrow">
-              {isTeacherView ? "รายงานรายบุคคล" : "Learning Analytics"} · สัปดาห์ที่{" "}
-              {wk}
+              {activeRound === "official"
+                ? (isTeacherView ? "รายงานรายบุคคล" : "Learning Analytics")
+                : "ผลการฝึกซ้อมด้วยตนเอง"} · สัปดาห์ที่ {wk}
             </p>
             <h1
               className={`display mt-1.5 text-2xl sm:text-3xl md:text-[34px] ${
@@ -535,8 +550,8 @@ export default function StudentSummary({ week }: { week: string }) {
               }`}
             >
               {isTeacherView
-                ? `วิเคราะห์ผลการเรียนรู้ของ ${officialMine.studentName}`
-                : "วิเคราะห์ผลการเรียนรู้ของคุณ"}
+                ? `${activeRound === "official" ? "วิเคราะห์ผลการเรียนรู้" : "รายงานการฝึกซ้อม"}ของ ${officialMine.studentName}`
+                : `${activeRound === "official" ? "วิเคราะห์ผลการเรียนรู้" : "รายงานการฝึกซ้อม"}ของคุณ`}
             </h1>
             <hr className="rule-gold my-3" />
             <p className="max-w-lg text-sm leading-relaxed text-ink-500">{summary.headline}</p>
@@ -544,7 +559,7 @@ export default function StudentSummary({ week }: { week: string }) {
 
           <div className="flex flex-col items-end gap-2.5">
             {/* สลับภาพรวม/รายสัปดาห์ — เหมือนหน้าภาพรวมทั้งวิชา (เฉพาะมุมมองนักศึกษาเจ้าของ) */}
-            {!isTeacherView && course && (
+            {!isTeacherView && !isLocked && course && (
               <div className="inline-flex items-center gap-1 rounded-xl bg-paper-100 p-1">
                 <Link
                   href={`/student/summary/course/${course.id}`}
@@ -561,27 +576,21 @@ export default function StudentSummary({ week }: { week: string }) {
               </div>
             )}
 
-            {/* 1) เลือกสัปดาห์ก่อน */}
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            {weeksAvailable.length > 0 && (
-              <WeekDropdown
-                currentWeek={week}
-                weeks={weeksAvailable}
-                onSelect={(w) =>
-                  router.push(
-                    `/student/summary/${weekNumber(w)}${
-                      isTeacherView
-                        ? `?student=${encodeURIComponent(viewStudentId!)}`
-                        : ""
-                    }`,
-                  )
-                }
-              />
+            {/* 1) เลือกสัปดาห์ก่อน — มุมมองอาจารย์ไม่ต้องมี บอกไว้ที่ eyebrow ด้านบนแล้ว */}
+            {!isTeacherView && !isLocked && (
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                {weeksAvailable.length > 0 && (
+                  <WeekDropdown
+                    currentWeek={week}
+                    weeks={weeksAvailable}
+                    onSelect={(w) => router.push(`/student/summary/${weekNumber(w)}`)}
+                  />
+                )}
+              </div>
             )}
-          </div>
 
-            {/* 2) จากนั้นค่อยเลือกแหล่งข้อมูลของสัปดาห์นี้ — โชว์เฉพาะเมื่อมีทั้งสองแหล่ง */}
-            {!isTeacherView && attemptResults.length > 0 && (
+            {/* 2) จากนั้นค่อยเลือกแหล่งข้อมูลของสัปดาห์นี้ — โชว์เฉพาะเมื่อมีทั้งสองแหล่ง (ทั้งมุมมองนักศึกษาและอาจารย์) */}
+            {attemptResults.length > 0 && !isLocked && (
               <div className="flex flex-wrap items-center justify-end gap-2">
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-ink-400">แสดงผลจาก</span>
@@ -627,7 +636,7 @@ export default function StudentSummary({ week }: { week: string }) {
             )}
 
             {/* 3) เลือกครบแล้วค่อยสร้างข้อสอบฝึกซ้อม = เฉพาะมุมมองนักศึกษาเจ้าของ (ไม่โชว์ให้อาจารย์) */}
-            {!isTeacherView && (
+            {!isTeacherView && !isLocked && (
               <Link
                 href={`/student/quiz/${week.match(/\d+/)?.[0] ?? ""}?practice=1`}
                 className="group flex items-center gap-2 rounded-xl border border-tu-gold-200 bg-gradient-to-r from-tu-gold-50 to-amber-50 px-4 py-2 text-sm font-bold text-tu-gold-700 shadow-sm transition-all hover:from-tu-gold-100 hover:to-amber-100 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-tu-gold-500/15"

@@ -48,7 +48,6 @@ import {
   AlertTriangle,
   BookOpen,
 } from "lucide-react";
-import ImprovementChart from "./ImprovementChart";
 import { SkeletonStatHero } from "@/components/ui/Skeleton";
 
 /* ─── Design tokens ─── */
@@ -972,14 +971,6 @@ export default function StudentSummary({
   const hasWeak = weakest && weakest.level !== "strong";
   const level = levelOf(summary.percent);
 
-  const selectedAttemptIndex =
-    activeRound === "official" ? -1 : attemptResults.findIndex((a) => a.attempt.id === activeRound);
-  const visibleAttemptResults =
-    activeRound === "official" ? [] : attemptResults.slice(0, selectedAttemptIndex + 1);
-
-  const chartScores = [officialSummary.percent, ...visibleAttemptResults.map((r) => r.result.percent)];
-  const chartLabels = ["ข้อสอบจากอาจารย์", ...visibleAttemptResults.map((_, i) => `รอบ ${i + 1}`)];
-
   return (
     <div className="relative space-y-10">
 
@@ -1272,25 +1263,6 @@ export default function StudentSummary({
           </div>
         </section>
       </Reveal>
-
-      {/* ─── ประวัติการพัฒนา (เฉพาะรอบฝึกซ้อม) ─── */}
-      {activeRound !== "official" && (
-        <Reveal>
-          <div className="border-t border-line-soft pt-10">
-            <h2 className="display text-lg">ประวัติการพัฒนา</h2>
-            <hr className="rule-gold mb-3 mt-2.5" />
-            <p className="text-xs text-ink-400">เปรียบเทียบคะแนนระหว่างรอบ</p>
-            <div className="mt-5">
-              <ImprovementChart scores={chartScores} labels={chartLabels} />
-              {visibleAttemptResults.length === 0 && (
-                <p className="mt-2 text-center text-xs text-ink-400">
-                  ยังมีแค่ผลสอบจริง — ลองเลือกดูผลการฝึกซ้อมรอบอื่นเพื่อดูพัฒนาการ
-                </p>
-              )}
-            </div>
-          </div>
-        </Reveal>
-      )}
 
       {/* ─── ความเข้าใจรายหัวข้อ + AI สรุปข้อสังเกต ─── */}
       <div className="border-t border-line-soft pt-10">

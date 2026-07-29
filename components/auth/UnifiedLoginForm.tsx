@@ -109,7 +109,7 @@ export default function UnifiedLoginForm() {
               เข้าสู่ระบบ Tonlabkit
             </h1>
             <p className="mt-1.5 text-xs text-ink-500">
-              ยินดีต้อนรับ! กรุณากรอกข้อมูลของคุณเพื่อเข้าสู่ระบบ
+              ยินดีต้อนรับ! กรุณาเข้าสู่ระบบด้วยบัญชีของคุณ
             </p>
           </div>
         </div>
@@ -118,8 +118,9 @@ export default function UnifiedLoginForm() {
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label htmlFor="identifier" className="label text-ink-800">
-                อีเมล หรือ รหัสนักศึกษา
+                รหัสนักศึกษา หรือ อีเมล (สำหรับอาจารย์)
               </label>
+
               <div className={`relative mt-1.5 ${shakeIdentifier ? "animate-shake" : ""}`}>
                 <input
                   id="identifier"

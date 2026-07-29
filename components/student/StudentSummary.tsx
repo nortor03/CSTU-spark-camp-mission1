@@ -498,17 +498,24 @@ export default function StudentSummary({ week }: { week: string }) {
 
       {/* ─── Breadcrumb ─── */}
       <div className="text-sm font-medium text-ink-400">
-        <Link href="/student/summary" className="transition-colors hover:text-tu-red-600">
-          จุดแข็ง / จุดอ่อน
+        <Link href="/student" className="transition-colors hover:text-tu-red-600">
+          รายวิชาเรียน
         </Link>
         {course && (
           <>
             <span className="mx-2 text-ink-300">/</span>
             <Link
-              href={`/student/summary/course/${course.id}`}
+              href={`/student/course/${course.id}`}
               className="transition-colors hover:text-tu-red-600"
             >
               {course.subject}
+            </Link>
+            <span className="mx-2 text-ink-300">/</span>
+            <Link
+              href={`/student/summary/course/${course.id}`}
+              className="transition-colors hover:text-tu-red-600"
+            >
+              วิเคราะห์ผลการเรียนรู้
             </Link>
           </>
         )}
@@ -528,8 +535,8 @@ export default function StudentSummary({ week }: { week: string }) {
               }`}
             >
               {isTeacherView
-                ? `จุดแข็งและจุดอ่อนของ ${officialMine.studentName}`
-                : "จุดแข็งและจุดอ่อนของคุณ"}
+                ? `วิเคราะห์ผลการเรียนรู้ของ ${officialMine.studentName}`
+                : "วิเคราะห์ผลการเรียนรู้ของคุณ"}
             </h1>
             <hr className="rule-gold my-3" />
             <p className="max-w-lg text-sm leading-relaxed text-ink-500">{summary.headline}</p>

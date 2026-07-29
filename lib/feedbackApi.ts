@@ -22,6 +22,11 @@ import type { QuizSource } from "./quiz";
      idempotent: เรียกซ้ำตอน pending/completed → feedbackId เดิม ไม่เริ่ม run ใหม่
      เรียกซ้ำหลัง run ก่อนหน้า fail ไปแล้ว → เริ่ม run ใหม่ แต่ feedbackId เดิม
      404 SUBMISSION_NOT_FOUND — submission_id ไม่มีจริง
+     รับได้ทั้ง submissionId ของข้อสอบจริง (official) และของรอบฝึกซ้อม (practice
+     submissionId จาก SubmitQuizResult ตอน submitPracticeQuizAnswers) — backend
+     ตรวจแยกอัตโนมัติ (official ก่อน ไม่เจอค่อย fallback ไป practice) ยืนยันแล้ว
+     ด้วยข้อมูลจริง: practice-submission-a55702274842 → feedbackId ใหม่ของตัวเอง
+     คนละก้อนกับ feedback ของ submission ทางการ
 
    GET /api/v1/quizzes/{quiz_id}/feedback/{feedback_id}
      → ใช้ทั้ง poll (หลัง trigger) และเปิดดูซ้ำ (นักเรียนกลับมาเปิดหน้าผลลัพธ์
@@ -29,8 +34,13 @@ import type { QuizSource } from "./quiz";
      404 FEEDBACK_NOT_FOUND — feedback_id ไม่มีจริง หรือไม่ตรงกับ quiz_id นี้
 
    GET /api/v1/quizzes/{quiz_id}/practice-quizzes/{practice_quiz_id}/feedback/{feedback_id}
-     → เหมือนตัวบน แต่ใช้ตอนนักเรียนเปิดหน้าผลลัพธ์ของ "แบบฝึกหัดเจาะจุดอ่อน" —
-     ใช้ feedbackId เดิมจาก base quiz ไม่วิเคราะห์ใหม่ (ไม่ต้องเรียก POST อีก)
+     → ใช้ตอนนักเรียนเปิดหน้าผลลัพธ์ของ "แบบฝึกหัดเจาะจุดอ่อน" — คืนผลวิเคราะห์
+     ของรอบนั้นตรงๆ (เดิมเคย merge evidence เข้า feedback ของ base quiz โดยคะแนน
+     ไม่ขยับ แต่เปลี่ยน spec แล้ว: แต่ละรอบฝึกซ้อมมี feedbackId/คะแนน CLO เป็นของ
+     ตัวเอง วิเคราะห์เฉพาะคำถามของรอบนั้นจริง — CLO ที่คำถามรอบนั้นไม่แตะจะไม่มี
+     finding กลับมาเลย ไม่ใช่ 0) ยืนยันด้วยข้อมูลจริงแล้วว่า evidence[].practiceRound
+     ตรงกับรอบที่วิเคราะห์เสมอ (เช่น practice-76d94ac8747a รอบ 2 → evidence ทุกชิ้น
+     practiceRound: 2) จึงยังกรองด้วย practiceRound ต่อใน StudentSummary.tsx ได้
      404 FEEDBACK_NOT_FOUND — เหมือนด้านบน แต่เช็ค practice_quiz_id ด้วย
    ========================================================================== */
 

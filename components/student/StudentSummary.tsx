@@ -667,22 +667,23 @@ export default function StudentSummary({
 
     (async () => {
       if (targetedPracticeQuizId) {
-        // ใช้ submissionId ของ "รอบฝึกซ้อมนี้โดยเฉพาะ" ไม่ใช่ submission ล่าสุด
-        // ของนักเรียน — แต่ละรอบฝึกซ้อมอาจ generate มาจากคนละ submission กันได้
-        // (เช่นนักเรียนส่งข้อสอบจริงซ้ำหลายครั้ง) เดาแบบเหมารวมว่าใช้ submission
-        // ล่าสุดเสมอเคยทำให้ยิง feedback ผิดตัว ได้ 404 มาก่อน (ยืนยันกับทีม
-        // backend แล้วว่าไม่ใช่บั๊กฝั่งเขา — ดู lib/practiceQuizApi.ts)
-        const [{ submissionId }, list] = await Promise.all([
-          fetchPracticeQuiz(targetedPracticeQuizId),
+        // วิเคราะห์ใหม่ทั้งชุดเฉพาะของรอบฝึกซ้อมนี้ — ใช้ submissionId ของรอบ
+        // ฝึกซ้อมเอง (จาก SubmitQuizResult ตอนส่งคำตอบ) ไม่ใช่ submissionId ของ
+        // ข้อสอบจริงต้นทางอีกต่อไป เพราะ backend เปลี่ยนมาแยกวิเคราะห์/เก็บ
+        // feedbackId เป็นของแต่ละรอบเองแล้ว (ไม่ merge เข้า finding เดิม, คะแนน
+        // CLO ขยับตามรอบนี้จริง) — ดู lib/practiceQuizApi.ts (endpoint ข้อ 2)
+        const [subs, list] = await Promise.all([
+          fetchPracticeQuizSubmissions(targetedPracticeQuizId, studentId),
           fetchPracticeQuizzes(quiz.id, studentId),
         ]);
-        if (!submissionId) throw new Error("แบบฝึกหัดนี้ไม่มี submission ต้นทาง");
+        const latest = subs[0];
+        if (!latest) throw new Error("แบบฝึกหัดนี้ยังไม่มีคำตอบส่ง");
         if (!cancelled) {
           setActivePracticeRound(
             list.find((p) => p.id === targetedPracticeQuizId)?.attemptNumber ?? null,
           );
         }
-        const { feedbackId } = await triggerFeedbackAnalysis(submissionId);
+        const { feedbackId } = await triggerFeedbackAnalysis(latest.submissionId);
         return loadPracticeFeedback(quiz.id, targetedPracticeQuizId, feedbackId);
       }
       if (!cancelled) setActivePracticeRound(null);

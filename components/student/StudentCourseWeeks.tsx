@@ -480,6 +480,15 @@ function WeekSummaryNote({
           } catch {
             /* localStorage ไม่พร้อม — ข้าม */
           }
+        } else if (v) {
+          // มีบันทึกอยู่ในเครื่องนี้แล้ว แต่ backend ไม่มี — เช่นบันทึกไว้ตั้งแต่ก่อน
+          // ต่อ backend เสร็จ ยิงขึ้นไปให้ backend มีตามด้วย (backfill ครั้งเดียว)
+          saveWeekNote(courseId, week, studentId, v).catch((err) => {
+            console.error(
+              "sync บันทึกเก่าขึ้น backend ไม่สำเร็จ (ยังใช้ในเครื่องได้ปกติ)",
+              err,
+            );
+          });
         }
       })
       .catch((err) => {

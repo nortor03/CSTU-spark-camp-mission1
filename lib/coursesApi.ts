@@ -16,6 +16,12 @@ export interface CourseSummary {
   subject: string;
   week_count: number;
   topic_count: number;
+  /**
+   * จำนวนควิซที่ isActive = true ของวิชานี้ (ไม่นับ revision เก่าที่ถูกแทนที่ไปแล้ว)
+   * เคยมีบั๊กที่ backend คืนค่า 0 ตายตัว — แก้แล้วและยืนยันกับ backend จริงแล้วว่าถูกต้อง
+   * (ทั้งฝั่งอาจารย์และนักเรียนเชื่อ field นี้ตรง ๆ ได้เลย ไม่ต้องนับเองจาก
+   * GET /api/v1/courses/{id}/quizzes อีกต่อไป)
+   */
   quiz_count: number;
 }
 

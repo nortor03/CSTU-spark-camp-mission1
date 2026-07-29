@@ -1,61 +1,154 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { useEffect, useState } from "react";
 import { useCourse } from "@/lib/courseStore";
+import {
+  fetchCourses,
+  fetchCourse,
+  type CourseSummary,
+  type CourseOut,
+} from "@/lib/coursesApi";
+import { fetchCourseQuizzes } from "@/lib/quizzesApi";
+import { fetchStudentSubmissions } from "@/lib/quizGradingApi";
+import { fetchWeekNote } from "@/lib/notesApi";
+import { weekOptions, DEFAULT_WEEK_COUNT } from "@/lib/weeks";
 import PageHeader from "@/components/ui/PageHeader";
-import { ChevronRight, Calendar, ClipboardCheck, Edit3 } from "lucide-react";
+import { ClipboardCheck, Edit3 } from "lucide-react";
+import type { Quiz } from "@/lib/quiz";
+
+interface CourseProgress {
+  id: string;
+  code: string;
+  subject: string;
+  totalWeeks: number;
+  totalQuizzes: number;
+  doneQuizzes: number;
+  doneSummaries: number;
+}
+
+/** นับจำนวนควิซ (ที่ active) ที่นักเรียนคนนี้ส่งคำตอบไปแล้วอย่างน้อย 1 ครั้ง */
+async function countDoneQuizzes(
+  activeQuizzes: Quiz[],
+  studentId: string,
+): Promise<number> {
+  const results = await Promise.all(
+    activeQuizzes.map((q) =>
+      fetchStudentSubmissions(q.id, studentId)
+        .then((subs) => subs.length > 0)
+        .catch(() => false),
+    ),
+  );
+  return results.filter(Boolean).length;
+}
+
+/** นับจำนวนสัปดาห์ที่นักเรียนคนนี้บันทึกสรุปไว้แล้ว (จาก backend โดยตรง) */
+async function countDoneSummaries(
+  courseId: string,
+  weekCount: number,
+  studentId: string,
+): Promise<number> {
+  const weeks = weekOptions(weekCount || DEFAULT_WEEK_COUNT);
+  const results = await Promise.all(
+    weeks.map((w) =>
+      fetchWeekNote(courseId, w, studentId)
+        .then((note) => !!note.text)
+        .catch(() => false),
+    ),
+  );
+  return results.filter(Boolean).length;
+}
+
+/**
+ * ดึงความคืบหน้าของนักเรียนคนนี้ในวิชาหนึ่ง — ควิซ+บันทึกสรุปทั้งหมดมาจาก backend จริง
+ * ระหว่างทางเติมรายละเอียดวิชา/ควิซเข้า local store ไว้ด้วย (best-effort) เผื่อกดเข้า
+ * หน้ารายละเอียดวิชาต่อ จะได้ไม่ต้องรอโหลดซ้ำ
+ */
+async function loadCourseProgress(
+  summary: CourseSummary,
+  studentId: string,
+  importCourse: (course: CourseOut) => void,
+  importQuizzes: (courseId: string, quizzes: Quiz[]) => void,
+): Promise<CourseProgress> {
+  const courseId = summary.course_id;
+
+  fetchCourse(courseId).then(importCourse).catch(() => {});
+
+  let quizzes: Quiz[] = [];
+  try {
+    quizzes = await fetchCourseQuizzes(courseId);
+    importQuizzes(courseId, quizzes);
+  } catch {
+    quizzes = [];
+  }
+  const activeQuizzes = quizzes.filter((q) => q.isActive);
+
+  const [doneQuizzes, doneSummaries] = await Promise.all([
+    countDoneQuizzes(activeQuizzes, studentId),
+    countDoneSummaries(courseId, summary.week_count, studentId),
+  ]);
+
+  return {
+    id: courseId,
+    code: summary.course_code || "วิชา",
+    subject: summary.subject,
+    totalWeeks: summary.week_count || DEFAULT_WEEK_COUNT,
+    totalQuizzes: summary.quiz_count,
+    doneQuizzes,
+    doneSummaries,
+  };
+}
 
 /**
  * หน้าแรกฝั่งนักเรียน — เลือกรายวิชาก่อน (นักเรียนอาจลงเรียนหลายวิชา)
+ * ดึงรายชื่อวิชาและความคืบหน้าของนักเรียนคนนี้จาก backend โดยตรง
+ * (ไม่ใช้วิชา mock ที่ seed ไว้ใน localStorage อีกต่อไป)
  * เลือกวิชาแล้วจึงไปดูสัปดาห์/แบบทดสอบของวิชานั้น
  */
 export default function StudentCourseSelect() {
-  const { courses, studentId, hydrated } = useCourse();
+  const { studentId, hydrated, importCourse, importQuizzes } = useCourse();
+  const [items, setItems] = useState<CourseProgress[] | null>(null);
+  const [loadError, setLoadError] = useState(false);
 
-  // คำนวณความคืบหน้าของนักศึกษาแบบเรียลไทม์
-  const items = useMemo(() => {
-    return courses.map((c) => {
-      const code = c.courseCode || "วิชา";
-      const activeWeek = c.courseCode === "CN101" ? 4 : c.courseCode === "CS232" ? 7 : c.courseCode === "GE145" ? 9 : 1;
-      
-      // ดึงควิซทั้งหมดที่เปิดใช้งานในวิชานี้จริง
-      const totalQuizzes = Object.values(c.quizzes).filter((list) =>
-        list.some((q) => q.isActive)
-      ).length;
+  useEffect(() => {
+    if (!hydrated) return;
+    if (!studentId) {
+      setItems([]);
+      return;
+    }
 
-      // ดึงจำนวนควิซที่ผู้ใช้งานนี้ส่งทำแล้วจริง
-      const doneQuizzes = c.submissions.filter(
-        (s) => s.studentId === studentId || s.isCurrentUser
-      ).length;
+    let cancelled = false;
+    setLoadError(false);
 
-      // ดึงจำนวนบันทึกสรุปที่บันทึกจริงใน localStorage
-      let doneSummaries = 0;
-      if (typeof window !== "undefined") {
-        for (let w = 1; w <= c.totalWeeks; w++) {
-          const key = `tonlabkit:note:${studentId ?? "anon"}:${c.id}:สัปดาห์ที่ ${w}`;
-          try {
-            if (localStorage.getItem(key)) {
-              doneSummaries++;
-            }
-          } catch {}
+    fetchCourses()
+      .then(async (summaries) => {
+        const results = await Promise.all(
+          summaries.map((s) =>
+            loadCourseProgress(s, studentId, importCourse, importQuizzes),
+          ),
+        );
+        if (!cancelled) setItems(results);
+      })
+      .catch((err) => {
+        console.warn("ไม่สามารถดึงรายวิชาจาก backend ได้", err);
+        if (!cancelled) {
+          setItems([]);
+          setLoadError(true);
         }
-      }
+      });
 
-      return {
-        id: c.id,
-        code,
-        subject: c.subject,
-        activeWeek,
-        totalWeeks: c.totalWeeks || 12,
-        doneQuizzes,
-        totalQuizzes,
-        doneSummaries,
-      };
-    });
-  }, [courses, studentId]);
+    return () => {
+      cancelled = true;
+    };
+    // หมายเหตุ: ตั้งใจไม่ใส่ importCourse/importQuizzes ใน deps — ฟังก์ชันทั้งสองถูก
+    // สร้างใหม่ทุกครั้งที่ CourseProvider re-render (ไม่ได้ห่อ useCallback) และตัว
+    // effect นี้เองก็เรียกมันข้างใน (ทำให้ store อัปเดต → provider re-render → ได้
+    // ฟังก์ชันอ้างอิงใหม่) ถ้าใส่ไว้ใน deps จะวนลูปยิง fetchCourses() ไม่รู้จบ (cancel
+    // ตัวเองก่อนโหลดเสร็จทุกรอบ) จึงต้องคุมด้วย hydrated/studentId อย่างเดียวพอ
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated, studentId]);
 
-  if (!hydrated) {
+  if (!hydrated || items === null) {
     return (
       <div className="grid place-items-center py-24 text-sm text-ink-400">
         กำลังโหลด…
@@ -74,9 +167,13 @@ export default function StudentCourseSelect() {
 
       {items.length === 0 ? (
         <div className="card-empty">
-          <h2 className="display text-lg">ยังไม่มีรายวิชา</h2>
+          <h2 className="display text-lg">
+            {loadError ? "โหลดรายวิชาไม่สำเร็จ" : "ยังไม่มีรายวิชา"}
+          </h2>
           <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-ink-500">
-            อาจารย์ยังไม่ได้เปิดรายวิชา กลับมาใหม่อีกครั้งภายหลัง
+            {loadError
+              ? "เชื่อมต่อ backend ไม่ได้ ลองรีเฟรชหน้าอีกครั้ง"
+              : "อาจารย์ยังไม่ได้เปิดรายวิชา กลับมาใหม่อีกครั้งภายหลัง"}
           </p>
         </div>
       ) : (

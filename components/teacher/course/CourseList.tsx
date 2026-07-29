@@ -167,6 +167,11 @@ function CourseCard({
   onDeleteClick: () => void;
 }) {
   const code = course.course_code || "วิชา";
+  // *** ยังเป็นข้อมูล mock อยู่ — backend ยังไม่มี endpoint ให้ดึงจำนวนนักศึกษาจริง ***
+  // เช็คจาก /openapi.json ของ backend แล้ว (ยืนยัน ณ ตอนที่เขียนคอมเมนต์นี้) ไม่มี concept
+  // "ลงทะเบียนเรียน"/รายชื่อนักศึกษาต่อวิชาเลย ต่างจาก quiz_count ที่มี endpoint จริงแต่
+  // backend คำนวณผิด (ดูคอมเมนต์ quiz_count ใน lib/coursesApi.ts) — อันนี้ backend ต้อง
+  // สร้าง endpoint ใหม่ก่อนถึงจะดึงค่าจริงมาแทนได้ (เช่น GET /api/v1/courses/{id}/students)
   const studentCount = code.includes("CN101") ? 142 : code.includes("CS232") ? 88 : code.includes("GE145") ? 64 : 95;
 
   return (

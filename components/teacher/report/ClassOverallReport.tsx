@@ -430,6 +430,7 @@ export default function ClassOverallReport({ courseId }: { courseId: string }) {
         cloCodes={course.clos.map((c) => c.code)}
         courseSubject={course.subject}
         currentUserPracticeCount={currentUserPracticeCount}
+        courseId={courseId}
       />
 
       {/* ---------- จุดที่ตอบผิดมากที่สุด แยกรายสัปดาห์ ---------- */}

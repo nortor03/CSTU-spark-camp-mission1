@@ -41,11 +41,13 @@ export default function StudentOverallTable({
   cloCodes,
   courseSubject,
   currentUserPracticeCount,
+  courseId,
 }: {
   rows: StudentAggRow[];
   cloCodes: string[];
   courseSubject: string;
   currentUserPracticeCount: number | null;
+  courseId: string;
 }) {
   const router = useRouter();
   const [statusFilter, setStatusFilter] = useState<"all" | "pass" | "fail">("all");
@@ -165,7 +167,7 @@ export default function StudentOverallTable({
           </thead>
           <tbody className="divide-y divide-line-soft">
             {pageRows.map((r) => {
-              const href = `/student/summary/${r.latestWkNum}?student=${encodeURIComponent(r.studentId)}`;
+              const href = `/report/${courseId}/student/${r.latestWkNum}?student=${encodeURIComponent(r.studentId)}`;
               const practiceCount = r.isCurrentUser ? currentUserPracticeCount : null;
               return (
                 <tr

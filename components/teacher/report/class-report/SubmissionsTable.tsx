@@ -224,7 +224,7 @@ export default function SubmissionsTable({
                 <tr
                   key={s.id}
                   onClick={() =>
-                    router.push(`/student/summary/${wkStr}?student=${encodeURIComponent(s.studentId)}`)
+                    router.push(`/report/${courseId}/student/${wkStr}?student=${encodeURIComponent(s.studentId)}`)
                   }
                   className={`cursor-pointer transition-colors hover:bg-paper-100 ${
                     s.isCurrentUser ? "bg-tu-gold-50" : ""
@@ -275,7 +275,7 @@ export default function SubmissionsTable({
                         onClick={(e) => e.stopPropagation()}
                       >
                         <Link
-                          href={`/student/summary/${wkStr}?student=${encodeURIComponent(s.studentId)}`}
+                          href={`/report/${courseId}/student/${wkStr}?student=${encodeURIComponent(s.studentId)}`}
                           title="ดูสรุปรายบุคคล"
                           aria-label="ดูสรุปรายบุคคล"
                           className="inline-flex text-tu-blue-600 transition-colors hover:text-tu-blue-700"

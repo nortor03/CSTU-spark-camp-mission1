@@ -14,6 +14,7 @@ import {
   type StudentSummary as StudentSummaryData,
 } from "@/lib/analytics";
 import { weekNumber } from "@/lib/weeks";
+import { getPracticeHistory, type PracticeAttempt } from "@/lib/practiceHistory";
 import MasteryBar, { MasteryLegend } from "@/components/ui/MasteryBar";
 import {
   ChevronDown,
@@ -29,8 +30,8 @@ import {
   Zap,
   ArrowRight,
 } from "lucide-react";
-import StudentSkillRadar from "./StudentSkillRadar";
 import ImprovementChart from "./ImprovementChart";
+import CloRadar, { buildCloMastery } from "./CloRadar";
 
 /* ─── Design tokens ─── */
 const LEVEL_CHIP: Record<MasteryLevel, string> = {
@@ -291,14 +292,14 @@ function WeekDropdown({
   );
 }
 
-/* ─── Dropdown: เลือกข้อสอบ/รอบ ─── */
-function RoundDropdown({
+/* ─── ตัวเลือกรอบฝึกซ้อม — ปุ่มกะทัดรัด กดแล้วเปิด popover เลือกรอบ (โผล่เฉพาะมี ≥2 รอบ) ─── */
+function RoundPicker({
   activeRound,
   attemptResults,
   onSelectRound,
 }: {
   activeRound: string;
-  attemptResults: { attempt: Submission; result: StudentSummaryData }[];
+  attemptResults: { attempt: PracticeAttempt; result: StudentSummaryData }[];
   onSelectRound: (round: string) => void;
 }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -313,46 +314,28 @@ function RoundDropdown({
   }, []);
 
   const selectedIndex = attemptResults.findIndex((a) => a.attempt.id === activeRound);
-  const selectedLabel =
-    activeRound === "official" ? "ข้อสอบจากอาจารย์" : `ฝึกซ้อมรอบที่ ${selectedIndex + 1}`;
+  const selected = selectedIndex >= 0 ? attemptResults[selectedIndex] : undefined;
 
   return (
     <div className="relative" ref={ref}>
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        type="button"
+        onClick={() => setIsOpen((v) => !v)}
         aria-expanded={isOpen}
-        className="flex min-w-[195px] items-center justify-between gap-2 rounded-xl border border-line bg-white py-2 pl-3.5 pr-2.5 text-sm shadow-sm transition-all hover:border-line-strong hover:shadow-md active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-tu-gold-500/15"
+        className="flex items-center gap-1.5 rounded-full bg-paper-100 px-3 py-1.5 text-xs font-bold text-ink-700 transition hover:bg-paper-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-tu-red-300"
       >
-        <div className="flex items-center gap-2">
-          <CheckCircle2 className="h-4 w-4 flex-shrink-0 text-tu-gold-600" />
-          <span className="truncate font-bold text-ink-900">{selectedLabel}</span>
-        </div>
+        <History className="h-3.5 w-3.5 text-ink-400" />
+        รอบ {selectedIndex + 1}
+        {selected && (
+          <span className="tabular-nums text-tu-red-600">· {selected.result.percent}%</span>
+        )}
         <ChevronDown
-          className={`h-4 w-4 flex-shrink-0 text-ink-400 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+          className={`h-3.5 w-3.5 text-ink-400 transition-transform ${isOpen ? "rotate-180" : ""}`}
         />
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 top-full z-50 mt-2 w-56 origin-top-right animate-scale-in rounded-xl border border-line bg-white p-1.5 shadow-xl">
-          <button
-            type="button"
-            onClick={() => {
-              onSelectRound("official");
-              setIsOpen(false);
-            }}
-            className={`flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-sm font-medium transition-all ${
-              activeRound === "official"
-                ? "bg-tu-gold-50 text-tu-gold-700 shadow-sm"
-                : "text-ink-600 hover:bg-paper-50 hover:text-ink-900"
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-tu-gold-500" />
-              <span>ข้อสอบจากอาจารย์</span>
-            </div>
-            {activeRound === "official" && <Check className="h-4 w-4" strokeWidth={3} />}
-          </button>
-
+        <div className="absolute right-0 top-full z-50 mt-2 w-60 origin-top-right animate-scale-in overflow-hidden rounded-xl border border-line bg-white shadow-xl">
           {attemptResults.map((item, i) => {
             const isSelected = activeRound === item.attempt.id;
             return (
@@ -363,17 +346,27 @@ function RoundDropdown({
                   onSelectRound(item.attempt.id);
                   setIsOpen(false);
                 }}
-                className={`flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-sm font-medium transition-all ${
-                  isSelected
-                    ? "bg-tu-red-50 text-tu-red-600 shadow-sm"
-                    : "text-ink-600 hover:bg-paper-50 hover:text-ink-900"
+                className={`flex w-full items-center justify-between gap-3 border-b border-line-soft px-3.5 py-2.5 text-left text-sm transition-colors last:border-0 ${
+                  isSelected ? "bg-tu-red-50" : "hover:bg-paper-50"
                 }`}
               >
-                <div className="flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full bg-tu-red-500" />
-                  <span>ฝึกซ้อมรอบที่ {i + 1}</span>
+                <div className="min-w-0">
+                  <p className="truncate font-bold text-ink-800">รอบ {i + 1}</p>
+                  <p className="text-[11px] text-ink-400">{fmtDate(item.attempt.at)}</p>
                 </div>
-                {isSelected && <Check className="h-4 w-4" strokeWidth={3} />}
+                <span
+                  className="flex-shrink-0 text-sm font-extrabold tabular-nums"
+                  style={{
+                    color:
+                      item.result.percent >= 80
+                        ? "#047857"
+                        : item.result.percent >= 50
+                          ? "#986600"
+                          : "#C8102E",
+                  }}
+                >
+                  {item.result.percent}%
+                </span>
               </button>
             );
           })}
@@ -402,23 +395,25 @@ export default function StudentSummary({ week }: { week: string }) {
 
   const [activeRound, setActiveRound] = useState<string>("official");
 
-  const attempts = useMemo(() => {
-    // มุมมองอาจารย์ = ดูเฉพาะผลสอบจริง ไม่มีรอบฝึกซ้อม (ของนักศึกษาแต่ละคน)
-    if (isTeacherView) return [];
-    return submissions
-      .filter((s) => s.week === week && s.isCurrentUser)
-      .sort((a, b) => a.submittedAt.localeCompare(b.submittedAt));
-  }, [submissions, week, isTeacherView]);
+  // ประวัติการฝึกซ้อมจริง (เก็บแยกใน localStorage ต่อสัปดาห์ — ไม่ใช่ผลทางการ)
+  // มุมมองอาจารย์ = ดูเฉพาะผลสอบจริง ไม่มีรอบฝึกซ้อม (ของนักศึกษาแต่ละคน)
+  const [attempts, setAttempts] = useState<PracticeAttempt[]>([]);
+  useEffect(() => {
+    if (isTeacherView || !hydrated) {
+      setAttempts([]);
+      return;
+    }
+    setAttempts(getPracticeHistory(studentId, activeCourseId, week));
+  }, [isTeacherView, hydrated, studentId, activeCourseId, week]);
 
+  // แต่ละรอบฝึกซ้อมมีชุดคำถามของตัวเอง — ตรวจด้วยควิซของรอบนั้น ไม่ใช่ควิซทางการ
   const attemptResults = useMemo(
     () =>
-      quiz
-        ? attempts.map((a) => ({
-            attempt: a,
-            result: buildStudentSummary(quiz, a.answers),
-          }))
-        : [],
-    [attempts, quiz],
+      attempts.map((a) => ({
+        attempt: a,
+        result: buildStudentSummary(a.quiz, a.answers),
+      })),
+    [attempts],
   );
 
   const weeksAvailable = useMemo(() => {
@@ -452,6 +447,11 @@ export default function StudentSummary({ week }: { week: string }) {
     activeRound === "official"
       ? officialSummary
       : attemptResults.find((a) => a.attempt.id === activeRound)?.result;
+  // ผลสอบจริงมี submittedAt / รอบฝึกซ้อมมี at — รวมเป็นตัวเดียวให้ใช้แสดงผลง่าย ๆ
+  const mineDate = activeRound === "official" ? officialMine?.submittedAt : mine && "at" in mine ? mine.at : undefined;
+  // ควิซที่ใช้คู่กับคำตอบของรอบที่กำลังดู (ทางการ = ควิซทางการ, ฝึกซ้อม = ควิซของรอบนั้นเอง)
+  const activeQuiz =
+    activeRound === "official" ? quiz : attemptResults.find((a) => a.attempt.id === activeRound)?.attempt.quiz;
 
   // hooks ต้องเรียกด้วยลำดับเดิมทุกครั้ง — วางก่อน early return ทุกจุด
   const officialScoreShown = useCountUp(officialSummary?.score ?? 0);
@@ -535,6 +535,26 @@ export default function StudentSummary({ week }: { week: string }) {
             <p className="max-w-lg text-sm leading-relaxed text-ink-500">{summary.headline}</p>
           </div>
 
+          <div className="flex flex-col items-end gap-2.5">
+            {/* สลับภาพรวม/รายสัปดาห์ — เหมือนหน้าภาพรวมทั้งวิชา (เฉพาะมุมมองนักศึกษาเจ้าของ) */}
+            {!isTeacherView && course && (
+              <div className="inline-flex items-center gap-1 rounded-xl bg-paper-100 p-1">
+                <Link
+                  href={`/student/summary/course/${course.id}`}
+                  className="rounded-lg px-4 py-2 text-sm font-bold text-ink-500 transition hover:text-ink-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-tu-red-300"
+                >
+                  ภาพรวม
+                </Link>
+                <button
+                  type="button"
+                  className="rounded-lg bg-white px-4 py-2 text-sm font-bold text-tu-red-700 shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-tu-red-300"
+                >
+                  รายสัปดาห์
+                </button>
+              </div>
+            )}
+
+            {/* 1) เลือกสัปดาห์ก่อน */}
           <div className="flex flex-wrap items-center justify-end gap-2">
             {weeksAvailable.length > 0 && (
               <WeekDropdown
@@ -542,7 +562,7 @@ export default function StudentSummary({ week }: { week: string }) {
                 weeks={weeksAvailable}
                 onSelect={(w) =>
                   router.push(
-                    `/student/summary/${w}${
+                    `/student/summary/${weekNumber(w)}${
                       isTeacherView
                         ? `?student=${encodeURIComponent(viewStudentId!)}`
                         : ""
@@ -551,23 +571,64 @@ export default function StudentSummary({ week }: { week: string }) {
                 }
               />
             )}
-            {/* รอบฝึกซ้อม + ปุ่มสร้างข้อสอบ = เฉพาะมุมมองนักศึกษาเจ้าของ (ไม่โชว์ให้อาจารย์) */}
+          </div>
+
+            {/* 2) จากนั้นค่อยเลือกแหล่งข้อมูลของสัปดาห์นี้ — โชว์เฉพาะเมื่อมีทั้งสองแหล่ง */}
+            {!isTeacherView && attemptResults.length > 0 && (
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-ink-400">แสดงผลจาก</span>
+                  <div className="inline-flex items-center gap-1 rounded-xl bg-paper-100 p-1">
+                    <button
+                      type="button"
+                      onClick={() => setActiveRound("official")}
+                      className={`rounded-lg px-3.5 py-1.5 text-xs font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-tu-red-300 ${
+                        activeRound === "official"
+                          ? "bg-white text-tu-red-700 shadow-sm"
+                          : "text-ink-500 hover:text-ink-700"
+                      }`}
+                    >
+                      ข้อสอบอาจารย์
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setActiveRound(
+                          attemptResults[attemptResults.length - 1].attempt.id,
+                        )
+                      }
+                      className={`rounded-lg px-3.5 py-1.5 text-xs font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-tu-red-300 ${
+                        activeRound !== "official"
+                          ? "bg-white text-tu-red-700 shadow-sm"
+                          : "text-ink-500 hover:text-ink-700"
+                      }`}
+                    >
+                      ฝึกซ้อม
+                    </button>
+                  </div>
+                </div>
+
+                {/* บอกว่ากำลังดูรอบไหนอยู่ — โผล่ตลอดตอนดูฝึกซ้อม แม้มีรอบเดียว */}
+                {activeRound !== "official" && (
+                  <RoundPicker
+                    activeRound={activeRound}
+                    attemptResults={attemptResults}
+                    onSelectRound={setActiveRound}
+                  />
+                )}
+              </div>
+            )}
+
+            {/* 3) เลือกครบแล้วค่อยสร้างข้อสอบฝึกซ้อม = เฉพาะมุมมองนักศึกษาเจ้าของ (ไม่โชว์ให้อาจารย์) */}
             {!isTeacherView && (
-              <>
-                <RoundDropdown
-                  activeRound={activeRound}
-                  attemptResults={attemptResults}
-                  onSelectRound={(r) => setActiveRound(r)}
-                />
-                <Link
-                  href={`/student/quiz/${week.match(/\d+/)?.[0] ?? ""}?practice=1`}
-                  className="group flex items-center gap-2 rounded-xl border border-tu-gold-200 bg-gradient-to-r from-tu-gold-50 to-amber-50 px-4 py-2 text-sm font-bold text-tu-gold-700 shadow-sm transition-all hover:from-tu-gold-100 hover:to-amber-100 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-tu-gold-500/15"
-                >
-                  <Sparkles className="h-4 w-4 transition-transform duration-300 group-hover:rotate-12" />
-                  <span>สร้างข้อสอบฝึกซ้อมด้วย AI</span>
-                  <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
-                </Link>
-              </>
+              <Link
+                href={`/student/quiz/${week.match(/\d+/)?.[0] ?? ""}?practice=1`}
+                className="group flex items-center gap-2 rounded-xl border border-tu-gold-200 bg-gradient-to-r from-tu-gold-50 to-amber-50 px-4 py-2 text-sm font-bold text-tu-gold-700 shadow-sm transition-all hover:from-tu-gold-100 hover:to-amber-100 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-tu-gold-500/15"
+              >
+                <Sparkles className="h-4 w-4 transition-transform duration-300 group-hover:rotate-12" />
+                <span>สร้างข้อสอบฝึกซ้อมด้วย AI</span>
+                <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
+              </Link>
             )}
           </div>
         </div>
@@ -630,7 +691,7 @@ export default function StudentSummary({ week }: { week: string }) {
               ตอบถูก <strong className="font-extrabold text-ink-900">{summary.score}</strong> จาก{" "}
               {summary.total} ข้อ
             </p>
-            <p className="mt-1 text-xs text-ink-400">ส่งเมื่อ {fmtDate(mine.submittedAt)}</p>
+            <p className="mt-1 text-xs text-ink-400">ส่งเมื่อ {fmtDate(mineDate ?? "")}</p>
             <span
               className={`mt-2.5 inline-flex items-center gap-1.5 rounded-full px-3.5 py-1 text-xs font-bold transition-transform duration-200 hover:scale-105 ${LEVEL_CHIP[level]}`}
             >
@@ -639,31 +700,48 @@ export default function StudentSummary({ week }: { week: string }) {
             </span>
           </div>
 
-          {/* Right: Radar Chart */}
+          {/* Right: CLO Radar (รายหัวข้อดูได้ที่ส่วน "ความเข้าใจรายหัวข้อ" ด้านล่างแทน) */}
           <div className="flex-1 md:w-3/5">
-            <div className="mb-2">
-              <h3 className="display text-lg">ภาพรวมทักษะรายหัวข้อ</h3>
-              <p className="mt-0.5 text-xs text-ink-500">
-                {activeRound === "official"
-                  ? "คะแนนสอบจริงจากอาจารย์"
-                  : "คะแนนจากการฝึกซ้อมด้วยตนเอง"}
-              </p>
-            </div>
-            <div className="flex items-center justify-center">
-              <div className="w-full max-w-[340px]">
-                <StudentSkillRadar topics={summary.topics} />
-              </div>
-            </div>
-            <div className="mt-3 flex flex-wrap items-center justify-end gap-x-5 gap-y-1 text-[10px] font-bold uppercase tracking-wider text-ink-400">
-              <span className="inline-flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-tu-red-500" />
-                ผลของคุณ
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full border-2 border-line-strong bg-transparent" />
-                เส้นเกณฑ์ 100%
-              </span>
-            </div>
+            {(() => {
+              const cloData = course?.clos?.length && activeQuiz && mine
+                ? buildCloMastery([activeQuiz], [mine.answers], course.clos)
+                : [];
+              return (
+                <div>
+                  <div className="mb-2">
+                    <h3 className="display text-lg">ผลลัพธ์การเรียนรู้ (CLO)</h3>
+                    <p className="mt-0.5 text-xs text-ink-500">
+                      {activeRound === "official"
+                        ? "วัดจากคะแนนสอบจริงจากอาจารย์"
+                        : "วัดจากคะแนนการฝึกซ้อมด้วยตนเอง"}
+                    </p>
+                  </div>
+                  {cloData.length === 0 ? (
+                    <div className="flex min-h-[220px] flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-line bg-paper-50/60 px-6 py-10 text-center">
+                      <p className="max-w-[26ch] text-xs leading-relaxed text-ink-400">
+                        ข้อสอบวิชานี้ยังไม่ได้ระบุ CLO ที่เกี่ยวข้อง — เมื่ออาจารย์ผูก CLO กับคำถามแล้ว กราฟจะแสดงที่นี่
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex items-center justify-center">
+                        <CloRadar clos={cloData} />
+                      </div>
+                      {/* Legend */}
+                      <div className="mt-3 divide-y divide-line-soft rounded-xl border border-line-soft bg-paper-50/60 px-4 py-2">
+                        {cloData.map((c) => (
+                          <div key={c.code} className="flex items-center justify-between gap-3 py-1.5">
+                            <span className="text-[11px] font-bold text-ink-600">{c.code}</span>
+                            <span className="min-w-0 flex-1 truncate text-[11px] text-ink-400">{c.description}</span>
+                            <span className="flex-shrink-0 text-[11px] font-bold tabular-nums text-ink-800">{c.percent}%</span>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         </section>
       </Reveal>
@@ -854,7 +932,7 @@ export default function StudentSummary({ week }: { week: string }) {
 }
 
 function selectedIndexLabel(
-  attemptResults: { attempt: Submission }[],
+  attemptResults: { attempt: { id: string } }[],
   activeRound: string,
 ) {
   const idx = attemptResults.findIndex((a) => a.attempt.id === activeRound);

@@ -639,20 +639,26 @@ export default function StudentSummary({
   // unique ทั้งระบบ) เจอจริง: practice-a03017af7c74 มี q1-q5 ชนกับ q1-q7 ของ
   // ควิซจริงต้นทางเป๊ะ ถ้ากรองด้วย questionId เฉย ๆ จะได้ evidence ผิดรอบ
   const [activePracticeRound, setActivePracticeRound] = useState<number | null>(null);
+  // id ของแบบฝึกหัดเจาะจุดอ่อนที่กำลังดูอยู่ (null = รอบข้อสอบจริง หรือฝึกซ้อมแบบสุ่ม)
+  // แยกเป็น useMemo ต่างหาก ไม่ให้ effect ด้านล่างพึ่ง attempts ทั้งอาเรย์ตรงๆ —
+  // เดิม effect ผูกกับ attempts ตรงๆ ทำให้ทุกครั้งที่ attempts โหลดเสร็จ (async
+  // แยกอีกตัว มักเสร็จไล่ๆ กับตอน AI วิเคราะห์กำลังจะเสร็จพอดี) จะ trigger effect
+  // นี้ให้รีรัน แล้ว cancel ผลของรอบก่อนหน้าทิ้งไปเงียบๆ ก่อนจะ setFeedback ทัน —
+  // ทำให้ดูเหมือน "วิเคราะห์เสร็จแล้วจริงที่ backend แต่หน้าเว็บไม่เคยแสดงผลเลย"
+  // (ยืนยันแล้วว่า backend มี feedback สมบูรณ์พร้อมอยู่จริงทุกครั้ง — ปัญหาอยู่ที่นี่)
+  // ค่า null/string นี้ compare ด้วย value อยู่แล้ว จึงไม่ทำให้ effect รีรันเกินจำเป็น
+  const targetedPracticeQuizId = useMemo(() => {
+    if (activeRound === "official") return null;
+    const activeAttemptQuiz = attempts.find((a) => a.id === activeRound)?.quiz ?? null;
+    return activeAttemptQuiz?.id.startsWith("practice-") ? activeAttemptQuiz.id : null;
+  }, [activeRound, attempts]);
+
   useEffect(() => {
     if (isTeacherView || !hydrated || !quiz || !studentId) {
       setFeedback(null);
       setFeedbackStatus("unavailable");
       return;
     }
-
-    const activeAttemptQuiz =
-      activeRound === "official"
-        ? null
-        : (attempts.find((a) => a.id === activeRound)?.quiz ?? null);
-    const targetedPracticeQuizId = activeAttemptQuiz?.id.startsWith("practice-")
-      ? activeAttemptQuiz.id
-      : null;
 
     if (activeRound !== "official" && !targetedPracticeQuizId) {
       setFeedback(null);
@@ -703,7 +709,7 @@ export default function StudentSummary({
     return () => {
       cancelled = true;
     };
-  }, [isTeacherView, hydrated, quiz, studentId, activeRound, attempts]);
+  }, [isTeacherView, hydrated, quiz, studentId, activeRound, targetedPracticeQuizId]);
 
   // แต่ละรอบฝึกซ้อมมีชุดคำถามของตัวเอง — ตรวจด้วยควิซของรอบนั้น ไม่ใช่ควิซทางการ
   const attemptResults = useMemo(

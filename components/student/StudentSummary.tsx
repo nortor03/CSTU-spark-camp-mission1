@@ -636,7 +636,7 @@ export default function StudentSummary({ week }: { week: string }) {
             )}
 
             {/* 3) เลือกครบแล้วค่อยสร้างข้อสอบฝึกซ้อม = เฉพาะมุมมองนักศึกษาเจ้าของ (ไม่โชว์ให้อาจารย์) */}
-            {!isTeacherView && !isLocked && (
+            {!isTeacherView && (
               <Link
                 href={`/student/quiz/${week.match(/\d+/)?.[0] ?? ""}?practice=1`}
                 className="group flex items-center gap-2 rounded-xl border border-tu-gold-200 bg-gradient-to-r from-tu-gold-50 to-amber-50 px-4 py-2 text-sm font-bold text-tu-gold-700 shadow-sm transition-all hover:from-tu-gold-100 hover:to-amber-100 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-tu-gold-500/15"

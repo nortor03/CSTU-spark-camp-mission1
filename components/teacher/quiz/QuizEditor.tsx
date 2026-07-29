@@ -218,9 +218,9 @@ function QuestionCard({
         )}
         <textarea
           {...register(`questions.${index}.question`, { required: true })}
-          rows={1}
+          rows={2}
           placeholder={`คำถามข้อที่ ${index + 1}`}
-          className="min-h-[2.5rem] flex-1 resize-none rounded-md border-b border-line bg-paper-50 px-2.5 pb-2 pt-1.5 text-base text-ink-800 outline-none transition focus:border-tu-red-500 focus:bg-white"
+          className="min-h-[3.75rem] flex-1 resize-y rounded-md border-b border-line bg-paper-50 px-2.5 pb-2 pt-1.5 text-base text-ink-800 outline-none transition focus:border-tu-red-500 focus:bg-white"
         />
       </div>
 

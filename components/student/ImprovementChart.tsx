@@ -16,10 +16,13 @@ export default function ImprovementChart({
 }) {
   const height = 140;
   const padding = 20;
+  // เผื่อพื้นที่ด้านบนไว้ให้ label ตัวเลขเหนือจุด ไม่โดนตัดตอนคะแนนใกล้ 100%
+  const topPadding = 34;
 
   const width = 500;
   // คำนวณแกน y (0 = ล่างสุด, 100 = บนสุด)
-  const getY = (val: number) => height - padding - ((val / 100) * (height - padding * 2));
+  const getY = (val: number) =>
+    height - padding - (val / 100) * (height - topPadding - padding);
 
   const { path, points, areaPath } = useMemo(() => {
     // มีแค่ 1 จุด — ยังลากเส้นแนวโน้มไม่ได้ แต่โชว์จุดนิ่ง ๆ ตรงกลางไปก่อน
@@ -86,30 +89,45 @@ export default function ImprovementChart({
           className="chart-draw drop-shadow-sm"
         />
 
-        {/* จุด */}
+        {/* จุด + ตัวเลขคะแนนกำกับ */}
         <g className="chart-fade-late">
           {points.map((p, i) => (
-            <circle
-              key={i}
-              cx={p.x}
-              cy={p.y}
-              r={5}
-              fill="#fff"
-              stroke="#C8102E"
-              strokeWidth={3}
-            />
+            <g key={i}>
+              <circle
+                cx={p.x}
+                cy={p.y}
+                r={5}
+                fill="#fff"
+                stroke="#C8102E"
+                strokeWidth={3}
+              />
+              <text
+                x={p.x}
+                y={p.y - 14}
+                textAnchor="middle"
+                className={`tabular-nums font-extrabold ${
+                  i === points.length - 1 ? "fill-tu-red-600" : "fill-ink-700"
+                }`}
+                style={{ fontSize: 13 }}
+              >
+                {p.val}%
+              </text>
+            </g>
           ))}
         </g>
       </svg>
-      
+
       {/* แกน X */}
       <div
-        className={`mt-3 flex px-[20px] text-[11px] font-semibold text-ink-400 ${
+        className={`mt-3 flex px-[20px] text-[11px] font-semibold tracking-wide text-ink-400 ${
           scores.length === 1 ? "justify-center" : "justify-between"
         }`}
       >
         {scores.map((_, i) => (
-          <span key={i} className={i === scores.length - 1 ? "text-ink-600" : undefined}>
+          <span
+            key={i}
+            className={i === scores.length - 1 ? "font-bold text-tu-red-600" : undefined}
+          >
             {labels?.[i] ?? `Sess ${i + 1}`}
           </span>
         ))}

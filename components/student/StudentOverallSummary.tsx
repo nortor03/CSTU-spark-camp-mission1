@@ -26,6 +26,7 @@ import ImprovementChart from "./ImprovementChart";
 import { SkeletonStatHero } from "@/components/ui/Skeleton";
 import type { Quiz } from "@/lib/quiz";
 import type { StudentAnswers } from "@/lib/feedback";
+import { analyzeSubmissionFeedback, type FeedbackResult } from "@/lib/feedbackApi";
 
 
 /* ─── Design tokens ─── */
@@ -138,6 +139,7 @@ interface WeekResult {
   misconceptions: Misconception[];
   quiz: Quiz;
   answers: StudentAnswers;
+  submissionId: string;
 }
 
 /* ════════════════════════════════════════════════════════════
@@ -177,7 +179,7 @@ export default function StudentOverallSummary({ courseId }: { courseId: string }
         week: wk, wkNum: weekNumber(wk),
         percent: summary.percent, score: summary.score, total: summary.total,
         topics: summary.topics, misconceptions: summary.misconceptions,
-        quiz, answers: sub.answers,
+        quiz, answers: sub.answers, submissionId: sub.id,
       });
     }
     return results;
@@ -187,6 +189,67 @@ export default function StudentOverallSummary({ courseId }: { courseId: string }
   const [showAllTopics, setShowAllTopics] = useState(false);
   // "จุดที่ตอบผิด" ปิดไว้ก่อนโดยดีฟอลต์ — อาจยาวถ้ารวมหลายสัปดาห์ ให้กดเปิดเอง
   const [misconceptionsOpen, setMisconceptionsOpen] = useState(false);
+  // กราฟพัฒนาการรายสัปดาห์ — สลับดูคะแนนรวม หรือคะแนนความเข้าใจรายหัวข้อ CLO
+  const [chartFilter, setChartFilter] = useState<string>("overall");
+
+  /* --- ดึงผลวิเคราะห์ CLO ของแต่ละสัปดาห์ (จากข้อสอบอาจารย์เท่านั้น) เอาไว้ทำ
+     กราฟพัฒนาการฯ แบบเลือกดูรายหัวข้อ CLO ได้ — feedback ของสัปดาห์ที่เคยเปิดดู
+     ผลลัพธ์แล้วจะ trigger ซ้ำแล้วได้ feedbackId เดิมกลับมาทันที (idempotent) */
+  const [feedbackByWeek, setFeedbackByWeek] = useState<Record<string, FeedbackResult | null>>({});
+
+  useEffect(() => {
+    if (weekResults.length === 0) {
+      setFeedbackByWeek({});
+      return;
+    }
+    let cancelled = false;
+    Promise.all(
+      weekResults.map(async (r) => {
+        try {
+          const result = await analyzeSubmissionFeedback(r.submissionId, r.quiz.id);
+          return [r.week, result] as const;
+        } catch {
+          return [r.week, null] as const;
+        }
+      }),
+    ).then((entries) => {
+      if (cancelled) return;
+      setFeedbackByWeek(Object.fromEntries(entries));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [weekResults]);
+
+  /* --- CLO ที่มีข้อมูลอย่างน้อย 1 สัปดาห์ — ใช้เป็นตัวเลือกในกราฟพัฒนาการฯ --- */
+  const cloFilterOptions = useMemo(() => {
+    const codes = new Set<string>();
+    for (const fb of Object.values(feedbackByWeek)) {
+      for (const f of fb?.findings ?? []) codes.add(f.cloCode);
+    }
+    return course?.clos
+      ? course.clos.filter((c) => codes.has(c.code)).map((c) => c.code)
+      : Array.from(codes).sort();
+  }, [feedbackByWeek, course]);
+
+  /* --- ข้อมูลกราฟพัฒนาการรายสัปดาห์ ตามตัวกรองที่เลือก (คะแนนรวม หรือ CLO) --- */
+  const chartData = useMemo(() => {
+    if (chartFilter === "overall") {
+      return {
+        scores: weekResults.map((r) => r.percent),
+        labels: weekResults.map((r) => `สัปดาห์ ${r.wkNum}`),
+      };
+    }
+    const points: { wkNum: string; percent: number }[] = [];
+    for (const r of weekResults) {
+      const finding = feedbackByWeek[r.week]?.findings.find((f) => f.cloCode === chartFilter);
+      if (finding) points.push({ wkNum: r.wkNum, percent: Math.round((finding.score / 5) * 100) });
+    }
+    return {
+      scores: points.map((p) => p.percent),
+      labels: points.map((p) => `สัปดาห์ ${p.wkNum}`),
+    };
+  }, [chartFilter, weekResults, feedbackByWeek]);
 
   /* --- Aggregate overall data --- */
   const overall = useMemo(() => {
@@ -413,17 +476,49 @@ export default function StudentOverallSummary({ courseId }: { courseId: string }
       {/* ─── กราฟพัฒนาการรายสัปดาห์ ─── */}
       <Reveal>
         <section className="border-t border-line-soft pt-10">
-          <div className="mb-1 flex items-start justify-between gap-3">
+          <div className="mb-1 flex flex-wrap items-start justify-between gap-3">
             <h2 className="display text-lg">พัฒนาการรายสัปดาห์</h2>
             <span className="flex-shrink-0 rounded-full bg-paper-100 px-3 py-1 text-[11px] font-bold text-ink-500">
               {weekResults.length} สัปดาห์
             </span>
           </div>
-          <p className="mb-4 text-xs text-ink-400">คะแนนสอบจากอาจารย์ในแต่ละสัปดาห์ (%)</p>
-          <ImprovementChart
-            scores={weekResults.map((r) => r.percent)}
-            labels={weekResults.map((r) => `สัปดาห์ ${r.wkNum}`)}
-          />
+          <p className="mb-4 text-xs text-ink-400">
+            {chartFilter === "overall"
+              ? "คะแนนสอบจากอาจารย์ในแต่ละสัปดาห์ (%)"
+              : `คะแนนความเข้าใจ ${chartFilter} จากข้อสอบอาจารย์ในแต่ละสัปดาห์ (%)`}
+          </p>
+
+          {cloFilterOptions.length > 0 && (
+            <div className="mb-4 flex flex-wrap items-center gap-1 rounded-xl bg-paper-100 p-1">
+              <button
+                type="button"
+                onClick={() => setChartFilter("overall")}
+                className={`rounded-lg px-3.5 py-1.5 text-xs font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-tu-red-300 ${
+                  chartFilter === "overall"
+                    ? "bg-white text-tu-red-700 shadow-sm"
+                    : "text-ink-500 hover:text-ink-700"
+                }`}
+              >
+                คะแนนรวม
+              </button>
+              {cloFilterOptions.map((code) => (
+                <button
+                  key={code}
+                  type="button"
+                  onClick={() => setChartFilter(code)}
+                  className={`rounded-lg px-3.5 py-1.5 text-xs font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-tu-red-300 ${
+                    chartFilter === code
+                      ? "bg-white text-tu-red-700 shadow-sm"
+                      : "text-ink-500 hover:text-ink-700"
+                  }`}
+                >
+                  {code}
+                </button>
+              ))}
+            </div>
+          )}
+
+          <ImprovementChart scores={chartData.scores} labels={chartData.labels} />
         </section>
       </Reveal>
 

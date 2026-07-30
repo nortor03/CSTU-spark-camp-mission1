@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
-import { useCourse, type Course } from "@/lib/courseStore";
+import { useEffect, useState } from "react";
+import { fetchCourses, type CourseSummary } from "@/lib/coursesApi";
+import { fetchCourseQuizzes } from "@/lib/quizzesApi";
+import { fetchQuizSubmissions } from "@/lib/quizGradingApi";
 import PageHeader from "@/components/ui/PageHeader";
 import { SkeletonCardGrid } from "@/components/ui/Skeleton";
 import { CalendarDays, Users } from "lucide-react";
@@ -10,12 +12,42 @@ import { CalendarDays, Users } from "lucide-react";
 /**
  * หน้ารายงานชั้นเรียน (ระดับบนสุด) — เลือกวิชาก่อน (การ์ดสไตล์เดียวกับหน้ารายวิชา)
  * เพราะอาจารย์หนึ่งคนสอนได้หลายวิชา
+ * ดึงรายวิชาจาก backend จริง (GET /api/v1/courses) โดยตรง — ไม่ fallback ไปข้อมูล
+ * ในเครื่อง ถ้า backend ไม่มีวิชาก็แสดง empty state จริง ไม่ปั้นข้อมูลมาโชว์
  */
 export default function ReportIndex() {
-  const { courses, hydrated } = useCourse();
+  const [courses, setCourses] = useState<CourseSummary[]>([]);
+  const [status, setStatus] = useState<"loading" | "error" | "ready">("loading");
 
-  if (!hydrated) {
+  useEffect(() => {
+    let cancelled = false;
+    setStatus("loading");
+    fetchCourses()
+      .then((items) => {
+        if (cancelled) return;
+        setCourses(items);
+        setStatus("ready");
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.warn("โหลดรายวิชาจาก backend ไม่สำเร็จ", err);
+        setStatus("error");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (status === "loading") {
     return <SkeletonCardGrid />;
+  }
+
+  if (status === "error") {
+    return (
+      <div className="grid place-items-center py-24 text-sm text-tu-red-600">
+        โหลดรายวิชาไม่สำเร็จ ลองรีเฟรชหน้าอีกครั้ง
+      </div>
+    );
   }
 
   return (
@@ -38,7 +70,7 @@ export default function ReportIndex() {
       ) : (
         <div className="mt-8 grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 max-w-[1100px]">
           {courses.map((c) => (
-            <ReportCourseCard key={c.id} course={c} />
+            <ReportCourseCard key={c.course_id} course={c} />
           ))}
         </div>
       )}
@@ -46,18 +78,30 @@ export default function ReportIndex() {
   );
 }
 
-function ReportCourseCard({ course }: { course: Course }) {
-  const quizWeeks = useMemo(
-    () =>
-      Object.values(course.quizzes).filter((list) =>
-        list.some((q) => q.isActive),
-      ).length,
-    [course.quizzes],
-  );
-  const studentCount = useMemo(() => {
-    const ids = new Set(course.submissions.map((s) => s.studentId));
-    return ids.size;
-  }, [course.submissions]);
+function ReportCourseCard({ course }: { course: CourseSummary }) {
+  const [studentCount, setStudentCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setStudentCount(null);
+    fetchCourseQuizzes(course.course_id)
+      .then(async (quizzes) => {
+        const activeIds = quizzes.filter((q) => q.isActive).map((q) => q.id);
+        const results = await Promise.all(
+          activeIds.map((id) => fetchQuizSubmissions(id).catch(() => [])),
+        );
+        if (cancelled) return;
+        const ids = new Set<string>();
+        for (const subs of results) for (const s of subs) ids.add(s.studentId);
+        setStudentCount(ids.size);
+      })
+      .catch(() => {
+        if (!cancelled) setStudentCount(0);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [course.course_id]);
 
   return (
     <div className="group relative flex w-full max-w-[360px] flex-col justify-between rounded-2xl border border-line bg-white p-5 shadow-2xs transition-all duration-200 hover:-translate-y-0.5 hover:border-line-strong hover:shadow-sm">
@@ -65,7 +109,7 @@ function ReportCourseCard({ course }: { course: Course }) {
         {/* แถวบนสุด: รหัสวิชา */}
         <div className="text-xs">
           <span className="font-bold text-ink-400 uppercase tracking-wider">
-            {course.courseCode || "วิชา"}
+            {course.course_code || "วิชา"}
           </span>
         </div>
 
@@ -82,7 +126,7 @@ function ReportCourseCard({ course }: { course: Course }) {
             </span>
             <div className="min-w-0 flex-1">
               <p className="text-[9px] font-bold text-ink-400 uppercase tracking-tight">มีแบบทดสอบ</p>
-              <p className="text-xs font-bold text-ink-800 whitespace-nowrap">{quizWeeks} สัปดาห์</p>
+              <p className="text-xs font-bold text-ink-800 whitespace-nowrap">{course.quiz_count} สัปดาห์</p>
             </div>
           </div>
 
@@ -92,7 +136,9 @@ function ReportCourseCard({ course }: { course: Course }) {
             </span>
             <div className="min-w-0 flex-1">
               <p className="text-[9px] font-bold text-ink-400 uppercase tracking-tight">นักศึกษาที่ส่งแล้ว</p>
-              <p className="text-xs font-bold text-ink-800 whitespace-nowrap">{studentCount} คน</p>
+              <p className="text-xs font-bold text-ink-800 whitespace-nowrap">
+                {studentCount === null ? "…" : `${studentCount} คน`}
+              </p>
             </div>
           </div>
         </div>
@@ -101,7 +147,7 @@ function ReportCourseCard({ course }: { course: Course }) {
       {/* ปุ่มดูรายงาน */}
       <div className="mt-5">
         <Link
-          href={`/report/${course.id}`}
+          href={`/report/${course.course_id}`}
           className="w-full inline-flex h-11 items-center justify-center gap-1.5 rounded-xl bg-tu-red-600 px-4 text-sm font-bold text-white shadow-sm transition hover:bg-tu-red-700 active:scale-95"
         >
           <span>ดูรายงาน</span>

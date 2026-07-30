@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useCourse } from "@/lib/courseStore";
 import { deleteCourse, fetchCourses, type CourseSummary } from "@/lib/coursesApi";
 import PageHeader from "@/components/ui/PageHeader";
 import { SkeletonCardGrid } from "@/components/ui/Skeleton";
@@ -11,11 +10,11 @@ import { ChevronRight, Trash2, Calendar, Users, CheckSquare } from "lucide-react
 
 /**
  * หน้าภาพรวมรายวิชา — สรุป "ทุกวิชา" ที่อาจารย์คนนี้สอน
- * ดึงจาก backend รายวิชา (GET /api/v1/courses) โดยตรง
+ * ดึงจาก backend รายวิชา (GET /api/v1/courses) โดยตรง — ไม่ fallback ไปข้อมูล
+ * ในเครื่อง ถ้า backend ไม่มีวิชาก็แสดง empty state จริง ไม่ปั้นข้อมูลมาโชว์
  * กดการ์ดวิชาเพื่อเข้าไปดูรายละเอียดของวิชานั้น
  */
 export default function CourseList() {
-  const { courses: localCourses, hydrated } = useCourse();
   const [courses, setCourses] = useState<CourseSummary[]>([]);
   const [status, setStatus] = useState<"loading" | "error" | "ready">(
     "loading",
@@ -25,45 +24,23 @@ export default function CourseList() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!hydrated) return;
     let cancelled = false;
     setStatus("loading");
     fetchCourses()
       .then((items) => {
         if (cancelled) return;
-        if (items.length === 0 && localCourses.length > 0) {
-          const mapped: CourseSummary[] = localCourses.map((c) => ({
-            course_id: c.id,
-            course_code: c.courseCode || "วิชา",
-            subject: c.subject,
-            week_count: c.totalWeeks,
-            topic_count: c.topics.length,
-            quiz_count: Object.values(c.quizzes).flat().length,
-          }));
-          setCourses(mapped);
-        } else {
-          setCourses(items);
-        }
+        setCourses(items);
         setStatus("ready");
       })
       .catch((err) => {
         if (cancelled) return;
-        console.warn("ไม่สามารถดึงข้อมูลจาก Backend ได้ จะแสดงข้อมูลในเครื่องแทน", err);
-        const mapped: CourseSummary[] = localCourses.map((c) => ({
-          course_id: c.id,
-          course_code: c.courseCode || "วิชา",
-          subject: c.subject,
-          week_count: c.totalWeeks,
-          topic_count: c.topics.length,
-          quiz_count: Object.values(c.quizzes).flat().length,
-        }));
-        setCourses(mapped);
-        setStatus("ready");
+        console.warn("โหลดรายวิชาจาก backend ไม่สำเร็จ", err);
+        setStatus("error");
       });
     return () => {
       cancelled = true;
     };
-  }, [hydrated, localCourses]);
+  }, []);
 
   function closeDeleteModal() {
     if (deleting) return;

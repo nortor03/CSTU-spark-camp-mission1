@@ -27,6 +27,7 @@ import { SkeletonStatHero } from "@/components/ui/Skeleton";
 import type { Quiz } from "@/lib/quiz";
 import type { StudentAnswers } from "@/lib/feedback";
 import { analyzeSubmissionFeedback, type FeedbackResult } from "@/lib/feedbackApi";
+import { fetchStudentSubmissions } from "@/lib/quizGradingApi";
 
 
 /* ─── Design tokens ─── */
@@ -139,7 +140,6 @@ interface WeekResult {
   misconceptions: Misconception[];
   quiz: Quiz;
   answers: StudentAnswers;
-  submissionId: string;
 }
 
 /* ════════════════════════════════════════════════════════════
@@ -179,7 +179,7 @@ export default function StudentOverallSummary({ courseId }: { courseId: string }
         week: wk, wkNum: weekNumber(wk),
         percent: summary.percent, score: summary.score, total: summary.total,
         topics: summary.topics, misconceptions: summary.misconceptions,
-        quiz, answers: sub.answers, submissionId: sub.id,
+        quiz, answers: sub.answers,
       });
     }
     return results;
@@ -198,28 +198,35 @@ export default function StudentOverallSummary({ courseId }: { courseId: string }
   const [feedbackByWeek, setFeedbackByWeek] = useState<Record<string, FeedbackResult | null>>({});
 
   useEffect(() => {
-    if (weekResults.length === 0) {
+    if (weekResults.length === 0 || !studentId) {
       setFeedbackByWeek({});
       return;
     }
     let cancelled = false;
-    Promise.all(
-      weekResults.map(async (r) => {
+    // อัปเดตทีละสัปดาห์ทันทีที่เสร็จ (ไม่รอทั้งชุดพร้อมกัน) — บางสัปดาห์อาจไม่เคย
+    // เปิดดูผลมาก่อน ทำให้ backend ต้อง trigger วิเคราะห์ใหม่และช้ากว่าสัปดาห์ที่มี
+    // feedback สำเร็จรูปอยู่แล้ว ถ้ารอครบทุกสัปดาห์ก่อนค่อยโชว์ filter pill จะไม่
+    // ขึ้นเลยจนกว่าสัปดาห์ที่ช้าที่สุดจะเสร็จ
+    for (const r of weekResults) {
+      (async () => {
         try {
-          const result = await analyzeSubmissionFeedback(r.submissionId, r.quiz.id);
-          return [r.week, result] as const;
+          // Submission.id ในเครื่อง (courseStore) เป็น id ที่ปั้นเอง ไม่ใช่
+          // submissionId จริงของ backend — ต้องดึงของจริงจาก endpoint นี้ก่อน
+          // (แพทเทิร์นเดียวกับที่ StudentSummary.tsx ใช้)
+          const subs = await fetchStudentSubmissions(r.quiz.id, studentId);
+          const latest = subs[0];
+          if (!latest) throw new Error("ไม่พบ submission จริงของสัปดาห์นี้");
+          const result = await analyzeSubmissionFeedback(latest.submissionId, r.quiz.id);
+          if (!cancelled) setFeedbackByWeek((prev) => ({ ...prev, [r.week]: result }));
         } catch {
-          return [r.week, null] as const;
+          if (!cancelled) setFeedbackByWeek((prev) => ({ ...prev, [r.week]: null }));
         }
-      }),
-    ).then((entries) => {
-      if (cancelled) return;
-      setFeedbackByWeek(Object.fromEntries(entries));
-    });
+      })();
+    }
     return () => {
       cancelled = true;
     };
-  }, [weekResults]);
+  }, [weekResults, studentId]);
 
   /* --- CLO ที่มีข้อมูลอย่างน้อย 1 สัปดาห์ — ใช้เป็นตัวเลือกในกราฟพัฒนาการฯ --- */
   const cloFilterOptions = useMemo(() => {

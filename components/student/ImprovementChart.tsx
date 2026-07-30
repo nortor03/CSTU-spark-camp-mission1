@@ -1,10 +1,15 @@
 "use client";
 
-import { useMemo } from "react";
+import { useId, useMemo, useState } from "react";
 
-/** 
+/**
  * กราฟเส้นแสดงพัฒนาการ (Improvement History)
  * รับอาร์เรย์คะแนน (0-100)
+ *
+ * ออกแบบตามหลัก: เส้นบาง + จุดเติมสีมีขอบขาว, grid บรรทัดเดียวจางๆ (ไม่ประ),
+ * label ตัวเลขเฉพาะจุดปัจจุบัน/จุดที่ hover (ไม่แปะทุกจุด), มี crosshair +
+ * tooltip ตอน hover/focus (คีย์บอร์ดใช้ได้เหมือนกัน) และมีตารางข้อมูลสำรอง
+ * สำหรับ screen reader
  */
 export default function ImprovementChart({
   scores,
@@ -14,124 +19,207 @@ export default function ImprovementChart({
   /** ป้ายกำกับแกน X — ถ้าไม่ส่งจะใช้ "Sess 1, 2, …" */
   labels?: string[];
 }) {
-  const height = 140;
-  const padding = 20;
-  // เผื่อพื้นที่ด้านบนไว้ให้ label ตัวเลขเหนือจุด ไม่โดนตัดตอนคะแนนใกล้ 100%
-  const topPadding = 34;
+  const gradientId = useId();
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
+  const height = 168;
+  const leftPad = 26;
+  const rightPad = 20;
+  const topPad = 32;
+  const bottomPad = 26;
   const width = 500;
-  // คำนวณแกน y (0 = ล่างสุด, 100 = บนสุด)
+
   const getY = (val: number) =>
-    height - padding - (val / 100) * (height - topPadding - padding);
+    height - bottomPad - (val / 100) * (height - topPad - bottomPad);
 
-  const { path, points, areaPath } = useMemo(() => {
-    // มีแค่ 1 จุด — ยังลากเส้นแนวโน้มไม่ได้ แต่โชว์จุดนิ่ง ๆ ตรงกลางไปก่อน
+  const resolvedLabels = useMemo(
+    () => scores.map((_, i) => labels?.[i] ?? `Sess ${i + 1}`),
+    [scores, labels],
+  );
+
+  const { points, linePath, areaPath } = useMemo(() => {
+    if (scores.length === 0) return { points: [], linePath: "", areaPath: "" };
     if (scores.length === 1) {
-      return { path: "", points: [{ x: width / 2, y: getY(scores[0]), val: scores[0] }], areaPath: "" };
+      return {
+        points: [{ x: width / 2, y: getY(scores[0]), val: scores[0] }],
+        linePath: "",
+        areaPath: "",
+      };
     }
-    if (scores.length < 1) return { path: "", points: [], areaPath: "" };
+    const xStep = (width - leftPad - rightPad) / (scores.length - 1);
+    const pts = scores.map((s, i) => ({ x: leftPad + i * xStep, y: getY(s), val: s }));
 
-    // ให้กราฟขยายเต็มความกว้าง (100%) ดังนั้นใช้ viewBox อัตราส่วนแบบยืดหยุ่น
-    // แต่เพื่อวาด SVG กำหนดความกว้างสมมติเป็น 500
-    const xStep = (width - padding * 2) / (scores.length - 1);
+    // เส้นโค้งมนแบบ Catmull-Rom → Bezier (นุ่มกว่าเส้นตรงหักมุม)
+    let d = `M ${pts[0].x},${pts[0].y}`;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const p0 = pts[i - 1] ?? pts[i];
+      const p1 = pts[i];
+      const p2 = pts[i + 1];
+      const p3 = pts[i + 2] ?? p2;
+      const c1x = p1.x + (p2.x - p0.x) / 6;
+      const c1y = p1.y + (p2.y - p0.y) / 6;
+      const c2x = p2.x - (p3.x - p1.x) / 6;
+      const c2y = p2.y - (p3.y - p1.y) / 6;
+      d += ` C ${c1x},${c1y} ${c2x},${c2y} ${p2.x},${p2.y}`;
+    }
+    const a = `${d} L ${pts[pts.length - 1].x},${height - bottomPad} L ${pts[0].x},${height - bottomPad} Z`;
 
-    const pts = scores.map((s, i) => ({
-      x: padding + i * xStep,
-      y: getY(s),
-      val: s,
-    }));
-
-    const linePath = pts
-      .map((p, i) => `${i === 0 ? "M" : "L"} ${p.x},${p.y}`)
-      .join(" ");
-
-    // สร้าง gradient area ใต้เส้น
-    const aPath = `${linePath} L ${pts[pts.length - 1].x},${height} L ${pts[0].x},${height} Z`;
-
-    return { path: linePath, points: pts, areaPath: aPath };
+    return { points: pts, linePath: d, areaPath: a };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scores]);
 
   if (scores.length < 1) {
     return (
-      <div className="flex h-[140px] w-full items-center justify-center rounded-lg border border-dashed border-line-soft bg-paper-50 text-sm text-ink-400">
+      <div className="flex h-[168px] w-full items-center justify-center rounded-lg border border-dashed border-line-soft bg-paper-50 text-sm text-ink-400">
         ยังไม่มีข้อมูลให้แสดงแนวโน้ม
       </div>
     );
   }
 
+  const gridTicks = [0, 50, 100];
+  const lastIndex = points.length - 1;
+  const shownIndex = activeIndex ?? lastIndex;
+  const shownPoint = points[shownIndex];
+
   return (
-    <div className="relative w-full overflow-hidden pt-4 pb-2">
+    <div className="relative w-full">
       <svg
-        viewBox={`0 0 500 ${height}`}
+        viewBox={`0 0 ${width} ${height}`}
         preserveAspectRatio="none"
-        className="h-[140px] w-full overflow-visible"
+        className="h-[168px] w-full overflow-visible"
+        role="img"
+        aria-label={`กราฟแนวโน้มคะแนน ${points.length} จุด ล่าสุด ${resolvedLabels[lastIndex]} ${points[lastIndex].val}%`}
       >
         <defs>
-          <linearGradient id="redGradient" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor="#C8102E" stopOpacity={0.2} />
+          <linearGradient id={gradientId} x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stopColor="#C8102E" stopOpacity={0.12} />
             <stop offset="100%" stopColor="#C8102E" stopOpacity={0} />
           </linearGradient>
         </defs>
 
-        {/* พื้นที่สีใต้เส้น */}
-        <path d={areaPath} fill="url(#redGradient)" className="chart-fade" />
+        {/* grid — เส้นบรรทัดเดียวจางๆ ไม่ประ + ตัวเลขกำกับฝั่งซ้าย */}
+        {gridTicks.map((t) => (
+          <g key={t}>
+            <line
+              x1={leftPad}
+              x2={width - rightPad}
+              y1={getY(t)}
+              y2={getY(t)}
+              stroke="#F0E8DC"
+              strokeWidth={1}
+            />
+            <text x={leftPad - 8} y={getY(t)} dy={3} textAnchor="end" className="fill-ink-400" style={{ fontSize: 10 }}>
+              {t}
+            </text>
+          </g>
+        ))}
 
-        {/* เส้นกราฟ */}
-        <path
-          d={path}
-          pathLength={1}
-          fill="none"
-          stroke="#C8102E"
-          strokeWidth={4}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="chart-draw drop-shadow-sm"
-        />
+        {areaPath && <path d={areaPath} fill={`url(#${gradientId})`} className="chart-fade" />}
 
-        {/* จุด + ตัวเลขคะแนนกำกับ */}
+        {linePath && (
+          <path
+            d={linePath}
+            fill="none"
+            stroke="#C8102E"
+            strokeWidth={2.5}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="chart-draw"
+          />
+        )}
+
+        {/* crosshair ตอน hover/focus จุดอื่นที่ไม่ใช่จุดล่าสุด */}
+        {activeIndex !== null && (
+          <line
+            x1={shownPoint.x}
+            x2={shownPoint.x}
+            y1={topPad - 8}
+            y2={height - bottomPad}
+            stroke="#D6C8B4"
+            strokeWidth={1}
+          />
+        )}
+
+        {/* จุด + hit target ใหญ่กว่าจุดจริงสำหรับ hover/focus */}
         <g className="chart-fade-late">
-          {points.map((p, i) => (
-            <g key={i}>
-              <circle
-                cx={p.x}
-                cy={p.y}
-                r={5}
-                fill="#fff"
-                stroke="#C8102E"
-                strokeWidth={3}
-              />
-              <text
-                x={p.x}
-                y={p.y - 14}
-                textAnchor="middle"
-                className={`tabular-nums font-extrabold ${
-                  i === points.length - 1 ? "fill-tu-red-600" : "fill-ink-700"
-                }`}
-                style={{ fontSize: 13 }}
-              >
-                {p.val}%
+          {points.map((p, i) => {
+            const active = i === shownIndex;
+            return (
+              <g key={i}>
+                <circle
+                  cx={p.x}
+                  cy={p.y}
+                  r={active ? 6.5 : 4.5}
+                  fill="#C8102E"
+                  stroke="#FEFCF8"
+                  strokeWidth={2}
+                  className="transition-[r]"
+                />
+                {/* hit target ~28px กว้างกว่าจุดจริงมาก กันพลาดตอนเล็งเมาส์ */}
+                <circle
+                  cx={p.x}
+                  cy={p.y}
+                  r={14}
+                  fill="transparent"
+                  tabIndex={0}
+                  aria-label={`${resolvedLabels[i]}: ${p.val}%`}
+                  onMouseEnter={() => setActiveIndex(i)}
+                  onMouseLeave={() => setActiveIndex(null)}
+                  onFocus={() => setActiveIndex(i)}
+                  onBlur={() => setActiveIndex(null)}
+                  className="cursor-pointer outline-none"
+                />
+              </g>
+            );
+          })}
+        </g>
+
+        {/* tooltip — ค่า + สัปดาห์ของจุดที่กำลังโฟกัส/hover (ดีฟอลต์ = จุดล่าสุด) */}
+        {(() => {
+          const tw = 60;
+          const th = 30;
+          let tx = shownPoint.x - tw / 2;
+          tx = Math.max(2, Math.min(width - tw - 2, tx));
+          const ty = Math.max(0, shownPoint.y - th - 12);
+          return (
+            <g pointerEvents="none">
+              <rect x={tx} y={ty} width={tw} height={th} rx={8} fill="#2A2320" opacity={0.94} />
+              <text x={tx + tw / 2} y={ty + 13} textAnchor="middle" className="fill-white font-extrabold tabular-nums" style={{ fontSize: 13 }}>
+                {shownPoint.val}%
+              </text>
+              <text x={tx + tw / 2} y={ty + 24} textAnchor="middle" className="fill-white/70" style={{ fontSize: 9 }}>
+                {resolvedLabels[shownIndex]}
               </text>
             </g>
-          ))}
-        </g>
+          );
+        })()}
       </svg>
 
       {/* แกน X */}
       <div
-        className={`mt-3 flex px-[20px] text-[11px] font-semibold tracking-wide text-ink-400 ${
+        className={`mt-2 flex px-[26px] text-[11px] font-semibold tracking-wide text-ink-400 ${
           scores.length === 1 ? "justify-center" : "justify-between"
         }`}
       >
-        {scores.map((_, i) => (
-          <span
-            key={i}
-            className={i === scores.length - 1 ? "font-bold text-tu-red-600" : undefined}
-          >
-            {labels?.[i] ?? `Sess ${i + 1}`}
+        {resolvedLabels.map((l, i) => (
+          <span key={i} className={i === shownIndex ? "font-bold text-tu-red-600" : undefined}>
+            {l}
           </span>
         ))}
       </div>
+
+      {/* ตารางข้อมูลสำรองสำหรับ screen reader — ค่าเดียวกับกราฟเป๊ะ */}
+      <table className="sr-only">
+        <caption>ข้อมูลกราฟแนวโน้มคะแนนรายจุด</caption>
+        <thead>
+          <tr><th>ช่วง</th><th>คะแนน</th></tr>
+        </thead>
+        <tbody>
+          {resolvedLabels.map((l, i) => (
+            <tr key={i}><td>{l}</td><td>{scores[i]}%</td></tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

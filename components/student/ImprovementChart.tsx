@@ -5,11 +5,6 @@ import { useId, useMemo, useState } from "react";
 /**
  * กราฟเส้นแสดงพัฒนาการ (Improvement History)
  * รับอาร์เรย์คะแนน (0-100)
- *
- * ออกแบบตามหลัก: เส้นบาง + จุดเติมสีมีขอบขาว, grid บรรทัดเดียวจางๆ (ไม่ประ),
- * label ตัวเลขเฉพาะจุดปัจจุบัน/จุดที่ hover (ไม่แปะทุกจุด), มี crosshair +
- * tooltip ตอน hover/focus (คีย์บอร์ดใช้ได้เหมือนกัน) และมีตารางข้อมูลสำรอง
- * สำหรับ screen reader
  */
 export default function ImprovementChart({
   scores,
@@ -19,14 +14,17 @@ export default function ImprovementChart({
   /** ป้ายกำกับแกน X — ถ้าไม่ส่งจะใช้ "Sess 1, 2, …" */
   labels?: string[];
 }) {
-  const gradientId = useId();
+  const uid = useId();
+  const gradientId = `${uid}-grad`;
+  const glowId = `${uid}-glow`;
+  const shadowId = `${uid}-shadow`;
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
-  const height = 168;
-  const leftPad = 26;
-  const rightPad = 20;
-  const topPad = 32;
-  const bottomPad = 26;
+  const height = 190;
+  const leftPad = 30;
+  const rightPad = 22;
+  const topPad = 40;
+  const bottomPad = 28;
   const width = 500;
 
   const getY = (val: number) =>
@@ -70,7 +68,7 @@ export default function ImprovementChart({
 
   if (scores.length < 1) {
     return (
-      <div className="flex h-[168px] w-full items-center justify-center rounded-lg border border-dashed border-line-soft bg-paper-50 text-sm text-ink-400">
+      <div className="flex h-[190px] w-full items-center justify-center rounded-lg border border-dashed border-line-soft bg-paper-50 text-sm text-ink-400">
         ยังไม่มีข้อมูลให้แสดงแนวโน้ม
       </div>
     );
@@ -81,20 +79,34 @@ export default function ImprovementChart({
   const shownIndex = activeIndex ?? lastIndex;
   const shownPoint = points[shownIndex];
 
+  // กล่อง tooltip — clamp ไม่ให้ล้นขอบซ้าย/ขวา ลูกศรชี้ตามตำแหน่งจุดจริงเสมอ
+  const tw = 66;
+  const th = 34;
+  const tx = Math.max(2, Math.min(width - tw - 2, shownPoint.x - tw / 2));
+  const ty = Math.max(2, shownPoint.y - th - 16);
+  const arrowX = Math.max(tx + 12, Math.min(tx + tw - 12, shownPoint.x));
+
   return (
-    <div className="relative w-full">
+    <div className="relative w-full rounded-2xl bg-gradient-to-b from-paper-50/80 to-transparent p-1">
       <svg
         viewBox={`0 0 ${width} ${height}`}
         preserveAspectRatio="none"
-        className="h-[168px] w-full overflow-visible"
+        className="h-[190px] w-full overflow-visible"
         role="img"
         aria-label={`กราฟแนวโน้มคะแนน ${points.length} จุด ล่าสุด ${resolvedLabels[lastIndex]} ${points[lastIndex].val}%`}
       >
         <defs>
           <linearGradient id={gradientId} x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor="#C8102E" stopOpacity={0.12} />
+            <stop offset="0%" stopColor="#C8102E" stopOpacity={0.32} />
+            <stop offset="55%" stopColor="#C8102E" stopOpacity={0.08} />
             <stop offset="100%" stopColor="#C8102E" stopOpacity={0} />
           </linearGradient>
+          <filter id={glowId} x="-30%" y="-60%" width="160%" height="220%">
+            <feGaussianBlur stdDeviation="4.5" />
+          </filter>
+          <filter id={shadowId} x="-60%" y="-60%" width="220%" height="240%">
+            <feDropShadow dx="0" dy="3" stdDeviation="4" floodColor="#1C1614" floodOpacity="0.28" />
+          </filter>
         </defs>
 
         {/* grid — เส้นบรรทัดเดียวจางๆ ไม่ประ + ตัวเลขกำกับฝั่งซ้าย */}
@@ -108,7 +120,14 @@ export default function ImprovementChart({
               stroke="#F0E8DC"
               strokeWidth={1}
             />
-            <text x={leftPad - 8} y={getY(t)} dy={3} textAnchor="end" className="fill-ink-400" style={{ fontSize: 10 }}>
+            <text
+              x={leftPad - 10}
+              y={getY(t)}
+              dy={4}
+              textAnchor="end"
+              className="fill-ink-400 font-medium tabular-nums"
+              style={{ fontSize: 11 }}
+            >
               {t}
             </text>
           </g>
@@ -116,29 +135,44 @@ export default function ImprovementChart({
 
         {areaPath && <path d={areaPath} fill={`url(#${gradientId})`} className="chart-fade" />}
 
+        {/* เส้นเรือง (glow) ใต้เส้นหลัก ให้ความรู้สึกพรีเมียม */}
         {linePath && (
           <path
             d={linePath}
             fill="none"
             stroke="#C8102E"
-            strokeWidth={2.5}
+            strokeWidth={7}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            opacity={0.35}
+            filter={`url(#${glowId})`}
+          />
+        )}
+
+        {linePath && (
+          <path
+            d={linePath}
+            pathLength={1}
+            fill="none"
+            stroke="#C8102E"
+            strokeWidth={3}
             strokeLinecap="round"
             strokeLinejoin="round"
             className="chart-draw"
           />
         )}
 
-        {/* crosshair ตอน hover/focus จุดอื่นที่ไม่ใช่จุดล่าสุด */}
-        {activeIndex !== null && (
-          <line
-            x1={shownPoint.x}
-            x2={shownPoint.x}
-            y1={topPad - 8}
-            y2={height - bottomPad}
-            stroke="#D6C8B4"
-            strokeWidth={1}
-          />
-        )}
+        {/* crosshair ตอน hover/focus */}
+        <line
+          x1={shownPoint.x}
+          x2={shownPoint.x}
+          y1={topPad - 14}
+          y2={height - bottomPad}
+          stroke="#D6C8B4"
+          strokeWidth={1}
+          strokeDasharray={activeIndex !== null ? undefined : "3 3"}
+          opacity={activeIndex !== null ? 1 : 0.5}
+        />
 
         {/* จุด + hit target ใหญ่กว่าจุดจริงสำหรับ hover/focus */}
         <g className="chart-fade-late">
@@ -146,13 +180,17 @@ export default function ImprovementChart({
             const active = i === shownIndex;
             return (
               <g key={i}>
+                {active && (
+                  <circle cx={p.x} cy={p.y} r={12} fill="#C8102E" opacity={0.16} />
+                )}
                 <circle
                   cx={p.x}
                   cy={p.y}
-                  r={active ? 6.5 : 4.5}
+                  r={active ? 7 : 4.5}
                   fill="#C8102E"
                   stroke="#FEFCF8"
-                  strokeWidth={2}
+                  strokeWidth={2.5}
+                  filter={`url(#${shadowId})`}
                   className="transition-[r]"
                 />
                 {/* hit target ~28px กว้างกว่าจุดจริงมาก กันพลาดตอนเล็งเมาส์ */}
@@ -175,34 +213,48 @@ export default function ImprovementChart({
         </g>
 
         {/* tooltip — ค่า + สัปดาห์ของจุดที่กำลังโฟกัส/hover (ดีฟอลต์ = จุดล่าสุด) */}
-        {(() => {
-          const tw = 60;
-          const th = 30;
-          let tx = shownPoint.x - tw / 2;
-          tx = Math.max(2, Math.min(width - tw - 2, tx));
-          const ty = Math.max(0, shownPoint.y - th - 12);
-          return (
-            <g pointerEvents="none">
-              <rect x={tx} y={ty} width={tw} height={th} rx={8} fill="#2A2320" opacity={0.94} />
-              <text x={tx + tw / 2} y={ty + 13} textAnchor="middle" className="fill-white font-extrabold tabular-nums" style={{ fontSize: 13 }}>
-                {shownPoint.val}%
-              </text>
-              <text x={tx + tw / 2} y={ty + 24} textAnchor="middle" className="fill-white/70" style={{ fontSize: 9 }}>
-                {resolvedLabels[shownIndex]}
-              </text>
-            </g>
-          );
-        })()}
+        <g pointerEvents="none" filter={`url(#${shadowId})`}>
+          <rect x={tx} y={ty} width={tw} height={th} rx={10} fill="#2A2320" />
+          <polygon
+            points={`${arrowX - 5},${ty + th} ${arrowX + 5},${ty + th} ${arrowX},${ty + th + 6}`}
+            fill="#2A2320"
+          />
+          <text
+            x={tx + tw / 2}
+            y={ty + 15}
+            textAnchor="middle"
+            className="fill-white font-extrabold tabular-nums"
+            style={{ fontSize: 14 }}
+          >
+            {shownPoint.val}%
+          </text>
+          <text
+            x={tx + tw / 2}
+            y={ty + 27}
+            textAnchor="middle"
+            className="fill-white"
+            opacity={0.65}
+            style={{ fontSize: 9.5 }}
+          >
+            {resolvedLabels[shownIndex]}
+          </text>
+        </g>
       </svg>
 
       {/* แกน X */}
       <div
-        className={`mt-2 flex px-[26px] text-[11px] font-semibold tracking-wide text-ink-400 ${
+        className={`mt-1 flex px-[30px] text-[11px] font-semibold tracking-wide text-ink-400 ${
           scores.length === 1 ? "justify-center" : "justify-between"
         }`}
       >
         {resolvedLabels.map((l, i) => (
-          <span key={i} className={i === shownIndex ? "font-bold text-tu-red-600" : undefined}>
+          <span
+            key={i}
+            className={`inline-flex items-center gap-1 ${
+              i === shownIndex ? "font-bold text-tu-red-600" : undefined
+            }`}
+          >
+            {i === shownIndex && <span className="h-1.5 w-1.5 rounded-full bg-tu-red-600" />}
             {l}
           </span>
         ))}

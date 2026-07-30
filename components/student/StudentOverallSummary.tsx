@@ -601,8 +601,8 @@ export default function StudentOverallSummary({ courseId }: { courseId: string }
                     const meta = LEVEL_META[t.level];
                     return (
                       <div key={t.topic} className="py-2.5">
-                        <div className="flex items-center justify-between gap-3">
-                          <span className="min-w-0 truncate text-sm font-semibold text-ink-800">
+                        <div className="flex items-start justify-between gap-3">
+                          <span className="min-w-0 text-sm font-semibold text-ink-800">
                             {t.topic}
                           </span>
                           <span

@@ -476,6 +476,13 @@ input[type="number"] {
   transform: scale(0.985) !important;
 }
 
+/* ปุ่ม "..." ขยายรายการ action ที่ล้นแถบ (ลูกศรลงเล็กๆ มุมปุ่ม) — แบบทดสอบเรามี
+   ปุ่มเดียวคือ "ส่งคำตอบ" ไม่มี action อื่นให้ขยายดู เลยไม่ต้องมี */
+.survey-quiz .sv-expand-action,
+.survey-quiz .sv-action-bar-item-dropdown {
+  display: none !important;
+}
+
 /* ---------- AiLoading — เอกสารไหลเข้าหาบอท AI (ระหว่างรอ AI วิเคราะห์) ---------- */
 .ai-loading {
   display: flex;

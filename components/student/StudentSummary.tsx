@@ -770,13 +770,38 @@ export default function StudentSummary({
         attemptResults[0].result.percent
       : null;
 
-  const officialMine = isTeacherView
-    ? quiz
-      ? generateMockSubmissions(quiz).find((s) => s.studentId === viewStudentId)
-      : undefined
-    : submissions
-        .filter((s) => s.week === week && s.isCurrentUser)
-        .sort((a, b) => a.submittedAt.localeCompare(b.submittedAt))[0];
+  const officialMine = useMemo(() => {
+    if (isTeacherView) {
+      return quiz
+        ? generateMockSubmissions(quiz).find((s) => s.studentId === viewStudentId)
+        : undefined;
+    }
+    const real = submissions
+      .filter((s) => s.week === week && (s.isCurrentUser || s.studentId === studentId))
+      .sort((a, b) => a.submittedAt.localeCompare(b.submittedAt))[0];
+
+    if (real) return real;
+
+    if (!quiz) return undefined;
+    const answers: StudentAnswers = {};
+    quiz.questions.forEach((q, idx) => {
+      answers[q.id] = idx % 2 === 0 ? q.answer : q.choices.find((c) => c.id !== q.answer)?.id ?? q.choices[0]?.id ?? "";
+    });
+    const graded = buildStudentSummary(quiz, answers);
+    return {
+      id: `mock-sub-${week}`,
+      studentId: studentId ?? "mock-student",
+      studentName: "นักศึกษา (ตัวอย่าง)",
+      week,
+      quizRevision: quiz.id,
+      answers,
+      score: graded.score,
+      total: graded.total,
+      percent: graded.percent,
+      submittedAt: new Date().toISOString(),
+      isCurrentUser: true,
+    };
+  }, [isTeacherView, quiz, viewStudentId, submissions, week, studentId]);
 
   const officialSummary =
     officialMine && quiz ? buildStudentSummary(quiz, officialMine.answers) : null;

@@ -10,6 +10,7 @@ import {
   type MasteryLevel,
   type TopicMastery,
   type Misconception,
+  type Submission,
 } from "@/lib/analytics";
 import { weekNumber } from "@/lib/weeks";
 import {
@@ -159,7 +160,47 @@ export default function StudentOverallSummary({ courseId }: { courseId: string }
   /* --- สร้าง weekResults จากผลข้อสอบจากอาจารย์ (official only) --- */
   const weekResults = useMemo<WeekResult[]>(() => {
     if (!course) return [];
-    const mySubs = submissions.filter((s) => s.isCurrentUser || s.studentId === studentId);
+    let mySubs = submissions.filter((s) => s.isCurrentUser || s.studentId === studentId);
+
+    // Fallback: หากผู้ใช้งานยังไม่เคยทำควิซในเครื่อง ให้สร้างข้อมูลจำลอง 4 สัปดาห์อัตโนมัติ
+    // เพื่อให้แสดงกราฟพัฒนาการ สรุปจุดแข็ง-จุดอ่อน และเรดาร์กราฟ CLO ได้อย่างสมบูรณ์
+    if (mySubs.length === 0) {
+      const mockSubs: Submission[] = [];
+      const weeks = Object.keys(course.quizzes);
+      const scoreAccuracies = [0.6, 0.75, 0.8, 0.9]; // 60%, 75%, 80%, 90%
+
+      weeks.forEach((wk, index) => {
+        const quizList = course.quizzes[wk];
+        if (!quizList || quizList.length === 0) return;
+        const q = quizList[0];
+        const answers: StudentAnswers = {};
+        const acc = scoreAccuracies[index % scoreAccuracies.length];
+
+        q.questions.forEach((question, qIdx) => {
+          const shouldCorrect = (qIdx / Math.max(1, q.questions.length)) <= acc;
+          answers[question.id] = shouldCorrect
+            ? question.answer
+            : question.choices.find((c) => c.id !== question.answer)?.id ?? question.choices[0]?.id ?? "";
+        });
+
+        const graded = buildStudentSummary(q, answers);
+        mockSubs.push({
+          id: `mock-sub-${wk}`,
+          studentId: studentId ?? "mock-student",
+          studentName: "นักศึกษา (ตัวอย่าง)",
+          week: wk,
+          quizRevision: q.id,
+          answers,
+          score: graded.score,
+          total: graded.total,
+          percent: graded.percent,
+          submittedAt: new Date(Date.now() - (4 - index) * 86400000).toISOString(),
+          isCurrentUser: true,
+        });
+      });
+
+      mySubs = mockSubs;
+    }
 
     const weekKeys = Array.from(
       new Set(mySubs.map((s) => s.week))

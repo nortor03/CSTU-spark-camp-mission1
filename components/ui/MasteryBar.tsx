@@ -13,8 +13,8 @@ export default function MasteryBar({ item }: { item: TopicMastery }) {
 
   return (
     <div className="py-2.5">
-      <div className="mb-1.5 flex items-baseline justify-between gap-3">
-        <span className="min-w-0 truncate text-sm font-medium text-ink-800">
+      <div className="mb-1.5 flex items-start justify-between gap-3">
+        <span className="min-w-0 text-sm font-medium text-ink-800">
           {item.topic}
         </span>
         <span className="flex flex-shrink-0 items-baseline gap-2 text-xs">

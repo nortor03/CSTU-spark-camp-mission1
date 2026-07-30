@@ -1,10 +1,36 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ComponentProps } from "react";
 import { usePathname } from "next/navigation";
 import { Sparkles, Send, X, ClipboardList, BookOpen } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { useCourse } from "@/lib/courseStore";
 import { streamChatReply, type ChatSource } from "@/lib/chatApi";
+
+/** จัด heading/list/bold ของคำตอบ AI (มาเป็น markdown) ให้เข้ากับบับเบิลแชทเล็กๆ */
+const markdownComponents: ComponentProps<typeof ReactMarkdown>["components"] = {
+  h1: ({ children }) => <p className="mb-1.5 mt-2.5 text-[14px] font-extrabold text-ink-900 first:mt-0">{children}</p>,
+  h2: ({ children }) => <p className="mb-1.5 mt-2.5 text-[13.5px] font-bold text-ink-900 first:mt-0">{children}</p>,
+  h3: ({ children }) => <p className="mb-1 mt-2 text-[13px] font-bold text-ink-800 first:mt-0">{children}</p>,
+  p: ({ children }) => <p className="mb-2 leading-relaxed last:mb-0">{children}</p>,
+  strong: ({ children }) => <strong className="font-bold text-ink-900">{children}</strong>,
+  ul: ({ children }) => <ul className="mb-2 list-disc space-y-0.5 pl-4 last:mb-0">{children}</ul>,
+  ol: ({ children }) => <ol className="mb-2 list-decimal space-y-0.5 pl-4 last:mb-0">{children}</ol>,
+  li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+  a: ({ children, href }) => (
+    <a href={href} target="_blank" rel="noreferrer" className="text-tu-red-600 underline underline-offset-2">
+      {children}
+    </a>
+  ),
+  code: ({ children }) => (
+    <code className="rounded bg-paper-200 px-1 py-0.5 text-[11.5px]">{children}</code>
+  ),
+  hr: () => <hr className="my-2 border-line-soft" />,
+  blockquote: ({ children }) => (
+    <blockquote className="mb-2 border-l-2 border-line pl-2.5 text-ink-500 last:mb-0">{children}</blockquote>
+  ),
+};
 
 /**
  * ผู้ช่วยทบทวนฝั่งนักศึกษา — side panel สไตล์ "Claude in Chrome"
@@ -193,6 +219,10 @@ export default function StudentAssistant() {
                       <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-ink-300 [animation-delay:0.15s]" />
                       <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-ink-300 [animation-delay:0.3s]" />
                     </div>
+                  ) : isBot ? (
+                    <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                      {m.text}
+                    </ReactMarkdown>
                   ) : (
                     <span className="whitespace-pre-wrap">{m.text}</span>
                   )}

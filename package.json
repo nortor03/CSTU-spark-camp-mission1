@@ -14,6 +14,8 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-hook-form": "^7.81.0",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
     "survey-core": "^2.5.35",
     "survey-react-ui": "^2.5.35"
   },

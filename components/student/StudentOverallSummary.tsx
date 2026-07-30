@@ -26,12 +26,6 @@ import ImprovementChart from "./ImprovementChart";
 import { SkeletonStatHero } from "@/components/ui/Skeleton";
 import type { Quiz } from "@/lib/quiz";
 import type { StudentAnswers } from "@/lib/feedback";
-import type { PracticeAttempt } from "@/lib/practiceHistory";
-import {
-  fetchPracticeQuizzes,
-  fetchPracticeQuiz,
-  fetchPracticeQuizSubmissions,
-} from "@/lib/practiceQuizApi";
 
 
 /* ─── Design tokens ─── */
@@ -189,74 +183,10 @@ export default function StudentOverallSummary({ courseId }: { courseId: string }
     return results;
   }, [course, submissions, studentId]);
 
-  /* --- ดึงข้อมูลฝึกซ้อม (แบบฝึกหัดเจาะจุดอ่อน) จาก backend จริงทุกสัปดาห์ --- */
-
-  const [practiceByWeek, setPracticeByWeek] = useState<Record<string, PracticeAttempt[]>>({});
-  // แหล่งข้อมูลที่เลือกดู (เฉพาะส่วน "ความเข้าใจรายหัวข้อ") — ข้อสอบอาจารย์ หรือ ฝึกซ้อม
-  const [source, setSource] = useState<"official" | "practice">("official");
   // แสดงหัวข้อครบทุกอันหรือแค่ 5 อันแรก
   const [showAllTopics, setShowAllTopics] = useState(false);
   // "จุดที่ตอบผิด" ปิดไว้ก่อนโดยดีฟอลต์ — อาจยาวถ้ารวมหลายสัปดาห์ ให้กดเปิดเอง
   const [misconceptionsOpen, setMisconceptionsOpen] = useState(false);
-
-  useEffect(() => {
-    if (!course || !hydrated || !studentId) {
-      setPracticeByWeek({});
-      return;
-    }
-    let cancelled = false;
-    const weeks = Object.keys(course.quizzes).filter(
-      (wk) => (course.quizzes[wk] ?? []).length > 0,
-    );
-    Promise.all(
-      weeks.map(async (wk) => {
-        const quiz = course.quizzes[wk][0];
-        try {
-          const list = await fetchPracticeQuizzes(quiz.id, studentId);
-          const completed = list.filter((p) => p.status === "completed");
-          const built = await Promise.all(
-            completed.map(async (p): Promise<PracticeAttempt | null> => {
-              try {
-                const [{ quiz: pq }, subs] = await Promise.all([
-                  fetchPracticeQuiz(p.id),
-                  fetchPracticeQuizSubmissions(p.id, studentId),
-                ]);
-                const latest = subs[0];
-                if (!pq || !latest) return null;
-                const answers: StudentAnswers = {};
-                for (const q of latest.questions) answers[q.questionId] = q.chosenId;
-                return {
-                  id: p.id,
-                  at: latest.submittedAt,
-                  score: latest.score,
-                  total: latest.total,
-                  percent: Math.round(latest.percent),
-                  quiz: pq,
-                  answers,
-                };
-              } catch {
-                return null;
-              }
-            }),
-          );
-          return [wk, built.filter((a): a is PracticeAttempt => a !== null)] as const;
-        } catch {
-          return [wk, [] as PracticeAttempt[]] as const;
-        }
-      }),
-    ).then((entries) => {
-      if (cancelled) return;
-      const map: Record<string, PracticeAttempt[]> = {};
-      for (const [wk, attempts] of entries) {
-        if (attempts.length > 0) map[wk] = attempts;
-      }
-      setPracticeByWeek(map);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [course, studentId, hydrated]);
-
 
   /* --- Aggregate overall data --- */
   const overall = useMemo(() => {
@@ -297,54 +227,10 @@ export default function StudentOverallSummary({ courseId }: { courseId: string }
     return { avgPercent, allTopics, allMisconceptions, misconceptionsByWeek, cloData };
   }, [weekResults, course]);
 
-  /* --- ความเข้าใจรายหัวข้อ จากการฝึกซ้อม (รอบล่าสุดของแต่ละสัปดาห์) --- */
-  const practiceTopics = useMemo<TopicMastery[]>(() => {
-    const topicMap = new Map<string, { correct: number; total: number }>();
-    // รวมทุกรอบฝึกซ้อมที่เคยทำ (ไม่ใช่แค่รอบล่าสุด) เพื่อให้เห็นภาพรวมความเข้าใจจริง ๆ
-    for (const attempts of Object.values(practiceByWeek)) {
-      for (const attempt of attempts) {
-        const summary = buildStudentSummary(attempt.quiz, attempt.answers);
-        for (const t of summary.topics) {
-          const cur = topicMap.get(t.topic) ?? { correct: 0, total: 0 };
-          cur.correct += t.correct; cur.total += t.total;
-          topicMap.set(t.topic, cur);
-        }
-      }
-    }
-    return Array.from(topicMap.entries())
-      .map(([topic, { correct, total }]) => {
-        const percent = total > 0 ? Math.round((correct / total) * 100) : 0;
-        return { topic, correct, total, percent, level: levelOf(percent) };
-      })
-      .sort((a, b) => b.percent - a.percent);
-  }, [practiceByWeek]);
-
   /* --- count-up hooks (fixed order) --- */
   const avgShown = useCountUp(overall?.avgPercent ?? 0);
   const strongShown = useCountUp(overall?.allTopics.filter((t) => t.level === "strong").length ?? 0);
   const weakShown = useCountUp(overall?.allTopics.filter((t) => t.level === "weak").length ?? 0);
-
-  /* --- สรุปการฝึกซ้อม --- */
-  const practiceSummary = useMemo(() => {
-    const weeks = Object.entries(practiceByWeek);
-    if (weeks.length === 0) return null;
-    const totalRounds = weeks.reduce((s, [, arr]) => s + arr.length, 0);
-    const allPercents = weeks.flatMap(([, arr]) => arr.map((a) => a.percent));
-    const avgPractice = allPercents.length > 0
-      ? Math.round(allPercents.reduce((s, v) => s + v, 0) / allPercents.length)
-      : 0;
-    const perWeek = weeks
-      .map(([wk, arr]) => ({
-        wk,
-        wkNum: weekNumber(wk),
-        rounds: arr.length,
-        best: Math.max(...arr.map((a) => a.percent)),
-        last: arr[arr.length - 1].percent,
-      }))
-      .sort((a, b) => Number(a.wkNum) - Number(b.wkNum));
-    return { totalRounds, avgPractice, perWeek };
-  }, [practiceByWeek]);
-
 
   /* ─── Loading / empty states ─── */
   if (!hydrated) return <SkeletonStatHero />;
@@ -390,8 +276,7 @@ export default function StudentOverallSummary({ courseId }: { courseId: string }
   const strongest = overall.allTopics[0];
   const weakest = overall.allTopics[overall.allTopics.length - 1];
   const hasWeak = weakest && weakest.level !== "strong";
-  // หัวข้อที่จะแสดงในส่วน "ความเข้าใจรายหัวข้อ" — สลับตามแหล่งข้อมูลที่เลือก
-  const topicsToShow = source === "official" ? overall.allTopics : practiceTopics;
+  const topicsToShow = overall.allTopics;
   const visibleTopics = showAllTopics ? topicsToShow : topicsToShow.slice(0, 5);
 
   return (
@@ -421,7 +306,7 @@ export default function StudentOverallSummary({ courseId }: { courseId: string }
             </p>
           </div>
 
-          {/* สลับภาพรวม/รายสัปดาห์ + แหล่งข้อมูล (ข้อสอบอาจารย์/ฝึกซ้อม) */}
+          {/* สลับภาพรวม/รายสัปดาห์ */}
           <div className="flex flex-shrink-0 flex-col items-end gap-2.5">
             <div className="inline-flex items-center gap-1 rounded-xl bg-paper-100 p-1">
               <button
@@ -442,42 +327,6 @@ export default function StudentOverallSummary({ courseId }: { courseId: string }
                 รายสัปดาห์
               </Link>
             </div>
-
-            {/* โชว์เฉพาะเมื่อทั้งคอร์สมีข้อมูลฝึกซ้อมอย่างน้อย 1 สัปดาห์ (มีแหล่งเดียวไม่ต้องมีปุ่มสลับ) */}
-            {Object.keys(practiceByWeek).length > 0 && (
-              <div className="flex flex-col items-end gap-1.5">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-ink-400">แสดงผลจาก</span>
-                  <div className="inline-flex items-center gap-1 rounded-xl bg-paper-100 p-1">
-                    <button
-                      type="button"
-                      onClick={() => setSource("official")}
-                      className={`rounded-lg px-3.5 py-1.5 text-xs font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-tu-red-300 ${
-                        source === "official"
-                          ? "bg-white text-tu-red-700 shadow-sm"
-                          : "text-ink-500 hover:text-ink-700"
-                      }`}
-                    >
-                      ข้อสอบอาจารย์
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSource("practice")}
-                      className={`rounded-lg px-3.5 py-1.5 text-xs font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-tu-red-300 ${
-                        source === "practice"
-                          ? "bg-white text-tu-red-700 shadow-sm"
-                          : "text-ink-500 hover:text-ink-700"
-                      }`}
-                    >
-                      ฝึกซ้อม
-                    </button>
-                  </div>
-                </div>
-                {source === "practice" && (
-                  <p className="text-[11px] text-ink-400">รวมทุกรอบฝึกซ้อมที่เคยทำ</p>
-                )}
-              </div>
-            )}
           </div>
         </div>
       </Reveal>
@@ -593,7 +442,7 @@ export default function StudentOverallSummary({ courseId }: { courseId: string }
 
               {topicsToShow.length === 0 ? (
                 <p className="py-6 text-center text-sm text-ink-400">
-                  {source === "official" ? "ยังไม่มีผลข้อสอบอาจารย์" : "ยังไม่มีประวัติการฝึกซ้อม"}
+                  ยังไม่มีผลข้อสอบอาจารย์
                 </p>
               ) : (
                 <div className="divide-y divide-line-soft">
